@@ -11,9 +11,11 @@ import Requests from "./pages/Requests";
 import Approvals from "./pages/Approvals";
 import PaymentQueue from "./pages/PaymentQueue";
 import PettyCash from "./pages/PettyCash";
+import BankPayments from "./pages/BankPayments";
 import BudgetPlanning from "./pages/BudgetPlanning";
 import BudgetTransfer from "./pages/BudgetTransfer";
 import Users from "./pages/Users";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -58,7 +60,11 @@ const App = () => (
                   <PettyCash />
                 </ProtectedRoute>
               } />
-              <Route path="/bank-payments" element={<Dashboard />} />
+              <Route path="/bank-payments" element={
+                <ProtectedRoute requiredRole="finance">
+                  <BankPayments />
+                </ProtectedRoute>
+              } />
               <Route path="/budget-planning" element={
                 <ProtectedRoute requiredRole="super_admin">
                   <BudgetPlanning />
@@ -78,8 +84,16 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={<Dashboard />} />
-              <Route path="/reports" element={<Dashboard />} />
-              <Route path="/audit-logs" element={<Dashboard />} />
+              <Route path="/reports" element={
+                <ProtectedRoute requiredRole="finance">
+                  <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="/audit-logs" element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <Reports />
+                </ProtectedRoute>
+              } />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
