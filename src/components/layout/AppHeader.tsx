@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
-import { Bell, Search, Moon, Sun, Globe, ChevronDown } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Bell, Search, Moon, Sun, ChevronDown, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -59,8 +61,18 @@ const notifications = [
   },
 ];
 
+const roleLabels: Record<string, string> = {
+  super_admin: "Super Admin",
+  finance: "Finance",
+  admin: "Admin",
+  user: "User",
+};
+
 const AppHeader = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, role, signOut } = useAuth();
+  const { toast } = useToast();
   const [isDark, setIsDark] = useState(false);
   const [language, setLanguage] = useState<"ID" | "EN">("ID");
 
@@ -71,6 +83,29 @@ const AppHeader = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle("dark");
   };
+
+  const handleLogout = async () => {
+    await signOut();
+    toast({
+      title: "Logout Berhasil",
+      description: "Anda telah keluar dari sistem",
+    });
+    navigate("/");
+  };
+
+  // Get user initials
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const displayName = profile?.full_name || "User";
+  const displayRole = role ? roleLabels[role] : "User";
+  const initials = getInitials(displayName);
 
   return (
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-40">
@@ -182,22 +217,31 @@ const AppHeader = () => {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-3 ml-2 pl-2 border-l border-border">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-foreground">Ferry Ferdiansyah</p>
+                <p className="text-sm font-medium text-foreground">{displayName}</p>
                 <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
-                  super admin
+                  {displayRole}
                 </Badge>
               </div>
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold text-primary">FF</span>
+                <span className="text-sm font-semibold text-primary">{initials}</span>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem>Profil Saya</DropdownMenuItem>
-            <DropdownMenuItem>Pengaturan</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
+              <User className="mr-2 h-4 w-4" />
+              Profil Saya
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
+              <Settings className="mr-2 h-4 w-4" />
+              Pengaturan
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Keluar</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Keluar
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

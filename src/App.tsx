@@ -2,7 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Requests from "./pages/Requests";
@@ -16,31 +18,53 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/requests" element={<Requests />} />
-            <Route path="/approvals" element={<Approvals />} />
-            <Route path="/payment-queue" element={<PaymentQueue />} />
-            <Route path="/petty-cash" element={<Dashboard />} />
-            <Route path="/bank-payments" element={<Dashboard />} />
-            <Route path="/budget-planning" element={<Dashboard />} />
-            <Route path="/budget-transfer" element={<Dashboard />} />
-            <Route path="/divisions" element={<Dashboard />} />
-            <Route path="/categories" element={<Dashboard />} />
-            <Route path="/funding-sources" element={<Dashboard />} />
-            <Route path="/users" element={<Dashboard />} />
-            <Route path="/settings" element={<Dashboard />} />
-            <Route path="/reports" element={<Dashboard />} />
-            <Route path="/audit-logs" element={<Dashboard />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/requests" element={<Requests />} />
+              <Route
+                path="/approvals"
+                element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <Approvals />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/payment-queue"
+                element={
+                  <ProtectedRoute requiredRole="finance">
+                    <PaymentQueue />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/petty-cash" element={<Dashboard />} />
+              <Route path="/bank-payments" element={<Dashboard />} />
+              <Route path="/budget-planning" element={<Dashboard />} />
+              <Route path="/budget-transfer" element={<Dashboard />} />
+              <Route path="/divisions" element={<Dashboard />} />
+              <Route path="/categories" element={<Dashboard />} />
+              <Route path="/funding-sources" element={<Dashboard />} />
+              <Route path="/users" element={<Dashboard />} />
+              <Route path="/settings" element={<Dashboard />} />
+              <Route path="/reports" element={<Dashboard />} />
+              <Route path="/audit-logs" element={<Dashboard />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
