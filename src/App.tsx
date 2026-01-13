@@ -20,6 +20,7 @@ import FundingSources from "./pages/FundingSources";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Reports from "./pages/Reports";
+import AuditLogs from "./pages/AuditLogs";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -112,7 +113,7 @@ const App = () => (
               } />
               <Route path="/audit-logs" element={
                 <ProtectedRoute requiredRole="super_admin">
-                  <Reports />
+                  <AuditLogs />
                 </ProtectedRoute>
               } />
             </Route>

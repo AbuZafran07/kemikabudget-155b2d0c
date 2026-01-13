@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          created_at: string
+          description: string
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       budget_movements: {
         Row: {
           amount: number
@@ -396,6 +432,42 @@ export type Database = {
           name?: string
           type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          notify_on_approve: boolean
+          notify_on_pay: boolean
+          notify_on_reject: boolean
+          notify_on_settle: boolean
+          notify_on_submit: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_on_approve?: boolean
+          notify_on_pay?: boolean
+          notify_on_reject?: boolean
+          notify_on_settle?: boolean
+          notify_on_submit?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_on_approve?: boolean
+          notify_on_pay?: boolean
+          notify_on_reject?: boolean
+          notify_on_settle?: boolean
+          notify_on_submit?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
