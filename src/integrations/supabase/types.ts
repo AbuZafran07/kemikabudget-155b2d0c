@@ -104,6 +104,88 @@ export type Database = {
         }
         Relationships: []
       }
+      budget_transfers: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          division_id: string
+          from_budget_id: string
+          id: string
+          reason: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          requester_id: string
+          status: string
+          submitted_at: string | null
+          to_budget_id: string
+          transfer_number: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          division_id: string
+          from_budget_id: string
+          id?: string
+          reason: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requester_id: string
+          status?: string
+          submitted_at?: string | null
+          to_budget_id: string
+          transfer_number: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          division_id?: string
+          from_budget_id?: string
+          id?: string
+          reason?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requester_id?: string
+          status?: string
+          submitted_at?: string | null
+          to_budget_id?: string
+          transfer_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_transfers_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_transfers_from_budget_id_fkey"
+            columns: ["from_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_transfers_to_budget_id_fkey"
+            columns: ["to_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_reconciliations: {
         Row: {
           approved_at: string | null
@@ -709,6 +791,10 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_budget_transfer: {
+        Args: { p_transfer_id: string }
+        Returns: Json
+      }
       approve_request: {
         Args: { p_approval_note?: string; p_request_id: string }
         Returns: Json
@@ -739,6 +825,10 @@ export type Database = {
       }
       pay_request: {
         Args: { p_payment_note?: string; p_request_id: string }
+        Returns: Json
+      }
+      reject_budget_transfer: {
+        Args: { p_rejection_reason: string; p_transfer_id: string }
         Returns: Json
       }
       reject_request: {

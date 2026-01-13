@@ -5,6 +5,9 @@ import KpiCard from "@/components/dashboard/KpiCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import BudgetChart from "@/components/dashboard/BudgetChart";
 import ExpenseByCategory from "@/components/dashboard/ExpenseByCategory";
+import { useDashboard } from "@/hooks/useDashboard";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
   Wallet,
   TrendingUp,
@@ -14,88 +17,8 @@ import {
   CreditCard,
   FileText,
   PiggyBank,
+  Loader2,
 } from "lucide-react";
-
-// Mock data - will be replaced with real data from API
-const kpiData = {
-  totalBudget: 1500000000,
-  remaining: 1250000000,
-  actualPaid: 180000000,
-  pendingApprovals: 5,
-  pendingPayments: 3,
-  overdueApprovals: 1,
-  overduePayments: 0,
-  utilization: 17,
-};
-
-const monthlyData = [
-  { month: "Jan", budget: 125000000, actual: 98000000, commitment: 15000000 },
-  { month: "Feb", budget: 125000000, actual: 82000000, commitment: 22000000 },
-  { month: "Mar", budget: 125000000, actual: 0, commitment: 35000000 },
-  { month: "Apr", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Mei", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Jun", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Jul", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Agu", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Sep", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Okt", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Nov", budget: 125000000, actual: 0, commitment: 0 },
-  { month: "Des", budget: 125000000, actual: 0, commitment: 0 },
-];
-
-const categoryData = [
-  { name: "Transport & Perdin", value: 45000000, color: "hsl(152, 60%, 28%)" },
-  { name: "Sales & Marketing", value: 38000000, color: "hsl(43, 75%, 50%)" },
-  { name: "Operasional", value: 32000000, color: "hsl(150, 30%, 60%)" },
-  { name: "Technical", value: 28000000, color: "hsl(38, 92%, 50%)" },
-  { name: "HR & GA", value: 37000000, color: "hsl(0, 72%, 51%)" },
-];
-
-const pendingApprovals = [
-  {
-    id: "1",
-    title: "Transport Meeting Client",
-    description: "HRGA - Perjalanan ke Surabaya",
-    status: "submitted" as const,
-    requestNumber: "REQ-2026-0045",
-    time: "2 jam lalu",
-  },
-  {
-    id: "2",
-    title: "Pembelian ATK Kantor",
-    description: "PURCHASING - Kertas dan alat tulis",
-    status: "submitted" as const,
-    requestNumber: "REQ-2026-0044",
-    time: "3 jam lalu",
-  },
-  {
-    id: "3",
-    title: "Training Karyawan",
-    description: "TECH SALES - Sertifikasi produk",
-    status: "under_review" as const,
-    requestNumber: "REQ-2026-0043",
-    time: "5 jam lalu",
-  },
-];
-
-const toPayRequests = [
-  {
-    id: "4",
-    title: "Invoice Vendor ABC",
-    description: "MARKETING - Material promosi",
-    status: "approved" as const,
-    requestNumber: "REQ-2026-0040",
-    time: "1 hari lalu",
-  },
-  {
-    id: "5",
-    title: "Maintenance AC Kantor",
-    description: "HRGA - Service AC ruangan",
-    status: "approved" as const,
-    requestNumber: "REQ-2026-0038",
-    time: "2 hari lalu",
-  },
-];
 
 const formatCurrency = (value: number) => {
   if (value >= 1000000000) {
@@ -108,6 +31,31 @@ const formatCurrency = (value: number) => {
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { role, profile } = useAuth();
+  const {
+    kpis,
+    categorySpend,
+    pendingApprovalItems,
+    pendingPaymentItems,
+    monthlyData,
+    isLoadingKpis,
+  } = useDashboard();
+
+  const isSuperAdmin = role === 'super_admin';
+  const isFinance = role === 'finance';
+  const utilization = kpis.totalBudget > 0 
+    ? Math.round((kpis.usedBudget / kpis.totalBudget) * 100) 
+    : 0;
+
+  if (isLoadingKpis) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       {/* Header */}
@@ -115,15 +63,15 @@ const Dashboard = () => {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-            <Badge variant="secondary" className="bg-primary/10 text-primary">
-              Super Admin
+            <Badge variant="secondary" className="bg-primary/10 text-primary capitalize">
+              {role?.replace('_', ' ') || 'User'}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            Overview seluruh divisi
+            {isSuperAdmin || isFinance ? 'Overview seluruh divisi' : `Overview ${profile?.full_name || 'divisi Anda'}`}
           </p>
         </div>
-        <Button className="gap-2 shadow-primary">
+        <Button className="gap-2 shadow-primary" onClick={() => navigate('/requests')}>
           <Plus className="h-4 w-4" />
           Buat Pengajuan
         </Button>
@@ -133,67 +81,71 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         <KpiCard
           title="Total Budget"
-          value={formatCurrency(kpiData.totalBudget)}
-          subtitle="Tahun 2026"
+          value={formatCurrency(kpis.totalBudget)}
+          subtitle={`Tahun ${new Date().getFullYear()}`}
           icon={Wallet}
           variant="primary"
         />
         <KpiCard
-          title="Commitment"
-          value={formatCurrency(kpiData.actualPaid * 0.4)}
-          subtitle="Dalam proses"
-          icon={Clock}
-          variant="default"
-        />
-        <KpiCard
-          title="Actual Expense"
-          value={formatCurrency(kpiData.actualPaid)}
-          subtitle="Sudah dibayar"
+          title="Budget Terpakai"
+          value={formatCurrency(kpis.usedBudget)}
+          subtitle="Sudah disetujui"
           icon={TrendingUp}
           variant="default"
         />
         <KpiCard
-          title="Remaining"
-          value={formatCurrency(kpiData.remaining)}
-          subtitle="Sisa anggaran"
+          title="Sisa Budget"
+          value={formatCurrency(kpis.remainingBudget)}
+          subtitle="Tersedia"
           icon={PiggyBank}
           variant="success"
         />
         <KpiCard
-          title="Utilization"
-          value={`${kpiData.utilization}%`}
+          title="Utilisasi"
+          value={`${utilization}%`}
           subtitle="Penggunaan budget"
           icon={CheckCircle}
           variant="default"
         />
         <KpiCard
           title="Pending Approval"
-          value={kpiData.pendingApprovals}
+          value={kpis.pendingApprovals}
           subtitle="Menunggu persetujuan"
-          icon={FileText}
-          variant={kpiData.overdueApprovals > 0 ? "warning" : "default"}
+          icon={Clock}
+          variant={kpis.overdueApprovals > 0 ? "warning" : "default"}
+        />
+        <KpiCard
+          title="Pending Payment"
+          value={kpis.pendingPayments}
+          subtitle="Siap dibayar"
+          icon={CreditCard}
+          variant={kpis.overduePayments > 0 ? "warning" : "default"}
         />
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <BudgetChart data={monthlyData} className="lg:col-span-2" />
-        <ExpenseByCategory data={categoryData} />
+        <ExpenseByCategory data={categorySpend} />
       </div>
 
-      {/* Activity Lists */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentActivity
-          title="Menunggu Persetujuan"
-          items={pendingApprovals}
-          emptyMessage="Semua pengajuan sudah diproses!"
-        />
-        <RecentActivity
-          title="Siap Dibayar"
-          items={toPayRequests}
-          emptyMessage="Tidak ada pembayaran menunggu"
-        />
-      </div>
+      {/* Activity Lists - Only for Super Admin and Finance */}
+      {(isSuperAdmin || isFinance) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {isSuperAdmin && (
+            <RecentActivity
+              title="Menunggu Persetujuan"
+              items={pendingApprovalItems}
+              emptyMessage="Semua pengajuan sudah diproses!"
+            />
+          )}
+          <RecentActivity
+            title="Siap Dibayar"
+            items={pendingPaymentItems}
+            emptyMessage="Tidak ada pembayaran menunggu"
+          />
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -202,10 +154,10 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-muted-foreground">Overdue Approvals</p>
               <p className="text-2xl font-bold text-foreground mt-1">
-                {kpiData.overdueApprovals}
+                {kpis.overdueApprovals}
               </p>
             </div>
-            {kpiData.overdueApprovals > 0 ? (
+            {kpis.overdueApprovals > 0 ? (
               <div className="p-3 rounded-xl bg-destructive/10">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
               </div>
@@ -221,12 +173,18 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-muted-foreground">Overdue Payments</p>
               <p className="text-2xl font-bold text-foreground mt-1">
-                {kpiData.overduePayments}
+                {kpis.overduePayments}
               </p>
             </div>
-            <div className="p-3 rounded-xl bg-success/10">
-              <CheckCircle className="h-5 w-5 text-success" />
-            </div>
+            {kpis.overduePayments > 0 ? (
+              <div className="p-3 rounded-xl bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-success/10">
+                <CheckCircle className="h-5 w-5 text-success" />
+              </div>
+            )}
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-5">
@@ -234,7 +192,7 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-muted-foreground">To Pay Today</p>
               <p className="text-2xl font-bold text-foreground mt-1">
-                {kpiData.pendingPayments}
+                {kpis.pendingPayments}
               </p>
             </div>
             <div className="p-3 rounded-xl bg-warning/10">
@@ -246,7 +204,9 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">This Month Requests</p>
-              <p className="text-2xl font-bold text-foreground mt-1">12</p>
+              <p className="text-2xl font-bold text-foreground mt-1">
+                {kpis.thisMonthRequests}
+              </p>
             </div>
             <div className="p-3 rounded-xl bg-primary/10">
               <FileText className="h-5 w-5 text-primary" />
