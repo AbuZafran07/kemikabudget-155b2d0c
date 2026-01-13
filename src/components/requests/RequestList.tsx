@@ -46,11 +46,12 @@ interface RequestListProps {
   onCreateNew: () => void;
   onEdit: (request: Request) => void;
   onView: (request: Request) => void;
+  onDuplicate: (request: Request) => void;
 }
 
 const PAGE_SIZES = [10, 25, 50];
 
-export function RequestList({ onCreateNew, onEdit, onView }: RequestListProps) {
+export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: RequestListProps) {
   const { requests, isLoading, cancelRequest } = useRequests();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -245,7 +246,7 @@ export function RequestList({ onCreateNew, onEdit, onView }: RequestListProps) {
                             Edit
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDuplicate(request)}>
                           <Copy className="mr-2 h-4 w-4" />
                           Duplikat
                         </DropdownMenuItem>

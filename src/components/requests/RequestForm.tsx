@@ -47,6 +47,7 @@ const requestSchema = z.object({
 
 interface RequestFormProps {
   requestId?: string;
+  initialData?: Partial<RequestFormData> | null;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -60,7 +61,7 @@ interface Attachment {
   url?: string;
 }
 
-export function RequestForm({ requestId, onSuccess, onCancel }: RequestFormProps) {
+export function RequestForm({ requestId, initialData, onSuccess, onCancel }: RequestFormProps) {
   const { profile } = useAuth();
   const { toast } = useToast();
   const {
@@ -102,23 +103,36 @@ export function RequestForm({ requestId, onSuccess, onCancel }: RequestFormProps
   const watchedFundingSource = watch('funding_source_id');
   const watchedAmount = watch('amount');
 
-  // Load draft on mount
+  // Load draft or initial data on mount
   useEffect(() => {
     if (!requestId) {
-      const draft = loadDraft();
-      if (draft) {
-        Object.entries(draft).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
+      // Priority: initialData (from duplicate) > draft
+      if (initialData) {
+        Object.entries(initialData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
             setValue(key as keyof RequestFormData, value as any);
           }
         });
         toast({
-          title: 'Draft Dipulihkan',
-          description: 'Draft sebelumnya telah dimuat',
+          title: 'Pengajuan Diduplikasi',
+          description: 'Data dari pengajuan sebelumnya telah dimuat. Isi tanggal yang dibutuhkan.',
         });
+      } else {
+        const draft = loadDraft();
+        if (draft) {
+          Object.entries(draft).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+              setValue(key as keyof RequestFormData, value as any);
+            }
+          });
+          toast({
+            title: 'Draft Dipulihkan',
+            description: 'Draft sebelumnya telah dimuat',
+          });
+        }
       }
     }
-  }, [requestId, loadDraft, setValue, toast]);
+  }, [requestId, initialData, loadDraft, setValue, toast]);
 
   // Update selected funding source
   useEffect(() => {

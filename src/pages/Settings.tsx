@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import {
   Settings as SettingsIcon,
   Clock,
-  Bell,
   Shield,
   Save,
   Loader2,
@@ -16,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
 
 interface AppSettings {
   approval_sla_days: number;
@@ -23,11 +22,6 @@ interface AppSettings {
   high_value_threshold: number;
   require_invoice_before_pay: boolean;
   require_receipt_before_settle: boolean;
-  enable_email_notifications: boolean;
-  notify_on_submit: boolean;
-  notify_on_approve: boolean;
-  notify_on_reject: boolean;
-  notify_on_pay: boolean;
 }
 
 const defaultSettings: AppSettings = {
@@ -36,11 +30,6 @@ const defaultSettings: AppSettings = {
   high_value_threshold: 50000000,
   require_invoice_before_pay: true,
   require_receipt_before_settle: true,
-  enable_email_notifications: true,
-  notify_on_submit: true,
-  notify_on_approve: true,
-  notify_on_reject: true,
-  notify_on_pay: true,
 };
 
 const Settings = () => {
@@ -227,92 +216,8 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Notifications */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-primary" />
-              Notifikasi Email
-            </CardTitle>
-            <CardDescription>
-              Konfigurasi notifikasi email untuk berbagai event
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Aktifkan Notifikasi Email</p>
-                <p className="text-sm text-muted-foreground">
-                  Toggle utama untuk semua notifikasi email
-                </p>
-              </div>
-              <Switch
-                checked={settings.enable_email_notifications}
-                onCheckedChange={(checked) => updateSetting('enable_email_notifications', checked)}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4 pl-4 border-l-2 border-muted">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Notifikasi Submit</p>
-                  <p className="text-sm text-muted-foreground">
-                    Kirim email ke Super Admin saat pengajuan baru
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notify_on_submit}
-                  onCheckedChange={(checked) => updateSetting('notify_on_submit', checked)}
-                  disabled={!settings.enable_email_notifications}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Notifikasi Approve</p>
-                  <p className="text-sm text-muted-foreground">
-                    Kirim email ke pemohon saat pengajuan disetujui
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notify_on_approve}
-                  onCheckedChange={(checked) => updateSetting('notify_on_approve', checked)}
-                  disabled={!settings.enable_email_notifications}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Notifikasi Reject</p>
-                  <p className="text-sm text-muted-foreground">
-                    Kirim email ke pemohon saat pengajuan ditolak
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notify_on_reject}
-                  onCheckedChange={(checked) => updateSetting('notify_on_reject', checked)}
-                  disabled={!settings.enable_email_notifications}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Notifikasi Pay</p>
-                  <p className="text-sm text-muted-foreground">
-                    Kirim email ke pemohon saat pembayaran diproses
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notify_on_pay}
-                  onCheckedChange={(checked) => updateSetting('notify_on_pay', checked)}
-                  disabled={!settings.enable_email_notifications}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* User Notification Preferences */}
+        <NotificationPreferencesCard />
 
         {/* System Info */}
         <Card>
