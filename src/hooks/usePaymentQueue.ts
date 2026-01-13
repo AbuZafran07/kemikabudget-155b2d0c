@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays } from 'date-fns';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export interface PaymentRequest {
   id: string;
@@ -37,6 +38,7 @@ const PAYMENT_SLA_DAYS = 3;
 export function usePaymentQueue() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { notifyPaid } = useNotifications();
 
   // Fetch approved requests pending payment
   const { data: payments, isLoading, refetch } = useQuery({
@@ -113,6 +115,13 @@ export function usePaymentQueue() {
   // Pay request mutation
   const payRequest = useMutation({
     mutationFn: async ({ requestId, note }: { requestId: string; note?: string }) => {
+      // Get request details first
+      const { data: requestData } = await supabase
+        .from('requests')
+        .select('id, request_number, requester_id, amount, description')
+        .eq('id', requestId)
+        .single();
+
       const { data, error } = await supabase.rpc('pay_request', {
         p_request_id: requestId,
         p_payment_note: note || null,
@@ -125,9 +134,9 @@ export function usePaymentQueue() {
         throw new Error(result.error || 'Failed to process payment');
       }
 
-      return result;
+      return { result, requestData };
     },
-    onSuccess: (result) => {
+    onSuccess: ({ result, requestData }) => {
       queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
@@ -135,6 +144,17 @@ export function usePaymentQueue() {
         title: 'Pembayaran Berhasil',
         description: result.message || 'Pembayaran telah diproses dan dana telah dikurangi',
       });
+
+      // Send email notification to requester
+      if (requestData) {
+        notifyPaid({
+          id: requestData.id,
+          request_number: requestData.request_number,
+          requester_id: requestData.requester_id,
+          amount: requestData.amount,
+          description: requestData.description,
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
