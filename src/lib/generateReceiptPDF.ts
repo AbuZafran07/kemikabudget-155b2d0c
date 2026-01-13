@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
+import { escapeHtml } from './htmlEscape';
 
 interface PaymentReceiptData {
   request_number: string;
@@ -45,11 +46,26 @@ export const generatePaymentReceiptPDF = (payment: PaymentReceiptData): void => 
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
+  // Escape all user-controlled data to prevent XSS
+  const safeRequestNumber = escapeHtml(payment.request_number);
+  const safeDescription = escapeHtml(payment.description);
+  const safeVendor = escapeHtml(payment.vendor);
+  const safePaymentMethod = escapeHtml(payment.payment_method);
+  const safeBeneficiaryName = escapeHtml(payment.beneficiary_name);
+  const safeBeneficiaryBank = escapeHtml(payment.beneficiary_bank);
+  const safeBeneficiaryAccount = escapeHtml(payment.beneficiary_account);
+  const safeDivisionName = escapeHtml(payment.division?.name);
+  const safeDivisionCode = escapeHtml(payment.division?.code);
+  const safeCategoryName = escapeHtml(payment.category?.name);
+  const safeRequesterName = escapeHtml(payment.requester?.full_name);
+  const safeFundingSourceName = escapeHtml(payment.funding_source?.name);
+  const safeFundingSourceType = payment.funding_source?.type === 'bank' ? 'Transfer Bank' : 'Kas Kecil';
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Kwitansi Pembayaran ${payment.request_number}</title>
+  <title>Kwitansi Pembayaran ${safeRequestNumber}</title>
   <style>
     @page {
       size: A4;
@@ -237,7 +253,7 @@ export const generatePaymentReceiptPDF = (payment: PaymentReceiptData): void => 
     </div>
     
     <div class="receipt-number">
-      No. Referensi: <strong>${payment.request_number}</strong>
+      No. Referensi: <strong>${safeRequestNumber}</strong>
       <br>
       <span class="status-paid">✓ DIBAYAR</span>
     </div>
@@ -252,39 +268,39 @@ export const generatePaymentReceiptPDF = (payment: PaymentReceiptData): void => 
         <tr>
           <td class="label">Divisi</td>
           <td class="colon">:</td>
-          <td>${payment.division?.name || '-'} (${payment.division?.code || '-'})</td>
+          <td>${safeDivisionName} (${safeDivisionCode})</td>
         </tr>
         <tr>
           <td class="label">Pemohon</td>
           <td class="colon">:</td>
-          <td>${payment.requester?.full_name || '-'}</td>
+          <td>${safeRequesterName}</td>
         </tr>
         <tr>
           <td class="label">Kategori</td>
           <td class="colon">:</td>
-          <td>${payment.category?.name || '-'}</td>
+          <td>${safeCategoryName}</td>
         </tr>
         <tr>
           <td class="label">Vendor</td>
           <td class="colon">:</td>
-          <td>${payment.vendor || '-'}</td>
+          <td>${safeVendor}</td>
         </tr>
         <tr>
           <td class="label">Sumber Dana</td>
           <td class="colon">:</td>
-          <td>${payment.funding_source?.name || '-'} (${payment.funding_source?.type === 'bank' ? 'Transfer Bank' : 'Kas Kecil'})</td>
+          <td>${safeFundingSourceName} (${safeFundingSourceType})</td>
         </tr>
         <tr>
           <td class="label">Metode Pembayaran</td>
           <td class="colon">:</td>
-          <td style="text-transform: capitalize;">${payment.payment_method || '-'}</td>
+          <td style="text-transform: capitalize;">${safePaymentMethod}</td>
         </tr>
       </table>
     </div>
 
     <div class="section-title">Deskripsi Pembayaran</div>
     <p style="padding: 12px; background: #f9f9f9; border: 1px solid #eee; font-size: 11pt;">
-      ${payment.description}
+      ${safeDescription}
     </p>
 
     <div class="amount-box">
@@ -300,17 +316,17 @@ export const generatePaymentReceiptPDF = (payment: PaymentReceiptData): void => 
         <tr>
           <td class="label" style="width: 140px;">Nama Penerima</td>
           <td class="colon">:</td>
-          <td><strong>${payment.beneficiary_name}</strong></td>
+          <td><strong>${safeBeneficiaryName}</strong></td>
         </tr>
         <tr>
           <td class="label">Bank</td>
           <td class="colon">:</td>
-          <td>${payment.beneficiary_bank || '-'}</td>
+          <td>${safeBeneficiaryBank}</td>
         </tr>
         <tr>
           <td class="label">No. Rekening</td>
           <td class="colon">:</td>
-          <td>${payment.beneficiary_account || '-'}</td>
+          <td>${safeBeneficiaryAccount}</td>
         </tr>
       </table>
     </div>
@@ -320,7 +336,7 @@ export const generatePaymentReceiptPDF = (payment: PaymentReceiptData): void => 
       <div class="signature-box">
         <div class="signature-title">Penerima</div>
         <div class="signature-line">
-          <div class="signature-name">${payment.beneficiary_name || payment.requester?.full_name || '___________________'}</div>
+          <div class="signature-name">${payment.beneficiary_name ? safeBeneficiaryName : safeRequesterName}</div>
         </div>
       </div>
       <div class="signature-box">
@@ -339,7 +355,7 @@ export const generatePaymentReceiptPDF = (payment: PaymentReceiptData): void => 
 
     <div class="footer">
       Dokumen ini dicetak pada ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: localeId })} WIB | 
-      PT. Kemika Karya Pratama - Expense Budget & Approval System
+      PT. Kemika Karya Pratama - Expense Budget &amp; Approval System
       <br>
       <em>Kwitansi ini sah sebagai bukti pembayaran yang telah diproses melalui sistem.</em>
     </div>

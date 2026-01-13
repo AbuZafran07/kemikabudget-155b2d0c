@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
+import { escapeHtml } from './htmlEscape';
 
 interface RequestData {
   request_number: string;
@@ -61,11 +62,28 @@ export const generateRequestPDF = (request: RequestData): void => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
+  // Escape all user-controlled data to prevent XSS
+  const safeRequestNumber = escapeHtml(request.request_number);
+  const safeDescription = escapeHtml(request.description);
+  const safeVendor = escapeHtml(request.vendor);
+  const safeNotes = escapeHtml(request.notes);
+  const safePaymentMethod = escapeHtml(request.payment_method);
+  const safeBeneficiaryName = escapeHtml(request.beneficiary_name);
+  const safeBeneficiaryBank = escapeHtml(request.beneficiary_bank);
+  const safeBeneficiaryAccount = escapeHtml(request.beneficiary_account);
+  const safeDivisionName = escapeHtml(request.division?.name);
+  const safeDivisionCode = escapeHtml(request.division?.code);
+  const safeCategoryName = escapeHtml(request.category?.name);
+  const safeRequesterName = escapeHtml(request.requester?.full_name);
+  const safeApproverName = escapeHtml(request.approver?.full_name);
+  const safeFundingSourceName = escapeHtml(request.funding_source?.name);
+  const safeStatus = escapeHtml(statusLabels[request.status] || request.status);
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Pengajuan ${request.request_number}</title>
+  <title>Pengajuan ${safeRequestNumber}</title>
   <style>
     @page {
       size: A4;
@@ -222,9 +240,9 @@ export const generateRequestPDF = (request: RequestData): void => {
 
     <div class="document-title">Formulir Pengajuan Biaya</div>
     <div class="document-number">
-      Nomor: <strong>${request.request_number}</strong>
+      Nomor: <strong>${safeRequestNumber}</strong>
       <span class="status-badge status-${['approved', 'paid', 'settled'].includes(request.status) ? request.status : 'default'}">
-        ${statusLabels[request.status] || request.status}
+        ${safeStatus}
       </span>
     </div>
 
@@ -237,17 +255,17 @@ export const generateRequestPDF = (request: RequestData): void => {
       <tr>
         <td class="label">Divisi</td>
         <td class="colon">:</td>
-        <td>${request.division?.name || '-'} (${request.division?.code || '-'})</td>
+        <td>${safeDivisionName} (${safeDivisionCode})</td>
       </tr>
       <tr>
         <td class="label">Pemohon</td>
         <td class="colon">:</td>
-        <td>${request.requester?.full_name || '-'}</td>
+        <td>${safeRequesterName}</td>
       </tr>
       <tr>
         <td class="label">Kategori</td>
         <td class="colon">:</td>
-        <td>${request.category?.name || '-'}</td>
+        <td>${safeCategoryName}</td>
       </tr>
       <tr>
         <td class="label">Tanggal Dibutuhkan</td>
@@ -257,29 +275,29 @@ export const generateRequestPDF = (request: RequestData): void => {
       <tr>
         <td class="label">Vendor</td>
         <td class="colon">:</td>
-        <td>${request.vendor || '-'}</td>
+        <td>${safeVendor}</td>
       </tr>
       <tr>
         <td class="label">Sumber Dana</td>
         <td class="colon">:</td>
-        <td>${request.funding_source?.name || '-'}</td>
+        <td>${safeFundingSourceName}</td>
       </tr>
       <tr>
         <td class="label">Metode Pembayaran</td>
         <td class="colon">:</td>
-        <td style="text-transform: capitalize;">${request.payment_method || '-'}</td>
+        <td style="text-transform: capitalize;">${safePaymentMethod}</td>
       </tr>
     </table>
 
     <div class="section-title">Deskripsi Pengajuan</div>
     <p style="padding: 10px; background: #f9f9f9; border: 1px solid #eee;">
-      ${request.description}
+      ${safeDescription}
     </p>
 
     ${request.notes ? `
     <div class="section-title">Catatan</div>
     <p style="padding: 10px; background: #f9f9f9; border: 1px solid #eee;">
-      ${request.notes}
+      ${safeNotes}
     </p>
     ` : ''}
 
@@ -295,17 +313,17 @@ export const generateRequestPDF = (request: RequestData): void => {
         <tr>
           <td class="label" style="width: 140px;">Nama Penerima</td>
           <td class="colon">:</td>
-          <td>${request.beneficiary_name}</td>
+          <td>${safeBeneficiaryName}</td>
         </tr>
         <tr>
           <td class="label">Bank</td>
           <td class="colon">:</td>
-          <td>${request.beneficiary_bank || '-'}</td>
+          <td>${safeBeneficiaryBank}</td>
         </tr>
         <tr>
           <td class="label">No. Rekening</td>
           <td class="colon">:</td>
-          <td>${request.beneficiary_account || '-'}</td>
+          <td>${safeBeneficiaryAccount}</td>
         </tr>
       </table>
     </div>
@@ -317,7 +335,7 @@ export const generateRequestPDF = (request: RequestData): void => {
       <tr>
         <td class="label">Disetujui Oleh</td>
         <td class="colon">:</td>
-        <td>${request.approver?.full_name || '-'}</td>
+        <td>${safeApproverName}</td>
       </tr>
       <tr>
         <td class="label">Tanggal Persetujuan</td>
@@ -338,14 +356,14 @@ export const generateRequestPDF = (request: RequestData): void => {
       <div class="signature-box">
         <div class="signature-title">Pemohon</div>
         <div class="signature-line">
-          <div class="signature-name">${request.requester?.full_name || '-'}</div>
-          <div>${request.division?.name || '-'}</div>
+          <div class="signature-name">${safeRequesterName}</div>
+          <div>${safeDivisionName}</div>
         </div>
       </div>
       <div class="signature-box">
         <div class="signature-title">Menyetujui</div>
         <div class="signature-line">
-          <div class="signature-name">${request.approver?.full_name || '___________________'}</div>
+          <div class="signature-name">${request.approver?.full_name ? safeApproverName : '___________________'}</div>
           <div>Super Admin</div>
         </div>
       </div>
@@ -353,7 +371,7 @@ export const generateRequestPDF = (request: RequestData): void => {
 
     <div class="footer">
       Dokumen ini dicetak pada ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: localeId })} | 
-      PT. Kemika Karya Pratama - Expense Budget & Approval System
+      PT. Kemika Karya Pratama - Expense Budget &amp; Approval System
     </div>
   </div>
 
