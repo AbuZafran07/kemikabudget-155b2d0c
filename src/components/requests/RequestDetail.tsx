@@ -19,11 +19,13 @@ import {
   AlertCircle,
   Loader2,
   Paperclip,
+  Printer,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import StatusBadge from '@/components/common/StatusBadge';
+import { generateRequestPDF } from '@/lib/generatePDF';
 
 interface RequestDetailProps {
   requestId: string;
@@ -216,13 +218,29 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
               Diajukan oleh {(request.requester as any)?.full_name || 'Unknown'}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-right space-y-2">
             <p className="text-3xl font-bold text-primary">
               {formatCurrency(Number(request.amount))}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground">
               Dibuat {format(new Date(request.created_at), 'dd MMM yyyy', { locale: localeId })}
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => generateRequestPDF({
+                ...request,
+                division: request.divisions as any,
+                category: request.cost_categories as any,
+                requester: request.requester as any,
+                approver: request.approver as any,
+                funding_source: request.funding_sources as any,
+              })}
+            >
+              <Printer className="h-4 w-4" />
+              Cetak PDF
+            </Button>
           </div>
         </div>
       </div>

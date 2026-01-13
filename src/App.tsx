@@ -14,7 +14,11 @@ import PettyCash from "./pages/PettyCash";
 import BankPayments from "./pages/BankPayments";
 import BudgetPlanning from "./pages/BudgetPlanning";
 import BudgetTransfer from "./pages/BudgetTransfer";
+import Divisions from "./pages/Divisions";
+import Categories from "./pages/Categories";
+import FundingSources from "./pages/FundingSources";
 import Users from "./pages/Users";
+import Settings from "./pages/Settings";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
@@ -75,12 +79,29 @@ const App = () => (
                   <BudgetTransfer />
                 </ProtectedRoute>
               } />
-              <Route path="/divisions" element={<Dashboard />} />
-              <Route path="/categories" element={<Dashboard />} />
-              <Route path="/funding-sources" element={<Dashboard />} />
+              <Route path="/divisions" element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <Divisions />
+                </ProtectedRoute>
+              } />
+              <Route path="/categories" element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <Categories />
+                </ProtectedRoute>
+              } />
+              <Route path="/funding-sources" element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <FundingSources />
+                </ProtectedRoute>
+              } />
               <Route path="/users" element={
                 <ProtectedRoute requiredRole="super_admin">
                   <Users />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <Settings />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={<Dashboard />} />
