@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RequestList } from '@/components/requests/RequestList';
 import { RequestForm } from '@/components/requests/RequestForm';
+import { RequestDetail } from '@/components/requests/RequestDetail';
 import { Request } from '@/hooks/useRequests';
 
 type ViewMode = 'list' | 'create' | 'edit' | 'view';
@@ -59,10 +60,7 @@ const Requests = () => {
       )}
 
       {viewMode === 'view' && selectedRequest && (
-        <div className="bg-card rounded-lg border border-border p-6">
-          <h2 className="text-xl font-bold mb-4">{selectedRequest.request_number}</h2>
-          <p className="text-muted-foreground">Detail view - {selectedRequest.description}</p>
-        </div>
+        <RequestDetail requestId={selectedRequest.id} />
       )}
     </div>
   );
