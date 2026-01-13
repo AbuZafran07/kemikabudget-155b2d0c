@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Preconnect to external origins for faster resource loading -->
+    <link rel="preconnect" href="https://lovable.dev" crossorigin />
+    <link rel="dns-prefetch" href="https://lovable.dev" />
+    
+    <!-- Preload critical assets to reduce chain depth -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+    
     <!-- Security Headers -->
     <meta name="robots" content="noindex, nofollow">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
