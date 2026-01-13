@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, isValidUUID, isValidEmail, sanitizeText } from "../_shared/cors.ts";
 
 interface NotificationRequest {
   event_type: "submitted" | "approved" | "rejected" | "paid" | "settled";
@@ -63,10 +59,16 @@ const getEmailContent = (data: NotificationRequest): { subject: string; html: st
     text-align: left;
   `;
 
+  // Sanitize user-provided content to prevent XSS
+  const safeRequestNumber = sanitizeText(data.request_number, 50);
+  const safeRequesterName = sanitizeText(data.requester_name, 100);
+  const safeDescription = sanitizeText(data.description, 500);
+  const safeRejectionReason = sanitizeText(data.rejection_reason || '-', 500);
+
   switch (data.event_type) {
     case "submitted":
       return {
-        subject: `[Persetujuan Diperlukan] Pengajuan ${data.request_number}`,
+        subject: `[Persetujuan Diperlukan] Pengajuan ${safeRequestNumber}`,
         html: `
           <div style="${baseStyle}">
             <div style="${headerStyle}">
@@ -76,9 +78,9 @@ const getEmailContent = (data: NotificationRequest): { subject: string; html: st
               <p>Yth. Admin,</p>
               <p>Pengajuan baru telah dikirim dan memerlukan persetujuan Anda:</p>
               <table style="${tableStyle}">
-                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${data.request_number}</td></tr>
-                <tr><td style="${cellStyle}"><strong>Pengaju</strong></td><td style="${cellStyle}">${data.requester_name}</td></tr>
-                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${data.description}</td></tr>
+                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${safeRequestNumber}</td></tr>
+                <tr><td style="${cellStyle}"><strong>Pengaju</strong></td><td style="${cellStyle}">${safeRequesterName}</td></tr>
+                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${safeDescription}</td></tr>
                 <tr><td style="${cellStyle}"><strong>Jumlah</strong></td><td style="${cellStyle}">${formatCurrency(data.amount)}</td></tr>
               </table>
               <p>Silakan masuk ke sistem untuk meninjau dan menyetujui pengajuan ini.</p>
@@ -90,18 +92,18 @@ const getEmailContent = (data: NotificationRequest): { subject: string; html: st
 
     case "approved":
       return {
-        subject: `[Disetujui] Pengajuan ${data.request_number} Telah Disetujui`,
+        subject: `[Disetujui] Pengajuan ${safeRequestNumber} Telah Disetujui`,
         html: `
           <div style="${baseStyle}">
             <div style="${headerStyle}">
               <h1 style="margin: 0;">Pengajuan Disetujui ✓</h1>
             </div>
             <div style="${contentStyle}">
-              <p>Yth. ${data.requester_name},</p>
+              <p>Yth. ${safeRequesterName},</p>
               <p>Pengajuan Anda telah <strong style="color: #22c55e;">DISETUJUI</strong>:</p>
               <table style="${tableStyle}">
-                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${data.request_number}</td></tr>
-                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${data.description}</td></tr>
+                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${safeRequestNumber}</td></tr>
+                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${safeDescription}</td></tr>
                 <tr><td style="${cellStyle}"><strong>Jumlah</strong></td><td style="${cellStyle}">${formatCurrency(data.amount)}</td></tr>
               </table>
               <p>Pengajuan Anda sedang dalam antrian pembayaran dan akan segera diproses.</p>
@@ -113,20 +115,20 @@ const getEmailContent = (data: NotificationRequest): { subject: string; html: st
 
     case "rejected":
       return {
-        subject: `[Ditolak] Pengajuan ${data.request_number} Ditolak`,
+        subject: `[Ditolak] Pengajuan ${safeRequestNumber} Ditolak`,
         html: `
           <div style="${baseStyle}">
             <div style="${headerStyle}; background-color: #dc2626;">
               <h1 style="margin: 0;">Pengajuan Ditolak</h1>
             </div>
             <div style="${contentStyle}">
-              <p>Yth. ${data.requester_name},</p>
+              <p>Yth. ${safeRequesterName},</p>
               <p>Mohon maaf, pengajuan Anda telah <strong style="color: #dc2626;">DITOLAK</strong>:</p>
               <table style="${tableStyle}">
-                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${data.request_number}</td></tr>
-                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${data.description}</td></tr>
+                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${safeRequestNumber}</td></tr>
+                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${safeDescription}</td></tr>
                 <tr><td style="${cellStyle}"><strong>Jumlah</strong></td><td style="${cellStyle}">${formatCurrency(data.amount)}</td></tr>
-                <tr><td style="${cellStyle}"><strong>Alasan Penolakan</strong></td><td style="${cellStyle}">${data.rejection_reason || '-'}</td></tr>
+                <tr><td style="${cellStyle}"><strong>Alasan Penolakan</strong></td><td style="${cellStyle}">${safeRejectionReason}</td></tr>
               </table>
               <p>Silakan hubungi atasan Anda jika ada pertanyaan.</p>
               <p>Terima kasih,<br>Sistem Anggaran PT. Kemika Karya Pratama</p>
@@ -137,18 +139,18 @@ const getEmailContent = (data: NotificationRequest): { subject: string; html: st
 
     case "paid":
       return {
-        subject: `[Dibayar] Pengajuan ${data.request_number} Telah Dibayar`,
+        subject: `[Dibayar] Pengajuan ${safeRequestNumber} Telah Dibayar`,
         html: `
           <div style="${baseStyle}">
             <div style="${headerStyle}; background-color: #0ea5e9;">
               <h1 style="margin: 0;">Pembayaran Berhasil ✓</h1>
             </div>
             <div style="${contentStyle}">
-              <p>Yth. ${data.requester_name},</p>
+              <p>Yth. ${safeRequesterName},</p>
               <p>Pengajuan Anda telah <strong style="color: #0ea5e9;">DIBAYAR</strong>:</p>
               <table style="${tableStyle}">
-                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${data.request_number}</td></tr>
-                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${data.description}</td></tr>
+                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${safeRequestNumber}</td></tr>
+                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${safeDescription}</td></tr>
                 <tr><td style="${cellStyle}"><strong>Jumlah</strong></td><td style="${cellStyle}">${formatCurrency(data.amount)}</td></tr>
               </table>
               <p>Dana telah ditransfer. Silakan cek rekening Anda.</p>
@@ -160,18 +162,18 @@ const getEmailContent = (data: NotificationRequest): { subject: string; html: st
 
     case "settled":
       return {
-        subject: `[Selesai] Pengajuan ${data.request_number} Telah Diselesaikan`,
+        subject: `[Selesai] Pengajuan ${safeRequestNumber} Telah Diselesaikan`,
         html: `
           <div style="${baseStyle}">
             <div style="${headerStyle}">
               <h1 style="margin: 0;">Pengajuan Selesai ✓</h1>
             </div>
             <div style="${contentStyle}">
-              <p>Yth. ${data.requester_name},</p>
+              <p>Yth. ${safeRequesterName},</p>
               <p>Pengajuan Anda telah <strong>SELESAI</strong>:</p>
               <table style="${tableStyle}">
-                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${data.request_number}</td></tr>
-                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${data.description}</td></tr>
+                <tr><td style="${cellStyle}"><strong>No. Pengajuan</strong></td><td style="${cellStyle}">${safeRequestNumber}</td></tr>
+                <tr><td style="${cellStyle}"><strong>Deskripsi</strong></td><td style="${cellStyle}">${safeDescription}</td></tr>
                 <tr><td style="${cellStyle}"><strong>Jumlah</strong></td><td style="${cellStyle}">${formatCurrency(data.amount)}</td></tr>
               </table>
               <p>Terima kasih telah menggunakan sistem kami.</p>
@@ -183,8 +185,8 @@ const getEmailContent = (data: NotificationRequest): { subject: string; html: st
 
     default:
       return {
-        subject: `Update Pengajuan ${data.request_number}`,
-        html: `<p>Pengajuan ${data.request_number} telah diperbarui.</p>`,
+        subject: `Update Pengajuan ${safeRequestNumber}`,
+        html: `<p>Pengajuan ${safeRequestNumber} telah diperbarui.</p>`,
       };
   }
 };
@@ -213,7 +215,8 @@ const sendWithResend = async (
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Resend API error:", response.status, errorText);
-      return { success: false, error: errorText };
+      // Return generic error, don't expose external API details
+      return { success: false, error: 'Email delivery failed' };
     }
 
     const result = await response.json();
@@ -221,11 +224,15 @@ const sendWithResend = async (
     return { success: true };
   } catch (err: any) {
     console.error("Resend API exception:", err);
-    return { success: false, error: err.message };
+    // Return generic error, don't expose internal details
+    return { success: false, error: 'Email service unavailable' };
   }
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -247,7 +254,48 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const data: NotificationRequest = await req.json();
-    console.log("Received notification request:", data);
+    console.log("Received notification request:", { event_type: data.event_type, request_id: data.request_id });
+
+    // Validate required fields
+    if (!data.request_id || !isValidUUID(data.request_id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid request ID" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!data.event_type || !['submitted', 'approved', 'rejected', 'paid', 'settled'].includes(data.event_type)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid event type" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!data.requester_email || !isValidEmail(data.requester_email)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid requester email" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate admin_emails if provided
+    if (data.admin_emails && data.admin_emails.length > 0) {
+      const invalidEmails = data.admin_emails.filter(email => !isValidEmail(email));
+      if (invalidEmails.length > 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid admin email addresses" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+
+    // Validate amount is a positive number
+    if (typeof data.amount !== 'number' || data.amount < 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid amount" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const { subject, html } = getEmailContent(data);
     const recipients: string[] = [];
@@ -260,7 +308,7 @@ const handler = async (req: Request): Promise<Response> => {
       recipients.push(data.requester_email);
     }
 
-    console.log("Sending email to:", recipients, "Subject:", subject);
+    console.log("Sending email to:", recipients.length, "recipients");
 
     if (recipients.length === 0) {
       console.log("No recipients found");
@@ -300,7 +348,7 @@ const handler = async (req: Request): Promise<Response> => {
         success: result.success,
         sent: result.success ? recipients.length : 0,
         failed: result.success ? 0 : recipients.length,
-        error: result.error,
+        error: result.success ? undefined : 'Failed to send notifications',
       }),
       {
         status: result.success ? 200 : 500,
@@ -318,14 +366,15 @@ const handler = async (req: Request): Promise<Response> => {
         recipients: [],
         subject: "Error",
         status: "failed",
-        error_message: error.message,
+        error_message: "Internal server error",
       });
     } catch (logError) {
       console.error("Failed to log error:", logError);
     }
 
+    // Return generic error message
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: "Internal server error" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
