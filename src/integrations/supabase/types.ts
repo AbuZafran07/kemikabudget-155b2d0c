@@ -522,6 +522,51 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_rate_limits: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          locked_until: string | null
+          total_failed_attempts: number
+          updated_at: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          locked_until?: string | null
+          total_failed_attempts?: number
+          updated_at?: string
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          locked_until?: string | null
+          total_failed_attempts?: number
+          updated_at?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "otp_rate_limits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "otp_rate_limits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       otp_secrets: {
         Row: {
           created_at: string
@@ -1034,6 +1079,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_unlock_otp: { Args: { p_user_id: string }; Returns: Json }
       approve_budget_transfer: {
         Args: { p_transfer_id: string }
         Returns: Json
@@ -1046,6 +1092,7 @@ export type Database = {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean
       }
+      check_otp_rate_limit: { Args: { p_user_id: string }; Returns: Json }
       check_session_valid: { Args: never; Returns: boolean }
       create_reconciliation: {
         Args: {
@@ -1072,6 +1119,7 @@ export type Database = {
         Args: { p_payment_note?: string; p_request_id: string }
         Returns: Json
       }
+      record_otp_failure: { Args: { p_user_id: string }; Returns: undefined }
       reject_budget_transfer: {
         Args: { p_rejection_reason: string; p_transfer_id: string }
         Returns: Json
@@ -1080,6 +1128,7 @@ export type Database = {
         Args: { p_rejection_reason: string; p_request_id: string }
         Returns: Json
       }
+      reset_otp_rate_limit: { Args: { p_user_id: string }; Returns: undefined }
       set_user_otp_secret: {
         Args: { p_secret: string; p_user_id: string }
         Returns: boolean

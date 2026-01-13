@@ -1,30 +1,51 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, isValidUUID } from '../_shared/cors.ts';
 
-// Rate limiting store (in-memory, resets on function restart)
-const otpAttempts = new Map<string, { count: number; firstAttempt: number }>();
 const MAX_ATTEMPTS = 5;
-const ATTEMPT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const LOCKOUT_MINUTES = 15;
 
-function checkRateLimit(userId: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const attempts = otpAttempts.get(userId);
+// Database-backed rate limiting
+async function checkRateLimit(
+  userId: string, 
+  supabase: SupabaseClient
+): Promise<{ allowed: boolean; remaining: number; locked: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('check_otp_rate_limit', {
+      p_user_id: userId
+    });
 
-  if (!attempts || now - attempts.firstAttempt > ATTEMPT_WINDOW_MS) {
-    otpAttempts.set(userId, { count: 1, firstAttempt: now });
-    return { allowed: true, remaining: MAX_ATTEMPTS - 1 };
+    if (error) {
+      console.error('[verify-otp] Rate limit check error:', error);
+      // On error, allow attempt but log it (fail open for availability)
+      return { allowed: true, remaining: MAX_ATTEMPTS - 1, locked: false };
+    }
+
+    return {
+      allowed: data.allowed === true,
+      remaining: data.remaining || 0,
+      locked: data.locked === true,
+      error: data.error || (data.permanent_lock ? 'Account locked. Contact administrator.' : undefined)
+    };
+  } catch (err) {
+    console.error('[verify-otp] Rate limit exception:', err);
+    return { allowed: true, remaining: MAX_ATTEMPTS - 1, locked: false };
   }
-
-  if (attempts.count >= MAX_ATTEMPTS) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  attempts.count++;
-  return { allowed: true, remaining: MAX_ATTEMPTS - attempts.count };
 }
 
-function resetRateLimit(userId: string): void {
-  otpAttempts.delete(userId);
+async function recordFailure(userId: string, supabase: SupabaseClient): Promise<void> {
+  try {
+    await supabase.rpc('record_otp_failure', { p_user_id: userId });
+  } catch (err) {
+    console.error('[verify-otp] Failed to record failure:', err);
+  }
+}
+
+async function resetRateLimit(userId: string, supabase: SupabaseClient): Promise<void> {
+  try {
+    await supabase.rpc('reset_otp_rate_limit', { p_user_id: userId });
+  } catch (err) {
+    console.error('[verify-otp] Failed to reset rate limit:', err);
+  }
 }
 
 // Generate new OTP secret (base32 encoded)
@@ -46,6 +67,12 @@ function generateOtpSecret(): string {
   }
   
   return result;
+}
+
+// Progressive delay based on attempt count
+function getProgressiveDelay(attemptCount: number): number {
+  // Exponential backoff: 0, 1, 2, 4, 8 seconds (max 8s)
+  return Math.min(1000 * Math.pow(2, Math.max(0, MAX_ATTEMPTS - attemptCount - 1)), 8000);
 }
 
 Deno.serve(async (req: Request) => {
@@ -98,18 +125,30 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Check rate limit
-      const rateLimit = checkRateLimit(userId);
+      // Check database-backed rate limit
+      const rateLimit = await checkRateLimit(userId, supabase);
+      
       if (!rateLimit.allowed) {
-        console.log(`[verify-otp] Rate limit exceeded for user`);
+        console.log(`[verify-otp] Rate limit exceeded or account locked`);
+        
+        const errorMessage = rateLimit.error || 
+          `Too many attempts. Please wait ${LOCKOUT_MINUTES} minutes and try again.`;
+        
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Too many attempts. Please wait 5 minutes and try again.',
-            rateLimited: true 
+            error: errorMessage,
+            rateLimited: true,
+            locked: rateLimit.locked
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
         );
+      }
+
+      // Add progressive delay based on remaining attempts
+      const delay = getProgressiveDelay(rateLimit.remaining);
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
 
       // Verify OTP using database RPC function
@@ -127,7 +166,8 @@ Deno.serve(async (req: Request) => {
       }
 
       if (isValid === true) {
-        resetRateLimit(userId);
+        // Reset rate limit on success
+        await resetRateLimit(userId, supabase);
         console.log(`[verify-otp] OTP verified successfully`);
         
         // Log successful OTP verification
@@ -136,7 +176,7 @@ Deno.serve(async (req: Request) => {
           entity_type: 'auth',
           event_type: 'otp_verified',
           description: 'OTP verification successful',
-          metadata: { remaining_attempts: MAX_ATTEMPTS },
+          metadata: {},
         });
 
         return new Response(
@@ -144,6 +184,8 @@ Deno.serve(async (req: Request) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
+        // Record failed attempt
+        await recordFailure(userId, supabase);
         console.log(`[verify-otp] Invalid OTP, remaining attempts: ${rateLimit.remaining}`);
         
         // Log failed OTP attempt
