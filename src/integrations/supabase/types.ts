@@ -1046,6 +1046,7 @@ export type Database = {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean
       }
+      check_session_valid: { Args: never; Returns: boolean }
       create_reconciliation: {
         Args: {
           p_funding_source_id: string

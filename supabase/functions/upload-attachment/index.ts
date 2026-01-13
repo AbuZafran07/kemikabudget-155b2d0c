@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, isValidUUID } from '../_shared/cors.ts';
 
 // Allowed MIME types and extensions for security
 const ALLOWED_MIME_TYPES: Record<string, string[]> = {
@@ -30,6 +26,8 @@ const MAGIC_NUMBERS: Record<string, number[][]> = {
   'image/gif': [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]], // GIF87a, GIF89a
   'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF (WebP starts with RIFF)
 };
+
+const VALID_ATTACHMENT_TYPES = ['quotation', 'invoice', 'receipt', 'other'];
 
 function validateMagicNumbers(bytes: Uint8Array, mimeType: string): boolean {
   const signatures = MAGIC_NUMBERS[mimeType];
@@ -66,6 +64,12 @@ function sanitizeFilename(filename: string): string {
   // Collapse multiple dots
   sanitized = sanitized.replace(/\.{2,}/g, '.');
   
+  // Limit filename length
+  if (sanitized.length > 100) {
+    const ext = sanitized.slice(sanitized.lastIndexOf('.'));
+    sanitized = sanitized.slice(0, 96 - ext.length) + ext;
+  }
+  
   // Ensure filename is not empty
   if (!sanitized || sanitized === '.') {
     sanitized = 'file';
@@ -80,6 +84,9 @@ function getExtensionFromMime(mimeType: string): string {
 }
 
 Deno.serve(async (req: Request) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -121,12 +128,25 @@ Deno.serve(async (req: Request) => {
     const requestId = formData.get('requestId') as string | null;
     const attachmentType = formData.get('attachmentType') as string | null;
 
-    if (!file || !requestId) {
+    // Validate requestId format
+    if (!requestId || !isValidUUID(requestId)) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Missing file or requestId' }),
+        JSON.stringify({ success: false, error: 'Invalid request ID format' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
+
+    if (!file) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing file' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Validate attachment type
+    const safeAttachmentType = attachmentType && VALID_ATTACHMENT_TYPES.includes(attachmentType) 
+      ? attachmentType 
+      : 'other';
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
@@ -163,7 +183,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user owns this request or has permission
+    // Verify request exists
     const { data: requestData, error: requestError } = await supabase
       .from('requests')
       .select('requester_id, division_id, status')
@@ -178,16 +198,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Check if user is the requester or has appropriate role
+    // Check if user is the requester or has appropriate role using has_role RPC
     if (requestData.requester_id !== user.id) {
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+      // Use has_role RPC for consistent multi-role handling
+      const { data: isSuperAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'super_admin'
+      });
+      
+      const { data: isFinance } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'finance'
+      });
 
-      const privilegedRoles = ['super_admin', 'finance'];
-      if (!roleData || !privilegedRoles.includes(roleData.role)) {
+      if (!isSuperAdmin && !isFinance) {
         console.log(`[upload-attachment] User ${user.id} not authorized for request ${requestId}`);
         return new Response(
           JSON.stringify({ success: false, error: 'Not authorized to upload to this request' }),
@@ -229,7 +253,7 @@ Deno.serve(async (req: Request) => {
         file_path: secureFileName,
         file_size: file.size,
         file_type: file.type,
-        attachment_type: attachmentType || 'other',
+        attachment_type: safeAttachmentType,
         uploaded_by: user.id,
       })
       .select()
@@ -256,7 +280,7 @@ Deno.serve(async (req: Request) => {
           filePath: secureFileName,
           fileSize: file.size,
           fileType: file.type,
-          attachmentType: attachmentType || 'other',
+          attachmentType: safeAttachmentType,
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

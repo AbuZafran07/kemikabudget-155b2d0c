@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, isValidUUID } from '../_shared/cors.ts';
 
 // Rate limiting store (in-memory, resets on function restart)
 const otpAttempts = new Map<string, { count: number; firstAttempt: number }>();
@@ -31,10 +27,6 @@ function resetRateLimit(userId: string): void {
   otpAttempts.delete(userId);
 }
 
-// Simplified but secure TOTP verification using hashtext
-// This approach uses PostgreSQL's hashtext function on the server side
-// The edge function calls the database RPC for verification
-
 // Generate new OTP secret (base32 encoded)
 function generateOtpSecret(): string {
   const bytes = new Uint8Array(20);
@@ -57,6 +49,9 @@ function generateOtpSecret(): string {
 }
 
 Deno.serve(async (req: Request) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -69,12 +64,28 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { action, userId, otp } = await req.json();
-    console.log(`[verify-otp] Action: ${action}, User: ${userId}`);
+    console.log(`[verify-otp] Action: ${action}`);
+
+    // Validate action
+    if (!action || !['verify', 'generate-secret'].includes(action)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid action' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
 
     if (action === 'verify') {
-      if (!userId || !otp) {
+      // Validate userId format
+      if (!userId || !isValidUUID(userId)) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Missing userId or otp' }),
+          JSON.stringify({ success: false, error: 'Invalid user ID' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
+      if (!otp) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Missing OTP' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
@@ -90,18 +101,18 @@ Deno.serve(async (req: Request) => {
       // Check rate limit
       const rateLimit = checkRateLimit(userId);
       if (!rateLimit.allowed) {
-        console.log(`[verify-otp] Rate limit exceeded for user: ${userId}`);
+        console.log(`[verify-otp] Rate limit exceeded for user`);
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Too many OTP attempts. Please wait 5 minutes and try again.',
+            error: 'Too many attempts. Please wait 5 minutes and try again.',
             rateLimited: true 
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
         );
       }
 
-      // Verify OTP using database RPC function (uses hashtext for secure TOTP)
+      // Verify OTP using database RPC function
       const { data: isValid, error: verifyError } = await supabase.rpc('verify_user_otp', {
         p_user_id: userId,
         p_otp_code: otp,
@@ -110,14 +121,14 @@ Deno.serve(async (req: Request) => {
       if (verifyError) {
         console.error('[verify-otp] Verification error:', verifyError);
         return new Response(
-          JSON.stringify({ success: false, error: 'OTP verification failed' }),
+          JSON.stringify({ success: false, error: 'Verification failed' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
 
       if (isValid === true) {
         resetRateLimit(userId);
-        console.log(`[verify-otp] OTP verified successfully for user: ${userId}`);
+        console.log(`[verify-otp] OTP verified successfully`);
         
         // Log successful OTP verification
         await supabase.from('audit_logs').insert({
@@ -133,7 +144,7 @@ Deno.serve(async (req: Request) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
-        console.log(`[verify-otp] Invalid OTP for user: ${userId}, remaining attempts: ${rateLimit.remaining}`);
+        console.log(`[verify-otp] Invalid OTP, remaining attempts: ${rateLimit.remaining}`);
         
         // Log failed OTP attempt
         await supabase.from('audit_logs').insert({
@@ -154,6 +165,14 @@ Deno.serve(async (req: Request) => {
         );
       }
     } else if (action === 'generate-secret') {
+      // Validate userId format
+      if (!userId || !isValidUUID(userId)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid user ID' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
       // Generate a new OTP secret (only for super_admin use)
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
@@ -175,16 +194,15 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Check if user is super_admin
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+      // Check if user is super_admin using has_role RPC
+      const { data: isSuperAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'super_admin'
+      });
 
-      if (roleData?.role !== 'super_admin') {
+      if (!isSuperAdmin) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Only super_admin can generate OTP secrets' }),
+          JSON.stringify({ success: false, error: 'Insufficient permissions' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
         );
       }
@@ -200,12 +218,12 @@ Deno.serve(async (req: Request) => {
       if (updateError) {
         console.error('[verify-otp] Failed to update OTP secret:', updateError);
         return new Response(
-          JSON.stringify({ success: false, error: 'Failed to save OTP secret' }),
+          JSON.stringify({ success: false, error: 'Failed to configure OTP' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
 
-      console.log(`[verify-otp] Generated new OTP secret for user: ${userId}`);
+      console.log(`[verify-otp] Generated new OTP secret`);
 
       // Generate QR code URL for authenticator apps
       const { data: userProfile } = await supabase
