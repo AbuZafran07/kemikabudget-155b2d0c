@@ -20,12 +20,14 @@ import {
   Loader2,
   Paperclip,
   Printer,
+  Receipt,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import StatusBadge from '@/components/common/StatusBadge';
 import { generateRequestPDF } from '@/lib/generatePDF';
+import { generatePaymentReceiptPDF } from '@/lib/generateReceiptPDF';
 
 interface RequestDetailProps {
   requestId: string;
@@ -485,9 +487,25 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
                 <CreditCard className="h-4 w-4" />
                 Dibayar
               </h4>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-3">
                 {format(new Date(request.paid_at), 'dd MMMM yyyy HH:mm', { locale: localeId })}
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 w-full"
+                onClick={() => generatePaymentReceiptPDF({
+                  ...request,
+                  division: request.divisions as any,
+                  category: request.cost_categories as any,
+                  requester: request.requester as any,
+                  funding_source: request.funding_sources as any,
+                  paid_at: request.paid_at!,
+                })}
+              >
+                <Receipt className="h-4 w-4" />
+                Cetak Kwitansi
+              </Button>
             </div>
           )}
         </div>

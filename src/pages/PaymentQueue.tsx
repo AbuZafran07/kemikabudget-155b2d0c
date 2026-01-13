@@ -65,7 +65,6 @@ const fundingSourceConfig: Record<string, { label: string; icon: React.ElementTy
 const PaymentQueue = () => {
   const {
     payments,
-    fundingSources,
     isLoading,
     payRequest,
     overdueCount,
@@ -129,12 +128,11 @@ const PaymentQueue = () => {
   const confirmPay = async () => {
     if (!selectedPayment) return;
 
-    const result = await payRequest.mutateAsync({
+    await payRequest.mutateAsync({
       requestId: selectedPayment.id,
       note: paymentNote || undefined,
     });
 
-    // Store the paid payment for receipt generation
     setLastPaidPayment(selectedPayment);
     setIsPayDialogOpen(false);
     setSelectedPayment(null);
@@ -190,7 +188,6 @@ const PaymentQueue = () => {
 
   // Generate receipt PDF for a payment
   const handleGenerateReceipt = async (payment: PaymentRequest) => {
-    // Fetch full payment details for receipt
     const { data, error } = await supabase
       .from('requests')
       .select(`
@@ -211,7 +208,6 @@ const PaymentQueue = () => {
       return;
     }
 
-    // Fetch requester profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, email')
@@ -371,7 +367,7 @@ const PaymentQueue = () => {
                 disabled={isExporting}
               >
                 <Download className="h-4 w-4" />
-                Export Terpilih
+                Export
               </Button>
               <Button 
                 className="gap-2"
@@ -379,13 +375,6 @@ const PaymentQueue = () => {
               >
                 <Package className="h-4 w-4" />
                 Batch Pay ({selectedItems.length})
-              </Button>
-            </div>
-                Export Terpilih
-              </Button>
-              <Button className="gap-2">
-                <CreditCard className="h-4 w-4" />
-                Batch Payment
               </Button>
             </div>
           )}
@@ -458,14 +447,12 @@ const PaymentQueue = () => {
               }`}
             >
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                {/* Checkbox */}
                 <Checkbox
                   checked={selectedItems.includes(item.id)}
                   onCheckedChange={() => toggleSelection(item.id)}
                   className="self-start lg:self-center"
                 />
 
-                {/* Main Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
                     <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
@@ -499,7 +486,6 @@ const PaymentQueue = () => {
                     </span>
                   </div>
 
-                  {/* Document Checklist */}
                   <div className="flex items-center gap-4 mt-3">
                     <div
                       className={`flex items-center gap-1.5 text-xs ${
@@ -534,7 +520,6 @@ const PaymentQueue = () => {
                   </div>
                 </div>
 
-                {/* Amount */}
                 <div className="text-right lg:min-w-[150px]">
                   <p className="text-2xl font-bold text-foreground">
                     {formatCurrency(item.amount)}
@@ -544,7 +529,6 @@ const PaymentQueue = () => {
                   </p>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 lg:border-l lg:border-border lg:pl-4">
                   <Button 
                     className="gap-2"
@@ -597,7 +581,6 @@ const PaymentQueue = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Payment Details */}
             {selectedPayment?.beneficiary_name && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <h4 className="font-medium flex items-center gap-2">
@@ -612,7 +595,6 @@ const PaymentQueue = () => {
               </div>
             )}
 
-            {/* Document Checklist */}
             <div className="space-y-2">
               <h4 className="font-medium flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
@@ -712,12 +694,15 @@ const PaymentQueue = () => {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsBatchDialogOpen(false)}
+              onClick={() => {
+                setIsBatchDialogOpen(false);
+                setBatchResults([]);
+              }}
               disabled={isBatchProcessing}
             >
               {batchResults.length > 0 ? 'Tutup' : 'Batal'}
             </Button>
-            {batchResults.filter(r => !r.success).length === 0 && (
+            {batchResults.filter(r => !r.success).length === 0 && batchResults.length === 0 && (
               <Button
                 onClick={processBatchPayment}
                 disabled={isBatchProcessing}
@@ -735,7 +720,7 @@ const PaymentQueue = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Receipt Generated Toast with Print Button */}
+      {/* Receipt Generated Dialog */}
       {lastPaidPayment && (
         <Dialog open={!!lastPaidPayment} onOpenChange={() => setLastPaidPayment(null)}>
           <DialogContent>
