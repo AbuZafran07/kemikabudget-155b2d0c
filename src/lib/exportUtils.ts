@@ -77,3 +77,52 @@ export function formatCurrencyForExport(value: number): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+// Audit Log Export Types
+export interface AuditLogExportRow {
+  created_at: string;
+  event_type: string;
+  entity_type: string;
+  entity_id: string | null;
+  description: string;
+  user_name: string | null;
+  user_email: string | null;
+  ip_address: string | null;
+}
+
+export function generateAuditLogCSV(data: AuditLogExportRow[]): string {
+  const headers = [
+    'Waktu',
+    'Event',
+    'Entity',
+    'Entity ID',
+    'Deskripsi',
+    'Nama User',
+    'Email User',
+    'IP Address',
+  ];
+
+  const rows = data.map((row) => [
+    format(new Date(row.created_at), 'dd MMM yyyy HH:mm:ss', { locale: localeId }),
+    row.event_type,
+    row.entity_type,
+    row.entity_id || '-',
+    `"${row.description.replace(/"/g, '""')}"`,
+    row.user_name || 'System',
+    row.user_email || '-',
+    row.ip_address || '-',
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+  return csvContent;
+}
+
+export function generateAuditLogFilename(startDate?: Date, endDate?: Date): string {
+  const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
+  if (startDate && endDate) {
+    const start = format(startDate, 'yyyyMMdd');
+    const end = format(endDate, 'yyyyMMdd');
+    return `audit_log_${start}_${end}_${timestamp}.csv`;
+  }
+  return `audit_log_${timestamp}.csv`;
+}

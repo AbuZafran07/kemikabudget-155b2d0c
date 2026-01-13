@@ -22,6 +22,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeft,
+  Shield,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ const menuSections: MenuSection[] = [
       { title: "Kategori Biaya", icon: Tags, href: "/categories", roles: ["super_admin"] },
       { title: "Sumber Dana", icon: Landmark, href: "/funding-sources", roles: ["super_admin"] },
       { title: "Pengguna", icon: Users, href: "/users", roles: ["super_admin"] },
+      { title: "Manajemen Sesi", icon: Shield, href: "/session-management", roles: ["super_admin"] },
       { title: "Pengaturan", icon: Settings, href: "/settings", roles: ["super_admin"] },
     ],
     roles: ["super_admin"],
