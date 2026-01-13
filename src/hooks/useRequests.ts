@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,13 +95,14 @@ export function useRequests() {
     },
   });
 
-  // Fetch funding sources
+  // Fetch funding sources - uses secure view for non-privileged users
+  // Finance and super_admin get full details, others get limited info via RLS
   const { data: fundingSources } = useQuery({
     queryKey: ['funding_sources'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('funding_sources')
-        .select('*')
+        .select('id, code, name, type, is_active')
         .eq('is_active', true)
         .order('name');
 

@@ -159,12 +159,37 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel }: Req
     return () => clearInterval(interval);
   }, [form, saveDraft, requestId, AUTOSAVE_INTERVAL]);
 
+  // Allowed file types for security validation
+  const ALLOWED_MIME_TYPES = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+    'application/msword', // .doc
+    'application/vnd.ms-excel', // .xls
+    'text/plain', // .txt
+  ];
+  
+  const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.txt'];
+  
+  const sanitizeFileName = (filename: string): string => {
+    // Remove path traversal characters and special characters
+    const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    // Ensure filename doesn't start with dots (hidden files) or have multiple dots
+    return sanitized.replace(/^\.+/, '').replace(/\.{2,}/g, '.');
+  };
+
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
     const newAttachments: Attachment[] = [];
     for (const file of Array.from(files)) {
+      // Validate file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: 'File Terlalu Besar',
@@ -174,9 +199,33 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel }: Req
         continue;
       }
 
+      // Validate MIME type
+      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+        toast({
+          title: 'Tipe File Tidak Diizinkan',
+          description: `${file.name}: Hanya file PDF, gambar, dan dokumen Office yang diperbolehkan`,
+          variant: 'destructive',
+        });
+        continue;
+      }
+
+      // Validate file extension
+      const ext = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
+      if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+        toast({
+          title: 'Ekstensi File Tidak Valid',
+          description: `${file.name}: Ekstensi file tidak diperbolehkan`,
+          variant: 'destructive',
+        });
+        continue;
+      }
+
+      // Sanitize filename for security
+      const sanitizedName = sanitizeFileName(file.name);
+
       newAttachments.push({
         file,
-        name: file.name,
+        name: sanitizedName,
         type: 'other',
         size: file.size,
       });

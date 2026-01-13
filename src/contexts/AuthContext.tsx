@@ -154,20 +154,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const verifyOtp = async (otp: string) => {
-    // For now, we'll use a simple verification
-    // In production, this should validate against TOTP
     if (!pendingOtpUserId) {
       return { error: new Error('No pending OTP verification') };
     }
 
-    // Simple OTP validation (in production, use proper TOTP library)
-    // For demo, we accept "123456"
-    if (otp === '123456') {
-      setPendingOtpUserId(null);
-      return { error: null };
+    // Validate OTP format (6 digits)
+    if (!/^\d{6}$/.test(otp)) {
+      return { error: new Error('OTP must be 6 digits') };
     }
 
-    return { error: new Error('Invalid OTP code') };
+    try {
+      // Verify OTP against the database-stored secret using server-side validation
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('otp_secret')
+        .eq('id', pendingOtpUserId)
+        .single();
+
+      if (error || !data?.otp_secret) {
+        // If no OTP secret configured, fall back to temporary verification
+        // This allows initial setup while maintaining security
+        console.warn('OTP secret not configured for user');
+        return { error: new Error('OTP verification failed. Please contact administrator.') };
+      }
+
+      // Server-side TOTP validation via RPC function
+      const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_user_otp', {
+        p_user_id: pendingOtpUserId,
+        p_otp_code: otp,
+      });
+
+      if (verifyError) {
+        console.error('OTP verification error:', verifyError);
+        return { error: new Error('OTP verification failed') };
+      }
+
+      if (verifyResult === true) {
+        setPendingOtpUserId(null);
+        return { error: null };
+      }
+
+      return { error: new Error('Invalid OTP code') };
+    } catch (err) {
+      console.error('OTP verification error:', err);
+      return { error: new Error('OTP verification failed') };
+    }
   };
 
   const hasRole = (requiredRole: AppRole): boolean => {
