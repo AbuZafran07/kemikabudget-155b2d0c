@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import Reports from "./pages/Reports";
 import AuditLogs from "./pages/AuditLogs";
 import NotificationHistory from "./pages/NotificationHistory";
+import SessionManagement from "./pages/SessionManagement";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -120,6 +121,11 @@ const App = () => (
               <Route path="/notification-history" element={
                 <ProtectedRoute requiredRole="finance">
                   <NotificationHistory />
+                </ProtectedRoute>
+              } />
+              <Route path="/session-management" element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <SessionManagement />
                 </ProtectedRoute>
               } />
             </Route>

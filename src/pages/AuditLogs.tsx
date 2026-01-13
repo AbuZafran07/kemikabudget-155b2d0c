@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import {
@@ -21,6 +19,9 @@ import {
   Settings,
   RefreshCw,
   Mail,
+  Download,
+  Calendar,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,20 +41,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-interface AuditLog {
-  id: string;
-  event_type: string;
-  entity_type: string;
-  entity_id: string | null;
-  user_id: string | null;
-  description: string;
-  metadata: Record<string, any>;
-  ip_address: string | null;
-  created_at: string;
-  user?: { full_name: string; email: string };
-}
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { useAuditLogs } from '@/hooks/useAuditLogsQuery';
+import { cn } from '@/lib/utils';
 
 const eventIcons: Record<string, React.ElementType> = {
   created: FileText,
@@ -85,93 +81,36 @@ const eventColors: Record<string, string> = {
 const PAGE_SIZES = [10, 25, 50, 100];
 
 const AuditLogs = () => {
-  const [search, setSearch] = useState('');
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  
+  const {
+    logs,
+    totalCount,
+    totalPages,
+    currentPage,
+    filters,
+    filterOptions,
+    isLoading,
+    setCurrentPage,
+    updateFilters,
+    resetFilters,
+    refetch,
+    exportToCSV,
+  } = useAuditLogs({ pageSize });
 
-  const { data: logs = [], isLoading, refetch } = useQuery({
-    queryKey: ['audit-logs', search, eventTypeFilter, entityTypeFilter],
-    queryFn: async () => {
-      let query = supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
-
-      if (eventTypeFilter !== 'all') {
-        query = query.eq('event_type', eventTypeFilter);
-      }
-
-      if (entityTypeFilter !== 'all') {
-        query = query.eq('entity_type', entityTypeFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      // Fetch user names
-      const userIds = [...new Set(data?.filter(l => l.user_id).map(l => l.user_id))];
-      let profiles: Record<string, { full_name: string; email: string }> = {};
-      
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', userIds as string[]);
-        
-        profiles = (profilesData || []).reduce((acc, p) => {
-          acc[p.id] = { full_name: p.full_name, email: p.email };
-          return acc;
-        }, {} as Record<string, { full_name: string; email: string }>);
-      }
-
-      return (data || []).map(log => ({
-        ...log,
-        user: log.user_id ? profiles[log.user_id] : undefined,
-      })) as AuditLog[];
-    },
-  });
-
-  // Filter by search
-  const filteredLogs = logs.filter(log => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      log.description.toLowerCase().includes(searchLower) ||
-      log.event_type.toLowerCase().includes(searchLower) ||
-      log.entity_type.toLowerCase().includes(searchLower) ||
-      log.user?.full_name?.toLowerCase().includes(searchLower) ||
-      log.user?.email?.toLowerCase().includes(searchLower)
-    );
-  });
-
-  // Pagination
-  const totalItems = filteredLogs.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalItems);
-  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + logs.length, totalCount);
 
-  // Get unique event and entity types for filters
-  const eventTypes = [...new Set(logs.map(l => l.event_type))];
-  const entityTypes = [...new Set(logs.map(l => l.entity_type))];
+  // Check if any filters are active
+  const hasActiveFilters = 
+    filters.search !== '' ||
+    filters.eventType !== 'all' ||
+    filters.entityType !== 'all' ||
+    filters.userId !== 'all' ||
+    filters.startDate !== undefined ||
+    filters.endDate !== undefined;
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setCurrentPage(1);
-  };
-
-  const handleFilterChange = () => {
-    setCurrentPage(1);
-  };
-
-  if (isLoading) {
+  if (isLoading && logs.length === 0) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -181,6 +120,7 @@ const AuditLogs = () => {
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -191,97 +131,194 @@ const AuditLogs = () => {
             Riwayat semua aktivitas dan perubahan sistem
           </p>
         </div>
-        <Button variant="outline" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button onClick={exportToCSV} className="gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
-            <p className="text-2xl font-bold text-foreground">{logs.length}</p>
+            <p className="text-2xl font-bold text-foreground">{totalCount}</p>
             <p className="text-xs text-muted-foreground">Total Log</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <p className="text-2xl font-bold text-success">
-              {logs.filter(l => l.event_type === 'approved').length}
+              {filterOptions.eventTypes.filter(e => e === 'approved').length > 0 ? '✓' : '-'}
             </p>
-            <p className="text-xs text-muted-foreground">Approval</p>
+            <p className="text-xs text-muted-foreground">Event Types: {filterOptions.eventTypes.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <p className="text-2xl font-bold text-primary">
-              {logs.filter(l => l.event_type === 'paid').length}
+              {filterOptions.entityTypes.length}
             </p>
-            <p className="text-xs text-muted-foreground">Payment</p>
+            <p className="text-xs text-muted-foreground">Entity Types</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <p className="text-2xl font-bold text-accent-foreground">
-              {logs.filter(l => l.event_type === 'notification_sent').length}
+              {filterOptions.users.length}
             </p>
-            <p className="text-xs text-muted-foreground">Notifikasi Terkirim</p>
+            <p className="text-xs text-muted-foreground">Users</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari log..."
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
-          />
+      <div className="space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari log..."
+              value={filters.search}
+              onChange={(e) => updateFilters({ search: e.target.value })}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Event Type Filter */}
+          <Select
+            value={filters.eventType}
+            onValueChange={(v) => updateFilters({ eventType: v })}
+          >
+            <SelectTrigger className="w-full lg:w-40">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Event" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Event</SelectItem>
+              {filterOptions.eventTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Entity Type Filter */}
+          <Select
+            value={filters.entityType}
+            onValueChange={(v) => updateFilters({ entityType: v })}
+          >
+            <SelectTrigger className="w-full lg:w-40">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Entity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Entity</SelectItem>
+              {filterOptions.entityTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* User Filter */}
+          <Select
+            value={filters.userId}
+            onValueChange={(v) => updateFilters({ userId: v })}
+          >
+            <SelectTrigger className="w-full lg:w-48">
+              <User className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="User" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua User</SelectItem>
+              {filterOptions.users.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Select
-          value={eventTypeFilter}
-          onValueChange={(v) => {
-            setEventTypeFilter(v);
-            handleFilterChange();
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-40">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Event" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Event</SelectItem>
-            {eventTypes.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={entityTypeFilter}
-          onValueChange={(v) => {
-            setEntityTypeFilter(v);
-            handleFilterChange();
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-40">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Entity" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Entity</SelectItem>
-            {entityTypes.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        {/* Date Range Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          {/* Start Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full sm:w-48 justify-start text-left font-normal",
+                  !filters.startDate && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {filters.startDate ? (
+                  format(filters.startDate, "dd MMM yyyy", { locale: localeId })
+                ) : (
+                  "Tanggal Mulai"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={filters.startDate}
+                onSelect={(date) => updateFilters({ startDate: date })}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+
+          <span className="text-muted-foreground hidden sm:block">—</span>
+
+          {/* End Date */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full sm:w-48 justify-start text-left font-normal",
+                  !filters.endDate && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {filters.endDate ? (
+                  format(filters.endDate, "dd MMM yyyy", { locale: localeId })
+                ) : (
+                  "Tanggal Akhir"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={filters.endDate}
+                onSelect={(date) => updateFilters({ endDate: date })}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Reset Filters */}
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={resetFilters} className="gap-2">
+              <X className="h-4 w-4" />
+              Reset Filter
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -297,7 +334,7 @@ const AuditLogs = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedLogs.length === 0 ? (
+            {logs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -307,7 +344,7 @@ const AuditLogs = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedLogs.map((log) => {
+              logs.map((log) => {
                 const Icon = eventIcons[log.event_type] || eventIcons.default;
                 const colorClass = eventColors[log.event_type] || 'bg-muted text-muted-foreground';
 
@@ -353,10 +390,10 @@ const AuditLogs = () => {
       </div>
 
       {/* Pagination */}
-      {totalItems > 0 && (
+      {totalCount > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {startIndex + 1}–{endIndex} dari {totalItems} log
+            Menampilkan {startIndex + 1}–{endIndex} dari {totalCount} log
           </p>
           <div className="flex items-center gap-2">
             <Select value={String(pageSize)} onValueChange={(v) => {
@@ -378,7 +415,7 @@ const AuditLogs = () => {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handlePageChange(currentPage - 1)}
+                onClick={() => setCurrentPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -399,7 +436,7 @@ const AuditLogs = () => {
                     key={pageNum}
                     variant={currentPage === pageNum ? 'default' : 'outline'}
                     size="icon"
-                    onClick={() => handlePageChange(pageNum)}
+                    onClick={() => setCurrentPage(pageNum)}
                   >
                     {pageNum}
                   </Button>
@@ -408,7 +445,7 @@ const AuditLogs = () => {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handlePageChange(currentPage + 1)}
+                onClick={() => setCurrentPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
               >
                 <ChevronRight className="h-4 w-4" />
