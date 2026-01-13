@@ -12,6 +12,7 @@ import Approvals from "./pages/Approvals";
 import PaymentQueue from "./pages/PaymentQueue";
 import PettyCash from "./pages/PettyCash";
 import BudgetPlanning from "./pages/BudgetPlanning";
+import BudgetTransfer from "./pages/BudgetTransfer";
 import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
@@ -63,7 +64,11 @@ const App = () => (
                   <BudgetPlanning />
                 </ProtectedRoute>
               } />
-              <Route path="/budget-transfer" element={<Dashboard />} />
+              <Route path="/budget-transfer" element={
+                <ProtectedRoute requiredRole="admin">
+                  <BudgetTransfer />
+                </ProtectedRoute>
+              } />
               <Route path="/divisions" element={<Dashboard />} />
               <Route path="/categories" element={<Dashboard />} />
               <Route path="/funding-sources" element={<Dashboard />} />
