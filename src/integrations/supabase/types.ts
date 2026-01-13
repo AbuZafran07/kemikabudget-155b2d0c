@@ -14,6 +14,127 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_periods: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          is_closed: boolean
+          name: string
+          start_date: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          is_closed?: boolean
+          name: string
+          start_date: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          is_closed?: boolean
+          name?: string
+          start_date?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      cost_categories: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      division_budgets: {
+        Row: {
+          allocated_amount: number
+          category_id: string
+          created_at: string
+          division_id: string
+          id: string
+          period_id: string
+          updated_at: string
+          used_amount: number
+        }
+        Insert: {
+          allocated_amount?: number
+          category_id: string
+          created_at?: string
+          division_id: string
+          id?: string
+          period_id: string
+          updated_at?: string
+          used_amount?: number
+        }
+        Update: {
+          allocated_amount?: number
+          category_id?: string
+          created_at?: string
+          division_id?: string
+          id?: string
+          period_id?: string
+          updated_at?: string
+          used_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "division_budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "division_budgets_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "division_budgets_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "budget_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       divisions: {
         Row: {
           code: string
@@ -40,6 +161,48 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      funding_sources: {
+        Row: {
+          account_holder: string | null
+          account_number: string | null
+          balance: number
+          bank_name: string | null
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_holder?: string | null
+          account_number?: string | null
+          balance?: number
+          bank_name?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          account_holder?: string | null
+          account_number?: string | null
+          balance?: number
+          bank_name?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
           updated_at?: string
         }
         Relationships: []
@@ -90,6 +253,225 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_attachments: {
+        Row: {
+          attachment_type: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          request_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          attachment_type: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          request_id: string
+          uploaded_by: string
+        }
+        Update: {
+          attachment_type?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          request_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_attachments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_events: {
+        Row: {
+          created_at: string
+          description: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          performed_by: string
+          request_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          performed_by: string
+          request_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          performed_by?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requests: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          beneficiary_account: string | null
+          beneficiary_bank: string | null
+          beneficiary_email: string | null
+          beneficiary_name: string | null
+          category_id: string
+          created_at: string
+          description: string
+          division_id: string
+          funding_source_id: string | null
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
+          needed_date: string
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_method: string | null
+          period_id: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          request_number: string
+          requester_id: string
+          settled_at: string | null
+          settled_by: string | null
+          status: Database["public"]["Enums"]["request_status"]
+          submitted_at: string | null
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_account?: string | null
+          beneficiary_bank?: string | null
+          beneficiary_email?: string | null
+          beneficiary_name?: string | null
+          category_id: string
+          created_at?: string
+          description: string
+          division_id: string
+          funding_source_id?: string | null
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          needed_date: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          period_id?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_number: string
+          requester_id: string
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          submitted_at?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_account?: string | null
+          beneficiary_bank?: string | null
+          beneficiary_email?: string | null
+          beneficiary_name?: string | null
+          category_id?: string
+          created_at?: string
+          description?: string
+          division_id?: string
+          funding_source_id?: string | null
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          needed_date?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          period_id?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_number?: string
+          requester_id?: string
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: Database["public"]["Enums"]["request_status"]
+          submitted_at?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requests_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "budget_periods"
             referencedColumns: ["id"]
           },
         ]
@@ -169,6 +551,15 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "finance" | "admin" | "user"
+      request_status:
+        | "draft"
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "paid"
+        | "settled"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -297,6 +688,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "finance", "admin", "user"],
+      request_status: [
+        "draft",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+        "paid",
+        "settled",
+        "cancelled",
+      ],
     },
   },
 } as const
