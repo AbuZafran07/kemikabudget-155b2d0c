@@ -104,6 +104,62 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_reconciliations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          funding_source_id: string
+          id: string
+          notes: string | null
+          physical_balance: number
+          reconciled_by: string
+          reconciliation_date: string
+          status: string
+          system_balance: number
+          variance: number
+          variance_reason: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          funding_source_id: string
+          id?: string
+          notes?: string | null
+          physical_balance: number
+          reconciled_by: string
+          reconciliation_date?: string
+          status?: string
+          system_balance: number
+          variance: number
+          variance_reason?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          funding_source_id?: string
+          id?: string
+          notes?: string | null
+          physical_balance?: number
+          reconciled_by?: string
+          reconciliation_date?: string
+          status?: string
+          system_balance?: number
+          variance?: number
+          variance_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_reconciliations_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_categories: {
         Row: {
           code: string
@@ -260,6 +316,63 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      petty_cash_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          description: string | null
+          funding_source_id: string
+          id: string
+          performed_by: string
+          reference_number: string | null
+          request_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          description?: string | null
+          funding_source_id: string
+          id?: string
+          performed_by: string
+          reference_number?: string | null
+          request_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          description?: string | null
+          funding_source_id?: string
+          id?: string
+          performed_by?: string
+          reference_number?: string | null
+          request_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_transactions_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "petty_cash_transactions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -604,6 +717,14 @@ export type Database = {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean
       }
+      create_reconciliation: {
+        Args: {
+          p_funding_source_id: string
+          p_notes?: string
+          p_physical_balance: number
+        }
+        Returns: Json
+      }
       get_user_division_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
@@ -625,6 +746,15 @@ export type Database = {
         Returns: Json
       }
       settle_request: { Args: { p_request_id: string }; Returns: Json }
+      topup_petty_cash: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_funding_source_id: string
+          p_reference_number?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "super_admin" | "finance" | "admin" | "user"
