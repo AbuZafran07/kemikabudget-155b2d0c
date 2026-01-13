@@ -16,6 +16,7 @@ import {
   Settings,
   BarChart3,
   FileSearch,
+  Mail,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -94,6 +95,7 @@ const menuSections: MenuSection[] = [
     items: [
       { title: "Laporan", icon: BarChart3, href: "/reports", roles: ["super_admin", "finance"] },
       { title: "Audit Log", icon: FileSearch, href: "/audit-logs", roles: ["super_admin"] },
+      { title: "Notifikasi", icon: Mail, href: "/notification-history", roles: ["super_admin", "finance"] },
     ],
     roles: ["super_admin", "finance"],
   },

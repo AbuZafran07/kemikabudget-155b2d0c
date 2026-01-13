@@ -10,6 +10,9 @@ import {
   Building2,
   Wallet,
   FileCheck,
+  FileText,
+  Loader2,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,12 +38,15 @@ import { Label } from "@/components/ui/label";
 import { usePaymentQueue, PaymentRequest } from "@/hooks/usePaymentQueue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   generatePaymentCSV,
   downloadCSV,
   generateBatchPaymentFilename,
   PaymentExportRow,
 } from "@/lib/exportUtils";
+import { generatePaymentReceiptPDF } from "@/lib/generateReceiptPDF";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -68,6 +74,7 @@ const PaymentQueue = () => {
   } = usePaymentQueue();
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -76,8 +83,12 @@ const PaymentQueue = () => {
   // Dialog state
   const [selectedPayment, setSelectedPayment] = useState<PaymentRequest | null>(null);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [paymentNote, setPaymentNote] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+  const [batchResults, setBatchResults] = useState<{ id: string; success: boolean; error?: string }[]>([]);
+  const [lastPaidPayment, setLastPaidPayment] = useState<PaymentRequest | null>(null);
 
   const filteredPayments = payments?.filter((item) => {
     const matchesSearch =
@@ -118,14 +129,103 @@ const PaymentQueue = () => {
   const confirmPay = async () => {
     if (!selectedPayment) return;
 
-    await payRequest.mutateAsync({
+    const result = await payRequest.mutateAsync({
       requestId: selectedPayment.id,
       note: paymentNote || undefined,
     });
 
+    // Store the paid payment for receipt generation
+    setLastPaidPayment(selectedPayment);
     setIsPayDialogOpen(false);
     setSelectedPayment(null);
     setSelectedItems(prev => prev.filter(id => id !== selectedPayment.id));
+  };
+
+  // Batch payment processing
+  const processBatchPayment = async () => {
+    if (selectedItems.length === 0) return;
+
+    setIsBatchProcessing(true);
+    setBatchResults([]);
+    const results: { id: string; success: boolean; error?: string }[] = [];
+
+    for (const paymentId of selectedItems) {
+      const { data, error } = await supabase.rpc('pay_request', {
+        p_request_id: paymentId,
+        p_payment_note: 'Batch payment processed',
+      });
+
+      if (error) {
+        results.push({ id: paymentId, success: false, error: error.message });
+      } else {
+        const result = data as { success: boolean; error?: string };
+        results.push({ id: paymentId, success: result.success, error: result.error });
+      }
+    }
+
+    setBatchResults(results);
+    setIsBatchProcessing(false);
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
+    queryClient.invalidateQueries({ queryKey: ['requests'] });
+    queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+
+    if (successCount > 0) {
+      setSelectedItems([]);
+      toast({
+        title: 'Batch Payment Selesai',
+        description: `${successCount} berhasil${failCount > 0 ? `, ${failCount} gagal` : ''}`,
+        variant: failCount > 0 ? 'destructive' : 'default',
+      });
+    }
+
+    if (failCount === 0) {
+      setIsBatchDialogOpen(false);
+    }
+  };
+
+  // Generate receipt PDF for a payment
+  const handleGenerateReceipt = async (payment: PaymentRequest) => {
+    // Fetch full payment details for receipt
+    const { data, error } = await supabase
+      .from('requests')
+      .select(`
+        *,
+        division:divisions(name, code),
+        category:cost_categories(name, code),
+        funding_source:funding_sources(name, type)
+      `)
+      .eq('id', payment.id)
+      .single();
+
+    if (error || !data) {
+      toast({
+        title: 'Error',
+        description: 'Gagal mengambil data untuk kwitansi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Fetch requester profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', data.requester_id)
+      .single();
+
+    generatePaymentReceiptPDF({
+      ...data,
+      requester: profile || undefined,
+      division: data.division as any,
+      category: data.category as any,
+      funding_source: data.funding_source as any,
+      paid_at: data.paid_at || new Date().toISOString(),
+    });
   };
 
   const handleExportSelected = () => {
@@ -271,6 +371,16 @@ const PaymentQueue = () => {
                 disabled={isExporting}
               >
                 <Download className="h-4 w-4" />
+                Export Terpilih
+              </Button>
+              <Button 
+                className="gap-2"
+                onClick={() => setIsBatchDialogOpen(true)}
+              >
+                <Package className="h-4 w-4" />
+                Batch Pay ({selectedItems.length})
+              </Button>
+            </div>
                 Export Terpilih
               </Button>
               <Button className="gap-2">
@@ -537,7 +647,7 @@ const PaymentQueue = () => {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsPayDialogOpen(false)}>
               Batal
             </Button>
@@ -552,6 +662,115 @@ const PaymentQueue = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Batch Payment Dialog */}
+      <Dialog open={isBatchDialogOpen} onOpenChange={setIsBatchDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Batch Payment</DialogTitle>
+            <DialogDescription>
+              Proses pembayaran untuk {selectedItems.length} transaksi sekaligus
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="bg-muted rounded-lg p-4 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jumlah Transaksi</span>
+                <span className="font-medium">{selectedItems.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Pembayaran</span>
+                <span className="font-bold text-primary text-lg">
+                  {formatCurrency(selectedTotal)}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
+              <p className="text-sm text-foreground">
+                <strong>Perhatian:</strong> Tindakan ini akan memproses pembayaran dan mengurangi
+                saldo kas secara otomatis. Pastikan semua data sudah benar sebelum melanjutkan.
+              </p>
+            </div>
+
+            {batchResults.length > 0 && (
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {batchResults.map((r) => {
+                  const payment = payments?.find(p => p.id === r.id);
+                  return (
+                    <div key={r.id} className={`text-sm flex items-center gap-2 ${r.success ? 'text-success' : 'text-destructive'}`}>
+                      {r.success ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                      {payment?.request_number}: {r.success ? 'Berhasil' : r.error}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsBatchDialogOpen(false)}
+              disabled={isBatchProcessing}
+            >
+              {batchResults.length > 0 ? 'Tutup' : 'Batal'}
+            </Button>
+            {batchResults.filter(r => !r.success).length === 0 && (
+              <Button
+                onClick={processBatchPayment}
+                disabled={isBatchProcessing}
+                className="gap-2"
+              >
+                {isBatchProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                {isBatchProcessing ? 'Memproses...' : 'Proses Pembayaran'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Generated Toast with Print Button */}
+      {lastPaidPayment && (
+        <Dialog open={!!lastPaidPayment} onOpenChange={() => setLastPaidPayment(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-success">
+                <CheckCircle className="h-5 w-5" />
+                Pembayaran Berhasil
+              </DialogTitle>
+              <DialogDescription>
+                Pembayaran untuk {lastPaidPayment.request_number} telah diproses.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-muted-foreground">
+                Apakah Anda ingin mencetak kwitansi pembayaran?
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLastPaidPayment(null)}>
+                Tutup
+              </Button>
+              <Button 
+                onClick={() => {
+                  handleGenerateReceipt(lastPaidPayment);
+                  setLastPaidPayment(null);
+                }}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Cetak Kwitansi
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -230,6 +231,11 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Initialize Supabase client for logging
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
@@ -258,6 +264,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (recipients.length === 0) {
       console.log("No recipients found");
+      
+      // Log the notification attempt
+      await supabase.from("notification_logs").insert({
+        request_id: data.request_id,
+        event_type: data.event_type,
+        recipients: [],
+        subject: subject,
+        status: "failed",
+        error_message: "No recipients found",
+      });
+
       return new Response(
         JSON.stringify({ success: true, sent: 0, failed: 0, message: "No recipients" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -266,6 +283,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send emails
     const result = await sendWithResend(RESEND_API_KEY, recipients, subject, html);
+
+    // Log the notification
+    await supabase.from("notification_logs").insert({
+      request_id: data.request_id,
+      event_type: data.event_type,
+      recipients: recipients,
+      subject: subject,
+      status: result.success ? "sent" : "failed",
+      error_message: result.error || null,
+      sent_at: result.success ? new Date().toISOString() : null,
+    });
 
     return new Response(
       JSON.stringify({
@@ -281,6 +309,21 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: any) {
     console.error("Error in send-notification function:", error);
+    
+    // Try to log the error
+    try {
+      await supabase.from("notification_logs").insert({
+        request_id: null,
+        event_type: "unknown",
+        recipients: [],
+        subject: "Error",
+        status: "failed",
+        error_message: error.message,
+      });
+    } catch (logError) {
+      console.error("Failed to log error:", logError);
+    }
+
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {
