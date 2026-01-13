@@ -15,6 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
+import { OtpSetupCard } from '@/components/settings/OtpSetupCard';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppSettings {
   approval_sla_days: number;
@@ -34,9 +36,12 @@ const defaultSettings: AppSettings = {
 
 const Settings = () => {
   const { toast } = useToast();
+  const { role } = useAuth();
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [hasChanges, setHasChanges] = useState(false);
+  
+  const isSuperAdmin = role === 'super_admin';
 
   // In a real app, this would fetch from a settings table
   // For now, we'll use localStorage as a simple persistence
@@ -215,6 +220,9 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* OTP Setup for Super Admin */}
+        {isSuperAdmin && <OtpSetupCard />}
 
         {/* User Notification Preferences */}
         <NotificationPreferencesCard />
