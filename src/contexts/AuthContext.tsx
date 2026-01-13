@@ -174,7 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error('OTP verification error:', error);
+        if (import.meta.env.DEV) {
+          console.error('OTP verification error:', error);
+        }
         return { error: new Error('OTP verification failed') };
       }
 
@@ -189,7 +191,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { error: new Error(data?.error || 'Invalid OTP code') };
     } catch (err) {
-      console.error('OTP verification error:', err);
+      if (import.meta.env.DEV) {
+        console.error('OTP verification error:', err);
+      }
       return { error: new Error('OTP verification failed') };
     }
   };

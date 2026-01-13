@@ -21,7 +21,7 @@ export function useNotificationLogs() {
       sent_at: params.status === "sent" ? new Date().toISOString() : null,
     });
 
-    if (error) {
+    if (error && import.meta.env.DEV) {
       console.error("Failed to log notification:", error);
     }
   };
@@ -40,7 +40,7 @@ export function useNotificationLogs() {
       })
       .eq("id", logId);
 
-    if (error) {
+    if (error && import.meta.env.DEV) {
       console.error("Failed to update notification log:", error);
     }
   };

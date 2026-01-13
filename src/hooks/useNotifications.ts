@@ -17,20 +17,18 @@ interface NotificationData {
 export function useNotifications() {
   const sendNotification = async (data: NotificationData): Promise<void> => {
     try {
-      console.log('Sending notification:', data.event_type, 'for request:', data.request_number);
-      
-      const { data: result, error } = await supabase.functions.invoke('send-notification', {
+      const { error } = await supabase.functions.invoke('send-notification', {
         body: data,
       });
 
-      if (error) {
+      if (error && import.meta.env.DEV) {
         console.error('Failed to send notification:', error);
-        // Don't throw - notifications should not block the main workflow
-      } else {
-        console.log('Notification sent:', result);
       }
+      // Don't throw - notifications should not block the main workflow
     } catch (err) {
-      console.error('Error sending notification:', err);
+      if (import.meta.env.DEV) {
+        console.error('Error sending notification:', err);
+      }
       // Don't throw - notifications should not block the main workflow
     }
   };
@@ -55,7 +53,9 @@ export function useNotifications() {
 
       return profiles?.map(p => p.email) || [];
     } catch (err) {
-      console.error('Error fetching admin emails:', err);
+      if (import.meta.env.DEV) {
+        console.error('Error fetching admin emails:', err);
+      }
       return [];
     }
   };

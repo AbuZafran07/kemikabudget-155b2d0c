@@ -50,11 +50,13 @@ export function useAuditLog() {
         metadata: data.metadata || {},
       });
 
-      if (error) {
+      if (error && import.meta.env.DEV) {
         console.error('Failed to create audit log:', error);
       }
     } catch (err) {
-      console.error('Error creating audit log:', err);
+      if (import.meta.env.DEV) {
+        console.error('Error creating audit log:', err);
+      }
     }
   };
 
