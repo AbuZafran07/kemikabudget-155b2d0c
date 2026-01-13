@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays } from 'date-fns';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export interface ApprovalRequest {
   id: string;
@@ -29,6 +30,7 @@ const APPROVAL_SLA_DAYS = 3;
 export function useApprovals() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { notifyApproved, notifyRejected } = useNotifications();
 
   // Fetch pending approvals
   const { data: approvals, isLoading, refetch } = useQuery({
@@ -75,6 +77,13 @@ export function useApprovals() {
   // Approve request mutation
   const approveRequest = useMutation({
     mutationFn: async ({ requestId, note }: { requestId: string; note?: string }) => {
+      // Get request details first
+      const { data: requestData } = await supabase
+        .from('requests')
+        .select('id, request_number, requester_id, amount, description')
+        .eq('id', requestId)
+        .single();
+
       const { data, error } = await supabase.rpc('approve_request', {
         p_request_id: requestId,
         p_approval_note: note || null,
@@ -87,9 +96,9 @@ export function useApprovals() {
         throw new Error(result.error || 'Failed to approve request');
       }
 
-      return result;
+      return { result, requestData };
     },
-    onSuccess: (result) => {
+    onSuccess: ({ result, requestData }) => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['division_budgets'] });
@@ -97,6 +106,17 @@ export function useApprovals() {
         title: 'Disetujui',
         description: result.message || 'Pengajuan berhasil disetujui dan anggaran telah dikurangi',
       });
+
+      // Send email notification to requester
+      if (requestData) {
+        notifyApproved({
+          id: requestData.id,
+          request_number: requestData.request_number,
+          requester_id: requestData.requester_id,
+          amount: requestData.amount,
+          description: requestData.description,
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -110,6 +130,13 @@ export function useApprovals() {
   // Reject request mutation
   const rejectRequest = useMutation({
     mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+      // Get request details first
+      const { data: requestData } = await supabase
+        .from('requests')
+        .select('id, request_number, requester_id, amount, description')
+        .eq('id', requestId)
+        .single();
+
       const { data, error } = await supabase.rpc('reject_request', {
         p_request_id: requestId,
         p_rejection_reason: reason,
@@ -122,15 +149,27 @@ export function useApprovals() {
         throw new Error(result.error || 'Failed to reject request');
       }
 
-      return result;
+      return { result, requestData, reason };
     },
-    onSuccess: () => {
+    onSuccess: ({ requestData, reason }) => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       toast({
         title: 'Ditolak',
         description: 'Pengajuan telah ditolak',
       });
+
+      // Send email notification to requester
+      if (requestData) {
+        notifyRejected({
+          id: requestData.id,
+          request_number: requestData.request_number,
+          requester_id: requestData.requester_id,
+          amount: requestData.amount,
+          description: requestData.description,
+          rejection_reason: reason,
+        });
+      }
     },
     onError: (error: Error) => {
       toast({

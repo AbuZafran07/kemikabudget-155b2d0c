@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export interface Request {
   id: string;
@@ -57,6 +58,7 @@ export function useRequests() {
   const { profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { notifySubmitted } = useNotifications();
 
   // Fetch requests
   const { data: requests, isLoading, refetch } = useQuery({
@@ -232,12 +234,21 @@ export function useRequests() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       clearDraft();
       toast({
         title: 'Pengajuan Dikirim',
         description: 'Pengajuan Anda telah dikirim untuk persetujuan',
+      });
+
+      // Send email notification to admins
+      notifySubmitted({
+        id: data.id,
+        request_number: data.request_number,
+        requester_id: data.requester_id,
+        amount: data.amount,
+        description: data.description,
       });
     },
     onError: (error: Error) => {
