@@ -1,0 +1,198 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { differenceInDays } from 'date-fns';
+
+export interface PaymentRequest {
+  id: string;
+  request_number: string;
+  division_id: string;
+  category_id: string;
+  requester_id: string;
+  description: string;
+  vendor: string | null;
+  amount: number;
+  needed_date: string;
+  status: string;
+  funding_source_id: string | null;
+  payment_method: string | null;
+  beneficiary_name: string | null;
+  beneficiary_bank: string | null;
+  beneficiary_account: string | null;
+  approved_at: string | null;
+  created_at: string;
+  divisions?: { code: string; name: string };
+  cost_categories?: { code: string; name: string };
+  profiles?: { full_name: string; email: string };
+  funding_sources?: { code: string; name: string; type: string };
+  hasInvoice?: boolean;
+  hasQuotation?: boolean;
+  hasReceipt?: boolean;
+  daysSinceApproval?: number;
+  isOverdue?: boolean;
+}
+
+const PAYMENT_SLA_DAYS = 3;
+
+export function usePaymentQueue() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch approved requests pending payment
+  const { data: payments, isLoading, refetch } = useQuery({
+    queryKey: ['payment-queue'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          divisions (code, name),
+          cost_categories (code, name),
+          funding_sources (code, name, type)
+        `)
+        .eq('status', 'approved')
+        .order('approved_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Get requester profiles
+      const requesterIds = data?.map(r => r.requester_id) || [];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', requesterIds);
+
+      // Get attachments to check for invoice/quotation
+      const requestIds = data?.map(r => r.id) || [];
+      const { data: attachments } = await supabase
+        .from('request_attachments')
+        .select('request_id, attachment_type')
+        .in('request_id', requestIds);
+
+      // Merge and enrich data
+      const enrichedData = data?.map(request => {
+        const approvedDate = request.approved_at ? new Date(request.approved_at) : new Date();
+        const daysSinceApproval = differenceInDays(new Date(), approvedDate);
+        const isOverdue = daysSinceApproval > PAYMENT_SLA_DAYS;
+
+        const requestAttachments = attachments?.filter(a => a.request_id === request.id) || [];
+        const hasInvoice = requestAttachments.some(a => a.attachment_type === 'invoice');
+        const hasQuotation = requestAttachments.some(a => a.attachment_type === 'quotation');
+        const hasReceipt = requestAttachments.some(a => a.attachment_type === 'receipt');
+
+        return {
+          ...request,
+          profiles: profiles?.find(p => p.id === request.requester_id),
+          hasInvoice,
+          hasQuotation,
+          hasReceipt,
+          daysSinceApproval,
+          isOverdue,
+        };
+      }) || [];
+
+      return enrichedData as PaymentRequest[];
+    },
+  });
+
+  // Fetch funding sources
+  const { data: fundingSources } = useQuery({
+    queryKey: ['funding_sources'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('funding_sources')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Pay request mutation
+  const payRequest = useMutation({
+    mutationFn: async ({ requestId, note }: { requestId: string; note?: string }) => {
+      const { data, error } = await supabase.rpc('pay_request', {
+        p_request_id: requestId,
+        p_payment_note: note || null,
+      });
+
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string; message?: string; funding_balance?: number };
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to process payment');
+      }
+
+      return result;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
+      toast({
+        title: 'Pembayaran Berhasil',
+        description: result.message || 'Pembayaran telah diproses dan dana telah dikurangi',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Gagal Memproses Pembayaran',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Settle request mutation
+  const settleRequest = useMutation({
+    mutationFn: async (requestId: string) => {
+      const { data, error } = await supabase.rpc('settle_request', {
+        p_request_id: requestId,
+      });
+
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string; message?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to settle request');
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      toast({
+        title: 'Selesai',
+        description: 'Pengajuan telah diselesaikan',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Gagal Menyelesaikan',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Get statistics
+  const overdueCount = payments?.filter(p => p.isOverdue).length || 0;
+  const totalPending = payments?.length || 0;
+  const totalAmount = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+
+  return {
+    payments,
+    fundingSources,
+    isLoading,
+    refetch,
+    payRequest,
+    settleRequest,
+    overdueCount,
+    totalPending,
+    totalAmount,
+    PAYMENT_SLA_DAYS,
+  };
+}

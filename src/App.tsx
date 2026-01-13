@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Requests from "./pages/Requests";
 import Approvals from "./pages/Approvals";
 import PaymentQueue from "./pages/PaymentQueue";
+import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -56,7 +57,11 @@ const App = () => (
               <Route path="/divisions" element={<Dashboard />} />
               <Route path="/categories" element={<Dashboard />} />
               <Route path="/funding-sources" element={<Dashboard />} />
-              <Route path="/users" element={<Dashboard />} />
+              <Route path="/users" element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <Users />
+                </ProtectedRoute>
+              } />
               <Route path="/settings" element={<Dashboard />} />
               <Route path="/reports" element={<Dashboard />} />
               <Route path="/audit-logs" element={<Dashboard />} />
