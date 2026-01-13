@@ -1,0 +1,396 @@
+import { useState } from "react";
+import {
+  Search,
+  UserPlus,
+  Edit2,
+  Shield,
+  ShieldCheck,
+  ShieldAlert,
+  User as UserIcon,
+  MoreVertical,
+  Check,
+  X,
+  Building2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useUsers, UserWithRole } from "@/hooks/useUsers";
+import { AppRole } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const roleConfig: Record<AppRole, { label: string; icon: React.ElementType; color: string }> = {
+  super_admin: { label: "Super Admin", icon: ShieldAlert, color: "text-destructive" },
+  finance: { label: "Finance", icon: ShieldCheck, color: "text-info" },
+  admin: { label: "Admin", icon: Shield, color: "text-warning" },
+  user: { label: "User", icon: UserIcon, color: "text-muted-foreground" },
+};
+
+const Users = () => {
+  const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive } = useUsers();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [divisionFilter, setDivisionFilter] = useState<string>("all");
+  const [editUser, setEditUser] = useState<UserWithRole | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Edit form state
+  const [editFullName, setEditFullName] = useState("");
+  const [editDivisionId, setEditDivisionId] = useState<string>("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState<AppRole>("user");
+  const [editIsActive, setEditIsActive] = useState(true);
+
+  const filteredUsers = users?.filter((user) => {
+    const matchesSearch =
+      user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesDivision = divisionFilter === "all" || user.division_id === divisionFilter;
+    return matchesSearch && matchesRole && matchesDivision;
+  }) || [];
+
+  const handleEditUser = (user: UserWithRole) => {
+    setEditUser(user);
+    setEditFullName(user.full_name);
+    setEditDivisionId(user.division_id || "");
+    setEditPhone(user.phone || "");
+    setEditRole(user.role || "user");
+    setEditIsActive(user.is_active);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveUser = async () => {
+    if (!editUser) return;
+
+    // Update profile
+    await updateUser.mutateAsync({
+      userId: editUser.id,
+      fullName: editFullName,
+      divisionId: editDivisionId || null,
+      phone: editPhone || null,
+      isActive: editIsActive,
+    });
+
+    // Update role if changed
+    if (editRole !== editUser.role) {
+      await updateUserRole.mutateAsync({
+        userId: editUser.id,
+        newRole: editRole,
+      });
+    }
+
+    setIsEditDialogOpen(false);
+    setEditUser(null);
+  };
+
+  const handleToggleActive = async (user: UserWithRole) => {
+    await toggleUserActive.mutateAsync({
+      userId: user.id,
+      isActive: !user.is_active,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground">Pengguna</h1>
+            <Badge className="bg-primary text-primary-foreground">
+              {users?.length || 0}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-1">
+            Kelola pengguna sistem dan hak akses
+          </p>
+        </div>
+        <Button className="gap-2">
+          <UserPlus className="h-4 w-4" />
+          Tambah Pengguna
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari nama atau email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Role</SelectItem>
+              <SelectItem value="super_admin">Super Admin</SelectItem>
+              <SelectItem value="finance">Finance</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="user">User</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Divisi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Divisi</SelectItem>
+              {divisions?.map((div) => (
+                <SelectItem key={div.id} value={div.id}>
+                  {div.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* User Cards */}
+      <div className="grid gap-4">
+        {filteredUsers.map((user) => {
+          const roleInfo = user.role ? roleConfig[user.role] : roleConfig.user;
+          const RoleIcon = roleInfo.icon;
+
+          return (
+            <div
+              key={user.id}
+              className={`bg-card rounded-xl border p-5 transition-all hover:shadow-card-hover ${
+                !user.is_active ? "opacity-60 border-muted" : "border-border"
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                {/* Avatar & Info */}
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg font-semibold text-primary">
+                      {user.full_name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-foreground truncate">
+                        {user.full_name}
+                      </h3>
+                      {!user.is_active && (
+                        <Badge variant="secondary" className="text-xs">
+                          Nonaktif
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {user.email}
+                    </p>
+                    {user.phone && (
+                      <p className="text-xs text-muted-foreground">{user.phone}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Role & Division */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <RoleIcon className={`h-4 w-4 ${roleInfo.color}`} />
+                    <span className="text-sm font-medium">{roleInfo.label}</span>
+                  </div>
+                  {user.division && (
+                    <Badge variant="outline" className="gap-1">
+                      <Building2 className="h-3 w-3" />
+                      {user.division.code}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit Pengguna
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleToggleActive(user)}>
+                      {user.is_active ? (
+                        <>
+                          <X className="h-4 w-4 mr-2" />
+                          Nonaktifkan
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Aktifkan
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {filteredUsers.length === 0 && (
+        <div className="bg-card rounded-xl border border-border p-12 text-center">
+          <UserIcon className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            Tidak Ada Pengguna
+          </h3>
+          <p className="text-muted-foreground">
+            Tidak ditemukan pengguna yang sesuai dengan filter.
+          </p>
+        </div>
+      )}
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Pengguna</DialogTitle>
+            <DialogDescription>
+              Perbarui informasi pengguna dan hak akses
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Nama Lengkap</Label>
+              <Input
+                id="fullName"
+                value={editFullName}
+                onChange={(e) => setEditFullName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="division">Divisi</Label>
+              <Select value={editDivisionId} onValueChange={setEditDivisionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih divisi" />
+                </SelectTrigger>
+                <SelectContent>
+                  {divisions?.map((div) => (
+                    <SelectItem key={div.id} value={div.id}>
+                      {div.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telepon</Label>
+              <Input
+                id="phone"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="+62..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select value={editRole} onValueChange={(v) => setEditRole(v as AppRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+              {editRole === "super_admin" && (
+                <p className="text-xs text-warning">
+                  Super Admin akan memerlukan verifikasi OTP saat login
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="isActive">Status Aktif</Label>
+                <p className="text-xs text-muted-foreground">
+                  Pengguna nonaktif tidak dapat login
+                </p>
+              </div>
+              <Switch
+                id="isActive"
+                checked={editIsActive}
+                onCheckedChange={setEditIsActive}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveUser}
+              disabled={updateUser.isPending || updateUserRole.isPending}
+            >
+              Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Users;

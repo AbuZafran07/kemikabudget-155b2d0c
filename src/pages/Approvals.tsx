@@ -1,16 +1,17 @@
 import { useState } from "react";
 import {
   Search,
-  Filter,
   CheckCircle,
   XCircle,
   Clock,
   AlertTriangle,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -18,76 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import StatusBadge from "@/components/common/StatusBadge";
-
-interface ApprovalItem {
-  id: string;
-  number: string;
-  date: string;
-  division: string;
-  category: string;
-  description: string;
-  amount: number;
-  requester: string;
-  submittedAt: string;
-  isOverdue: boolean;
-  daysPending: number;
-}
-
-const mockApprovals: ApprovalItem[] = [
-  {
-    id: "1",
-    number: "REQ-2026-0045",
-    date: "2026-01-13",
-    division: "HRGA",
-    category: "Transport",
-    description: "Transport meeting client Surabaya",
-    amount: 2500000,
-    requester: "Ahmad Rizki",
-    submittedAt: "2 jam lalu",
-    isOverdue: false,
-    daysPending: 0,
-  },
-  {
-    id: "2",
-    number: "REQ-2026-0044",
-    date: "2026-01-12",
-    division: "PURCHASING",
-    category: "Office Supplies",
-    description: "Pembelian ATK kantor bulanan",
-    amount: 1850000,
-    requester: "Siti Nurhaliza",
-    submittedAt: "1 hari lalu",
-    isOverdue: false,
-    daysPending: 1,
-  },
-  {
-    id: "3",
-    number: "REQ-2026-0043",
-    date: "2026-01-10",
-    division: "TECH SALES",
-    category: "Training",
-    description: "Sertifikasi produk baru",
-    amount: 15000000,
-    requester: "Budi Santoso",
-    submittedAt: "3 hari lalu",
-    isOverdue: false,
-    daysPending: 3,
-  },
-  {
-    id: "4",
-    number: "REQ-2026-0040",
-    date: "2026-01-08",
-    division: "MARKETING",
-    category: "Entertainment",
-    description: "Client entertainment Q1",
-    amount: 5000000,
-    requester: "Dewi Lestari",
-    submittedAt: "5 hari lalu",
-    isOverdue: true,
-    daysPending: 5,
-  },
-];
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useApprovals, ApprovalRequest } from "@/hooks/useApprovals";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -99,19 +41,90 @@ const formatCurrency = (value: number) => {
 };
 
 const Approvals = () => {
+  const {
+    approvals,
+    isLoading,
+    approveRequest,
+    rejectRequest,
+    overdueCount,
+    totalPending,
+  } = useApprovals();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
+  
+  // Dialog states
+  const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
 
-  const filteredApprovals = mockApprovals.filter((item) => {
+  const filteredApprovals = approvals?.filter((item) => {
     const matchesSearch =
-      item.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.request_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDivision =
-      divisionFilter === "all" || item.division === divisionFilter;
+      divisionFilter === "all" || item.divisions?.code === divisionFilter;
     return matchesSearch && matchesDivision;
-  });
+  }) || [];
 
-  const overdueCount = mockApprovals.filter((a) => a.isOverdue).length;
+  // Get unique divisions from approvals
+  const divisions = [...new Set(approvals?.map(a => a.divisions?.code).filter(Boolean))] as string[];
+
+  const handleApprove = (request: ApprovalRequest) => {
+    setSelectedRequest(request);
+    setApprovalNote("");
+    setIsApproveDialogOpen(true);
+  };
+
+  const handleReject = (request: ApprovalRequest) => {
+    setSelectedRequest(request);
+    setRejectionReason("");
+    setIsRejectDialogOpen(true);
+  };
+
+  const confirmApprove = async () => {
+    if (!selectedRequest) return;
+    
+    // Check if amount > 50M requires note
+    if (selectedRequest.amount > 50000000 && !approvalNote.trim()) {
+      return; // Will show error in the UI
+    }
+
+    await approveRequest.mutateAsync({
+      requestId: selectedRequest.id,
+      note: approvalNote || undefined,
+    });
+
+    setIsApproveDialogOpen(false);
+    setSelectedRequest(null);
+  };
+
+  const confirmReject = async () => {
+    if (!selectedRequest || !rejectionReason.trim()) return;
+
+    await rejectRequest.mutateAsync({
+      requestId: selectedRequest.id,
+      reason: rejectionReason,
+    });
+
+    setIsRejectDialogOpen(false);
+    setSelectedRequest(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -121,7 +134,7 @@ const Approvals = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">Persetujuan</h1>
             <Badge className="bg-primary text-primary-foreground">
-              {mockApprovals.length}
+              {totalPending}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
@@ -156,18 +169,13 @@ const Approvals = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua Divisi</SelectItem>
-              <SelectItem value="HRGA">HRGA</SelectItem>
-              <SelectItem value="FINANCE">Finance</SelectItem>
-              <SelectItem value="MARKETING">Marketing</SelectItem>
-              <SelectItem value="TECH SALES">Tech Sales</SelectItem>
-              <SelectItem value="PURCHASING">Purchasing</SelectItem>
-              <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
+              {divisions.map((div) => (
+                <SelectItem key={div} value={div}>
+                  {div}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
         </div>
       </div>
 
@@ -185,10 +193,10 @@ const Approvals = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
                   <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
-                    {item.number}
+                    {item.request_number}
                   </code>
                   <Badge variant="outline" className="text-xs">
-                    {item.division}
+                    {item.divisions?.code || 'N/A'}
                   </Badge>
                   {item.isOverdue && (
                     <Badge variant="destructive" className="text-xs gap-1">
@@ -196,18 +204,24 @@ const Approvals = () => {
                       Overdue
                     </Badge>
                   )}
+                  {item.amount > 50000000 && (
+                    <Badge variant="secondary" className="text-xs gap-1 bg-warning/10 text-warning">
+                      <MessageSquare className="h-3 w-3" />
+                      Perlu Catatan
+                    </Badge>
+                  )}
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-1">
                   {item.description}
                 </h3>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span>Kategori: {item.category}</span>
+                  <span>Kategori: {item.cost_categories?.name || 'N/A'}</span>
                   <span>•</span>
-                  <span>Oleh: {item.requester}</span>
+                  <span>Oleh: {item.profiles?.full_name || 'N/A'}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5" />
-                    {item.submittedAt}
+                    {item.daysPending} hari pending
                   </span>
                 </div>
               </div>
@@ -218,7 +232,7 @@ const Approvals = () => {
                   {formatCurrency(item.amount)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {item.daysPending} hari pending
+                  {item.vendor || 'Tanpa vendor'}
                 </p>
               </div>
 
@@ -227,11 +241,21 @@ const Approvals = () => {
                 <Button
                   variant="outline"
                   className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReject(item);
+                  }}
                 >
                   <XCircle className="h-4 w-4" />
                   Tolak
                 </Button>
-                <Button className="gap-2">
+                <Button
+                  className="gap-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleApprove(item);
+                  }}
+                >
                   <CheckCircle className="h-4 w-4" />
                   Setujui
                 </Button>
@@ -253,6 +277,120 @@ const Approvals = () => {
           </p>
         </div>
       )}
+
+      {/* Approve Dialog */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Setujui Pengajuan</DialogTitle>
+            <DialogDescription>
+              {selectedRequest && (
+                <>
+                  Anda akan menyetujui pengajuan{" "}
+                  <strong>{selectedRequest.request_number}</strong> sebesar{" "}
+                  <strong>{formatCurrency(selectedRequest.amount)}</strong>.
+                  <br />
+                  <span className="text-warning">
+                    Anggaran divisi akan dikurangi sesuai jumlah ini.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="approvalNote">
+                Catatan Persetujuan
+                {selectedRequest && selectedRequest.amount > 50000000 && (
+                  <span className="text-destructive ml-1">*</span>
+                )}
+              </Label>
+              <Textarea
+                id="approvalNote"
+                placeholder="Tambahkan catatan..."
+                value={approvalNote}
+                onChange={(e) => setApprovalNote(e.target.value)}
+                rows={3}
+              />
+              {selectedRequest && selectedRequest.amount > 50000000 && !approvalNote.trim() && (
+                <p className="text-xs text-destructive">
+                  Catatan wajib untuk pengajuan di atas Rp 50.000.000
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              onClick={confirmApprove}
+              disabled={
+                approveRequest.isPending ||
+                (selectedRequest && selectedRequest.amount > 50000000 && !approvalNote.trim())
+              }
+              className="gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Setujui
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tolak Pengajuan</DialogTitle>
+            <DialogDescription>
+              {selectedRequest && (
+                <>
+                  Anda akan menolak pengajuan{" "}
+                  <strong>{selectedRequest.request_number}</strong>.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejectionReason">
+                Alasan Penolakan <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="rejectionReason"
+                placeholder="Jelaskan alasan penolakan..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+              />
+              {!rejectionReason.trim() && (
+                <p className="text-xs text-destructive">
+                  Alasan penolakan wajib diisi
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmReject}
+              disabled={rejectRequest.isPending || !rejectionReason.trim()}
+              className="gap-2"
+            >
+              <XCircle className="h-4 w-4" />
+              Tolak
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

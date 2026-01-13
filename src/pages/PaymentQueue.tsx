@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   Search,
-  Filter,
   CreditCard,
   CheckCircle,
   Clock,
@@ -10,11 +9,13 @@ import {
   ChevronRight,
   Building2,
   Wallet,
+  FileCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,70 +23,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface PaymentItem {
-  id: string;
-  number: string;
-  date: string;
-  division: string;
-  category: string;
-  description: string;
-  amount: number;
-  fundingSource: "petty_cash" | "bank_bca" | "bank_mandiri";
-  requester: string;
-  approvedAt: string;
-  hasInvoice: boolean;
-  hasQuotation: boolean;
-  isOverdue: boolean;
-}
-
-const mockPayments: PaymentItem[] = [
-  {
-    id: "1",
-    number: "REQ-2026-0040",
-    date: "2026-01-10",
-    division: "MARKETING",
-    category: "Entertainment",
-    description: "Client entertainment Q1",
-    amount: 5000000,
-    fundingSource: "petty_cash",
-    requester: "Dewi Lestari",
-    approvedAt: "1 hari lalu",
-    hasInvoice: true,
-    hasQuotation: true,
-    isOverdue: false,
-  },
-  {
-    id: "2",
-    number: "REQ-2026-0038",
-    date: "2026-01-09",
-    division: "HRGA",
-    category: "Maintenance",
-    description: "Service AC kantor lantai 3",
-    amount: 3200000,
-    fundingSource: "bank_bca",
-    requester: "Eko Prasetyo",
-    approvedAt: "2 hari lalu",
-    hasInvoice: false,
-    hasQuotation: true,
-    isOverdue: false,
-  },
-  {
-    id: "3",
-    number: "REQ-2026-0035",
-    date: "2026-01-07",
-    division: "TECH SALES",
-    category: "Training",
-    description: "Workshop sertifikasi AWS",
-    amount: 25000000,
-    fundingSource: "bank_mandiri",
-    requester: "Budi Santoso",
-    approvedAt: "4 hari lalu",
-    hasInvoice: true,
-    hasQuotation: false,
-    isOverdue: true,
-  },
-];
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { usePaymentQueue, PaymentRequest } from "@/hooks/usePaymentQueue";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -96,25 +44,42 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const fundingSourceConfig = {
+const fundingSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   petty_cash: { label: "Kas Kecil", icon: Wallet, color: "text-success" },
-  bank_bca: { label: "Bank BCA", icon: Building2, color: "text-info" },
-  bank_mandiri: { label: "Bank Mandiri", icon: Building2, color: "text-primary" },
+  bank: { label: "Bank", icon: Building2, color: "text-info" },
 };
 
 const PaymentQueue = () => {
+  const {
+    payments,
+    fundingSources,
+    isLoading,
+    payRequest,
+    overdueCount,
+    totalPending,
+    totalAmount,
+  } = usePaymentQueue();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
-  const filteredPayments = mockPayments.filter((item) => {
+  // Dialog state
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRequest | null>(null);
+  const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
+  const [paymentNote, setPaymentNote] = useState("");
+
+  const filteredPayments = payments?.filter((item) => {
     const matchesSearch =
-      item.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.request_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSource =
-      sourceFilter === "all" || item.fundingSource === sourceFilter;
+    
+    const matchesSource = sourceFilter === "all" || 
+      (sourceFilter === "petty_cash" && item.funding_sources?.type === "petty_cash") ||
+      (sourceFilter === "bank" && item.funding_sources?.type === "bank");
+    
     return matchesSearch && matchesSource;
-  });
+  }) || [];
 
   const toggleSelection = (id: string) => {
     setSelectedItems((prev) =>
@@ -134,6 +99,38 @@ const PaymentQueue = () => {
     .filter((p) => selectedItems.includes(p.id))
     .reduce((sum, p) => sum + p.amount, 0);
 
+  const handlePay = (payment: PaymentRequest) => {
+    setSelectedPayment(payment);
+    setPaymentNote("");
+    setIsPayDialogOpen(true);
+  };
+
+  const confirmPay = async () => {
+    if (!selectedPayment) return;
+
+    await payRequest.mutateAsync({
+      requestId: selectedPayment.id,
+      note: paymentNote || undefined,
+    });
+
+    setIsPayDialogOpen(false);
+    setSelectedPayment(null);
+    setSelectedItems(prev => prev.filter(id => id !== selectedPayment.id));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       {/* Header */}
@@ -144,24 +141,32 @@ const PaymentQueue = () => {
               Antrian Pembayaran
             </h1>
             <Badge className="bg-primary text-primary-foreground">
-              {mockPayments.length}
+              {totalPending}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            Pengajuan yang disetujui siap untuk dibayar
+            Pengajuan yang disetujui siap untuk dibayar • Total: {formatCurrency(totalAmount)}
           </p>
         </div>
-        {selectedItems.length > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {selectedItems.length} dipilih • {formatCurrency(selectedTotal)}
-            </span>
-            <Button className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              Batch Payment
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {overdueCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">{overdueCount} overdue</span>
+            </div>
+          )}
+          {selectedItems.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {selectedItems.length} dipilih • {formatCurrency(selectedTotal)}
+              </span>
+              <Button className="gap-2">
+                <CreditCard className="h-4 w-4" />
+                Batch Payment
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -183,8 +188,7 @@ const PaymentQueue = () => {
             <SelectContent>
               <SelectItem value="all">Semua Sumber</SelectItem>
               <SelectItem value="petty_cash">Kas Kecil</SelectItem>
-              <SelectItem value="bank_bca">Bank BCA</SelectItem>
-              <SelectItem value="bank_mandiri">Bank Mandiri</SelectItem>
+              <SelectItem value="bank">Bank</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" className="gap-2">
@@ -196,19 +200,22 @@ const PaymentQueue = () => {
 
       {/* Payment Cards */}
       <div className="space-y-4">
-        <div className="flex items-center gap-3 px-2">
-          <Checkbox
-            checked={
-              selectedItems.length === filteredPayments.length &&
-              filteredPayments.length > 0
-            }
-            onCheckedChange={selectAll}
-          />
-          <span className="text-sm text-muted-foreground">Pilih Semua</span>
-        </div>
+        {filteredPayments.length > 0 && (
+          <div className="flex items-center gap-3 px-2">
+            <Checkbox
+              checked={
+                selectedItems.length === filteredPayments.length &&
+                filteredPayments.length > 0
+              }
+              onCheckedChange={selectAll}
+            />
+            <span className="text-sm text-muted-foreground">Pilih Semua</span>
+          </div>
+        )}
 
         {filteredPayments.map((item) => {
-          const sourceConfig = fundingSourceConfig[item.fundingSource];
+          const sourceType = item.funding_sources?.type || 'bank';
+          const sourceConfig = fundingSourceConfig[sourceType] || fundingSourceConfig.bank;
           const SourceIcon = sourceConfig.icon;
 
           return (
@@ -234,15 +241,15 @@ const PaymentQueue = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
                     <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
-                      {item.number}
+                      {item.request_number}
                     </code>
                     <Badge variant="outline" className="text-xs">
-                      {item.division}
+                      {item.divisions?.code || 'N/A'}
                     </Badge>
                     <div className={`flex items-center gap-1 ${sourceConfig.color}`}>
                       <SourceIcon className="h-3.5 w-3.5" />
                       <span className="text-xs font-medium">
-                        {sourceConfig.label}
+                        {item.funding_sources?.name || sourceConfig.label}
                       </span>
                     </div>
                     {item.isOverdue && (
@@ -256,11 +263,11 @@ const PaymentQueue = () => {
                     {item.description}
                   </h3>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <span>Oleh: {item.requester}</span>
+                    <span>Oleh: {item.profiles?.full_name || 'N/A'}</span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
                       <CheckCircle className="h-3.5 w-3.5 text-success" />
-                      Approved {item.approvedAt}
+                      Approved {item.daysSinceApproval} hari lalu
                     </span>
                   </div>
 
@@ -290,6 +297,12 @@ const PaymentQueue = () => {
                       )}
                       Quotation
                     </div>
+                    {item.beneficiary_name && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Building2 className="h-3.5 w-3.5" />
+                        {item.beneficiary_bank} • {item.beneficiary_account?.slice(-4).padStart(item.beneficiary_account.length, '•')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -298,11 +311,20 @@ const PaymentQueue = () => {
                   <p className="text-2xl font-bold text-foreground">
                     {formatCurrency(item.amount)}
                   </p>
+                  <p className="text-sm text-muted-foreground">
+                    {item.vendor || 'Tanpa vendor'}
+                  </p>
                 </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 lg:border-l lg:border-border lg:pl-4">
-                  <Button className="gap-2">
+                  <Button 
+                    className="gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePay(item);
+                    }}
+                  >
                     <CreditCard className="h-4 w-4" />
                     Bayar
                   </Button>
@@ -325,6 +347,93 @@ const PaymentQueue = () => {
           </p>
         </div>
       )}
+
+      {/* Pay Dialog */}
+      <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Proses Pembayaran</DialogTitle>
+            <DialogDescription>
+              {selectedPayment && (
+                <>
+                  Anda akan memproses pembayaran untuk{" "}
+                  <strong>{selectedPayment.request_number}</strong> sebesar{" "}
+                  <strong>{formatCurrency(selectedPayment.amount)}</strong>.
+                  <br />
+                  <span className="text-warning">
+                    Dana akan dikurangi dari {selectedPayment.funding_sources?.name || 'sumber dana'}.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Payment Details */}
+            {selectedPayment?.beneficiary_name && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Detail Penerima
+                </h4>
+                <div className="text-sm space-y-1">
+                  <p><span className="text-muted-foreground">Nama:</span> {selectedPayment.beneficiary_name}</p>
+                  <p><span className="text-muted-foreground">Bank:</span> {selectedPayment.beneficiary_bank}</p>
+                  <p><span className="text-muted-foreground">Rekening:</span> {selectedPayment.beneficiary_account}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Document Checklist */}
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <FileCheck className="h-4 w-4" />
+                Kelengkapan Dokumen
+              </h4>
+              <div className="flex gap-4">
+                <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasInvoice ? "text-success" : "text-warning"}`}>
+                  {selectedPayment?.hasInvoice ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                  Invoice
+                </div>
+                <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasQuotation ? "text-success" : "text-warning"}`}>
+                  {selectedPayment?.hasQuotation ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                  Quotation
+                </div>
+              </div>
+              {(!selectedPayment?.hasInvoice && !selectedPayment?.hasQuotation) && (
+                <p className="text-xs text-warning">
+                  Perhatian: Tidak ada invoice atau quotation. Pembayaran tetap dapat diproses dengan catatan.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="paymentNote">Catatan Pembayaran</Label>
+              <Textarea
+                id="paymentNote"
+                placeholder="Tambahkan catatan pembayaran..."
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPayDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              onClick={confirmPay}
+              disabled={payRequest.isPending}
+              className="gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              Proses Pembayaran
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

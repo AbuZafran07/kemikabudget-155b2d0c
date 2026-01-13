@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_movements: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          description: string | null
+          division_budget_id: string
+          id: string
+          movement_type: string
+          performed_by: string
+          request_id: string | null
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          description?: string | null
+          division_budget_id: string
+          id?: string
+          movement_type: string
+          performed_by: string
+          request_id?: string | null
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          description?: string | null
+          division_budget_id?: string
+          id?: string
+          movement_type?: string
+          performed_by?: string
+          request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_movements_division_budget_id_fkey"
+            columns: ["division_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_movements_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_periods: {
         Row: {
           created_at: string
@@ -532,6 +586,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_user: {
+        Args: {
+          p_division_id: string
+          p_email: string
+          p_full_name: string
+          p_phone?: string
+          p_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: Json
+      }
+      approve_request: {
+        Args: { p_approval_note?: string; p_request_id: string }
+        Returns: Json
+      }
       can_access_division: {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean
@@ -548,6 +616,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      pay_request: {
+        Args: { p_payment_note?: string; p_request_id: string }
+        Returns: Json
+      }
+      reject_request: {
+        Args: { p_rejection_reason: string; p_request_id: string }
+        Returns: Json
+      }
+      settle_request: { Args: { p_request_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "super_admin" | "finance" | "admin" | "user"
