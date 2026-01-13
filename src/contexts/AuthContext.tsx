@@ -164,37 +164,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Verify OTP against the database-stored secret using server-side validation
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('otp_secret')
-        .eq('id', pendingOtpUserId)
-        .single();
-
-      if (error || !data?.otp_secret) {
-        // If no OTP secret configured, fall back to temporary verification
-        // This allows initial setup while maintaining security
-        console.warn('OTP secret not configured for user');
-        return { error: new Error('OTP verification failed. Please contact administrator.') };
-      }
-
-      // Server-side TOTP validation via RPC function
-      const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_user_otp', {
-        p_user_id: pendingOtpUserId,
-        p_otp_code: otp,
+      // Use edge function for secure server-side OTP verification with rate limiting
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: {
+          action: 'verify',
+          userId: pendingOtpUserId,
+          otp: otp,
+        },
       });
 
-      if (verifyError) {
-        console.error('OTP verification error:', verifyError);
+      if (error) {
+        console.error('OTP verification error:', error);
         return { error: new Error('OTP verification failed') };
       }
 
-      if (verifyResult === true) {
+      if (data?.success === true) {
         setPendingOtpUserId(null);
         return { error: null };
       }
 
-      return { error: new Error('Invalid OTP code') };
+      if (data?.rateLimited) {
+        return { error: new Error('Too many attempts. Please wait 5 minutes.') };
+      }
+
+      return { error: new Error(data?.error || 'Invalid OTP code') };
     } catch (err) {
       console.error('OTP verification error:', err);
       return { error: new Error('OTP verification failed') };

@@ -2,3 +2,9 @@ project_id = "yjwokrecbsorkwukiohi"
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
+
+[functions.upload-attachment]
+verify_jwt = false
