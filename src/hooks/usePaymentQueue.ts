@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays } from 'date-fns';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 export interface PaymentRequest {
   id: string;
@@ -39,6 +40,7 @@ export function usePaymentQueue() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { notifyPaid } = useNotifications();
+  const { logRequestEvent } = useAuditLog();
 
   // Fetch approved requests pending payment
   const { data: payments, isLoading, refetch } = useQuery({
@@ -140,13 +142,17 @@ export function usePaymentQueue() {
       queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
         title: 'Pembayaran Berhasil',
         description: result.message || 'Pembayaran telah diproses dan dana telah dikurangi',
       });
 
-      // Send email notification to requester
+      // Log audit event
       if (requestData) {
+        logRequestEvent('paid', requestData.id, requestData.request_number);
+        
+        // Send email notification to requester
         notifyPaid({
           id: requestData.id,
           request_number: requestData.request_number,
@@ -181,9 +187,10 @@ export function usePaymentQueue() {
 
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (_, requestId) => {
       queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
         title: 'Selesai',
         description: 'Pengajuan telah diselesaikan',

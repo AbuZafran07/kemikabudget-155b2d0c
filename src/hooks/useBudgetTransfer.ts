@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 export interface BudgetTransfer {
   id: string;
@@ -40,6 +41,7 @@ export function useBudgetTransfer() {
   const { user, profile, role } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { logBudgetTransfer } = useAuditLog();
 
   // Get transfers based on user role
   const { data: transfers = [], isLoading: isLoadingTransfers } = useQuery({
@@ -149,9 +151,10 @@ export function useBudgetTransfer() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['budget-transfers'] });
       toast({ title: 'Transfer berhasil dibuat' });
+      logBudgetTransfer('created', data.id, data.transfer_number);
     },
     onError: (error) => {
       toast({
@@ -178,9 +181,11 @@ export function useBudgetTransfer() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['budget-transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-transfers'] });
       toast({ title: 'Transfer berhasil diajukan' });
+      logBudgetTransfer('submitted', data.id, data.transfer_number);
     },
     onError: (error) => {
       toast({
@@ -202,9 +207,11 @@ export function useBudgetTransfer() {
       if (!result.success) throw new Error(result.error || 'Unknown error');
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (_, transferId) => {
       queryClient.invalidateQueries({ queryKey: ['budget-transfers'] });
       queryClient.invalidateQueries({ queryKey: ['division-budgets'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({ title: 'Transfer berhasil disetujui' });
     },
     onError: (error) => {
@@ -230,8 +237,9 @@ export function useBudgetTransfer() {
       if (!result.success) throw new Error(result.error || 'Unknown error');
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (_, { transferId, reason }) => {
       queryClient.invalidateQueries({ queryKey: ['budget-transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-transfers'] });
       toast({ title: 'Transfer berhasil ditolak' });
     },
     onError: (error) => {

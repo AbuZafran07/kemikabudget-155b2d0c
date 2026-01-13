@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays } from 'date-fns';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 export interface ApprovalRequest {
   id: string;
@@ -31,6 +32,7 @@ export function useApprovals() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { notifyApproved, notifyRejected } = useNotifications();
+  const { logRequestEvent } = useAuditLog();
 
   // Fetch pending approvals
   const { data: approvals, isLoading, refetch } = useQuery({
@@ -102,13 +104,17 @@ export function useApprovals() {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['division_budgets'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
         title: 'Disetujui',
         description: result.message || 'Pengajuan berhasil disetujui dan anggaran telah dikurangi',
       });
 
-      // Send email notification to requester
+      // Log audit event
       if (requestData) {
+        logRequestEvent('approved', requestData.id, requestData.request_number);
+        
+        // Send email notification to requester
         notifyApproved({
           id: requestData.id,
           request_number: requestData.request_number,
@@ -154,13 +160,17 @@ export function useApprovals() {
     onSuccess: ({ requestData, reason }) => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
         title: 'Ditolak',
         description: 'Pengajuan telah ditolak',
       });
 
-      // Send email notification to requester
+      // Log audit event
       if (requestData) {
+        logRequestEvent('rejected', requestData.id, requestData.request_number, reason);
+        
+        // Send email notification to requester
         notifyRejected({
           id: requestData.id,
           request_number: requestData.request_number,
