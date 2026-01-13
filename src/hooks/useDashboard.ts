@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
 
 export interface DashboardKpis {
   totalBudget: number;
@@ -55,7 +56,48 @@ function formatTimeAgo(dateString: string): string {
 
 export function useDashboard() {
   const { user, profile, role } = useAuth();
+  const queryClient = useQueryClient();
   const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
+
+  // Set up real-time subscriptions for dashboard updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requests',
+        },
+        () => {
+          // Invalidate dashboard queries on any request change
+          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-pending-approvals'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-pending-payments'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-category-spend'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'division_budgets',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-monthly-data'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
 
   // Get KPIs
   const { data: kpis, isLoading: isLoadingKpis } = useQuery({

@@ -34,6 +34,13 @@ import {
 import { Label } from "@/components/ui/label";
 import { usePaymentQueue, PaymentRequest } from "@/hooks/usePaymentQueue";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import {
+  generatePaymentCSV,
+  downloadCSV,
+  generateBatchPaymentFilename,
+  PaymentExportRow,
+} from "@/lib/exportUtils";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -60,6 +67,8 @@ const PaymentQueue = () => {
     totalAmount,
   } = usePaymentQueue();
 
+  const { toast } = useToast();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -68,6 +77,7 @@ const PaymentQueue = () => {
   const [selectedPayment, setSelectedPayment] = useState<PaymentRequest | null>(null);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [paymentNote, setPaymentNote] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   const filteredPayments = payments?.filter((item) => {
     const matchesSearch =
@@ -118,6 +128,100 @@ const PaymentQueue = () => {
     setSelectedItems(prev => prev.filter(id => id !== selectedPayment.id));
   };
 
+  const handleExportSelected = () => {
+    if (selectedItems.length === 0) {
+      toast({
+        title: 'Tidak ada item dipilih',
+        description: 'Pilih satu atau lebih pembayaran untuk diekspor',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const selectedPayments = filteredPayments.filter((p) => selectedItems.includes(p.id));
+      
+      const exportData: PaymentExportRow[] = selectedPayments.map((p) => ({
+        request_number: p.request_number,
+        description: p.description,
+        division_name: p.divisions?.name || 'N/A',
+        category_name: p.cost_categories?.name || 'N/A',
+        amount: p.amount,
+        vendor: p.vendor,
+        funding_source: p.funding_sources?.name || 'N/A',
+        beneficiary_name: p.beneficiary_name,
+        beneficiary_bank: p.beneficiary_bank,
+        beneficiary_account: p.beneficiary_account,
+        requester_name: p.profiles?.full_name || 'N/A',
+        approved_at: p.approved_at,
+      }));
+
+      const csv = generatePaymentCSV(exportData);
+      const filename = generateBatchPaymentFilename(selectedItems.length);
+      downloadCSV(csv, filename);
+
+      toast({
+        title: 'Export berhasil',
+        description: `${selectedItems.length} pembayaran berhasil diekspor ke CSV`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Export gagal',
+        description: 'Terjadi kesalahan saat mengekspor data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportAll = () => {
+    if (!filteredPayments.length) {
+      toast({
+        title: 'Tidak ada data',
+        description: 'Tidak ada pembayaran untuk diekspor',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const exportData: PaymentExportRow[] = filteredPayments.map((p) => ({
+        request_number: p.request_number,
+        description: p.description,
+        division_name: p.divisions?.name || 'N/A',
+        category_name: p.cost_categories?.name || 'N/A',
+        amount: p.amount,
+        vendor: p.vendor,
+        funding_source: p.funding_sources?.name || 'N/A',
+        beneficiary_name: p.beneficiary_name,
+        beneficiary_bank: p.beneficiary_bank,
+        beneficiary_account: p.beneficiary_account,
+        requester_name: p.profiles?.full_name || 'N/A',
+        approved_at: p.approved_at,
+      }));
+
+      const csv = generatePaymentCSV(exportData);
+      const filename = generateBatchPaymentFilename(filteredPayments.length);
+      downloadCSV(csv, filename);
+
+      toast({
+        title: 'Export berhasil',
+        description: `${filteredPayments.length} pembayaran berhasil diekspor ke CSV`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Export gagal',
+        description: 'Terjadi kesalahan saat mengekspor data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -160,6 +264,15 @@ const PaymentQueue = () => {
               <span className="text-sm text-muted-foreground">
                 {selectedItems.length} dipilih • {formatCurrency(selectedTotal)}
               </span>
+              <Button 
+                variant="outline"
+                className="gap-2"
+                onClick={handleExportSelected}
+                disabled={isExporting}
+              >
+                <Download className="h-4 w-4" />
+                Export Terpilih
+              </Button>
               <Button className="gap-2">
                 <CreditCard className="h-4 w-4" />
                 Batch Payment
@@ -191,7 +304,12 @@ const PaymentQueue = () => {
               <SelectItem value="bank">Bank</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleExportAll}
+            disabled={isExporting || !filteredPayments.length}
+          >
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
