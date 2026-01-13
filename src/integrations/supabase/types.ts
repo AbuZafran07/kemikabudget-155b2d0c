@@ -939,6 +939,53 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles_secure: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          division_id: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          is_active: boolean | null
+          phone: string | null
+          requires_otp: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          division_id?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          phone?: string | null
+          requires_otp?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          division_id?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          phone?: string | null
+          requires_otp?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_create_user: {
@@ -972,6 +1019,7 @@ export type Database = {
         Returns: Json
       }
       get_user_division_id: { Args: { _user_id: string }; Returns: string }
+      get_user_otp_secret: { Args: { p_user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -994,6 +1042,10 @@ export type Database = {
       reject_request: {
         Args: { p_rejection_reason: string; p_request_id: string }
         Returns: Json
+      }
+      set_user_otp_secret: {
+        Args: { p_secret: string; p_user_id: string }
+        Returns: boolean
       }
       settle_request: { Args: { p_request_id: string }; Returns: Json }
       topup_petty_cash: {
