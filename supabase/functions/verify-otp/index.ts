@@ -4,6 +4,97 @@ import { getCorsHeaders, isValidUUID } from '../_shared/cors.ts';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
+// RFC 6238 compliant TOTP implementation using HMAC-SHA1
+// Base32 decoding for OTP secrets
+function base32Decode(encoded: string): Uint8Array {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const cleanInput = encoded.toUpperCase().replace(/[^A-Z2-7]/g, '');
+  
+  let bits = '';
+  for (const char of cleanInput) {
+    const index = alphabet.indexOf(char);
+    if (index === -1) continue;
+    bits += index.toString(2).padStart(5, '0');
+  }
+  
+  const bytes = new Uint8Array(Math.floor(bits.length / 8));
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(bits.slice(i * 8, (i + 1) * 8), 2);
+  }
+  
+  return bytes;
+}
+
+// Generate HMAC-SHA1 hash (RFC 2104)
+async function hmacSha1(key: Uint8Array, message: Uint8Array): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key.buffer as ArrayBuffer,
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, message.buffer as ArrayBuffer);
+  return new Uint8Array(signature);
+}
+
+// Convert counter to 8-byte big-endian buffer
+function counterToBytes(counter: number): Uint8Array {
+  const buffer = new Uint8Array(8);
+  let remaining = counter;
+  
+  for (let i = 7; i >= 0; i--) {
+    buffer[i] = remaining & 0xff;
+    remaining = Math.floor(remaining / 256);
+  }
+  
+  return buffer;
+}
+
+// RFC 6238 TOTP verification
+async function verifyTOTP(
+  secret: string, 
+  token: string, 
+  window: number = 1
+): Promise<boolean> {
+  const timeStep = 30;
+  const currentTime = Math.floor(Date.now() / 1000);
+  const counter = Math.floor(currentTime / timeStep);
+  
+  // Decode base32 secret
+  const secretBytes = base32Decode(secret);
+  
+  // Check current window and adjacent windows for clock drift tolerance
+  for (let i = -window; i <= window; i++) {
+    const testCounter = counter + i;
+    const expectedToken = await generateHOTP(secretBytes, testCounter);
+    
+    if (expectedToken === token) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Generate HOTP code (RFC 4226)
+async function generateHOTP(secret: Uint8Array, counter: number): Promise<string> {
+  const counterBytes = counterToBytes(counter);
+  const hmac = await hmacSha1(secret, counterBytes);
+  
+  // Dynamic truncation (RFC 4226 Section 5.3)
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code = (
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff)
+  ) % 1000000;
+  
+  return code.toString().padStart(6, '0');
+}
+
 // Database-backed rate limiting
 async function checkRateLimit(
   userId: string, 
@@ -48,9 +139,9 @@ async function resetRateLimit(userId: string, supabase: SupabaseClient): Promise
   }
 }
 
-// Generate new OTP secret (base32 encoded)
+// Generate new OTP secret (base32 encoded, 160-bit for SHA1)
 function generateOtpSecret(): string {
-  const bytes = new Uint8Array(20);
+  const bytes = new Uint8Array(20); // 160 bits for HMAC-SHA1
   crypto.getRandomValues(bytes);
   
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -75,6 +166,29 @@ function getProgressiveDelay(attemptCount: number): number {
   return Math.min(1000 * Math.pow(2, Math.max(0, MAX_ATTEMPTS - attemptCount - 1)), 8000);
 }
 
+// Get user's OTP secret from database
+async function getUserOtpSecret(userId: string, supabase: SupabaseClient): Promise<string | null> {
+  // Try otp_secrets table first
+  const { data: secretData } = await supabase
+    .from('otp_secrets')
+    .select('secret')
+    .eq('user_id', userId)
+    .single();
+  
+  if (secretData?.secret) {
+    return secretData.secret;
+  }
+  
+  // Fall back to profiles table during migration
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('otp_secret')
+    .eq('id', userId)
+    .single();
+  
+  return profileData?.otp_secret || null;
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -91,7 +205,7 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { action, userId, otp } = await req.json();
-    console.log(`[verify-otp] Action: ${action}`);
+    console.log(`[verify-otp] Action: ${action}, using RFC 6238 HMAC-SHA1`);
 
     // Validate action
     if (!action || !['verify', 'generate-secret'].includes(action)) {
@@ -151,32 +265,32 @@ Deno.serve(async (req: Request) => {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
-      // Verify OTP using database RPC function
-      const { data: isValid, error: verifyError } = await supabase.rpc('verify_user_otp', {
-        p_user_id: userId,
-        p_otp_code: otp,
-      });
-
-      if (verifyError) {
-        console.error('[verify-otp] Verification error:', verifyError);
+      // Get user's OTP secret
+      const secret = await getUserOtpSecret(userId, supabase);
+      
+      if (!secret) {
+        console.log(`[verify-otp] No OTP secret found for user`);
         return new Response(
-          JSON.stringify({ success: false, error: 'Verification failed' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          JSON.stringify({ success: false, error: 'OTP not configured' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
 
-      if (isValid === true) {
+      // Verify OTP using RFC 6238 compliant HMAC-SHA1
+      const isValid = await verifyTOTP(secret, otp, 1); // Allow 1 window drift (±30s)
+
+      if (isValid) {
         // Reset rate limit on success
         await resetRateLimit(userId, supabase);
-        console.log(`[verify-otp] OTP verified successfully`);
+        console.log(`[verify-otp] OTP verified successfully (RFC 6238 HMAC-SHA1)`);
         
         // Log successful OTP verification
         await supabase.from('audit_logs').insert({
           user_id: userId,
           entity_type: 'auth',
           event_type: 'otp_verified',
-          description: 'OTP verification successful',
-          metadata: {},
+          description: 'OTP verification successful (RFC 6238)',
+          metadata: { algorithm: 'HMAC-SHA1', digits: 6, period: 30 },
         });
 
         return new Response(
@@ -265,9 +379,9 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      console.log(`[verify-otp] Generated new OTP secret`);
+      console.log(`[verify-otp] Generated new OTP secret (RFC 6238 compliant)`);
 
-      // Generate QR code URL for authenticator apps
+      // Generate QR code URL for authenticator apps (RFC 6238 compliant)
       const { data: userProfile } = await supabase
         .from('profiles')
         .select('email')
@@ -275,14 +389,15 @@ Deno.serve(async (req: Request) => {
         .single();
 
       const issuer = 'KemikaExpenseSystem';
-      const otpAuthUrl = `otpauth://totp/${issuer}:${userProfile?.email}?secret=${newSecret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+      // RFC 6238 compliant otpauth URL
+      const otpAuthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(userProfile?.email || '')}?secret=${newSecret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           secret: newSecret,
           otpAuthUrl,
-          message: 'Scan the QR code with your authenticator app'
+          message: 'Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.)'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
