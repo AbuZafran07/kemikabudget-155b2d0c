@@ -456,14 +456,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
             </TabsContent>
 
             <TabsContent value="password" className="space-y-4 py-4">
-              {isSuperAdmin && profile?.requires_otp && (
-                <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                  <p className="text-sm text-warning">
-                    {t('settings.otpRequiredForChange')}
-                  </p>
-                </div>
-              )}
-
               {/* Current Password */}
               <div className="space-y-2">
                 <Label htmlFor="current-password">{t('settings.currentPassword')}</Label>
