@@ -19,6 +19,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { EditProfileDialog } from "./EditProfileDialog";
 
 const notifications = [
   {
@@ -55,8 +56,12 @@ const AppHeader = () => {
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains('dark');
   });
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [hasSeenNotifications, setHasSeenNotifications] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
-  const unreadCount = 2;
+  // Reset badge when popover is opened
+  const unreadCount = hasSeenNotifications ? 0 : 2;
 
   useEffect(() => {
     // Sync dark mode state with document
@@ -159,7 +164,15 @@ const AppHeader = () => {
         </Button>
 
         {/* Notifications */}
-        <Popover>
+        <Popover 
+          open={notificationOpen} 
+          onOpenChange={(open) => {
+            setNotificationOpen(open);
+            if (open) {
+              setHasSeenNotifications(true);
+            }
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
@@ -235,7 +248,7 @@ const AppHeader = () => {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
+            <DropdownMenuItem onClick={() => setShowEditProfile(true)} className="cursor-pointer">
               <User className="mr-2 h-4 w-4" />
               {t('user.myProfile')}
             </DropdownMenuItem>
@@ -251,6 +264,12 @@ const AppHeader = () => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Edit Profile Dialog */}
+      <EditProfileDialog 
+        open={showEditProfile} 
+        onOpenChange={setShowEditProfile} 
+      />
     </header>
   );
 };
