@@ -7,6 +7,7 @@ import BudgetChart from "@/components/dashboard/BudgetChart";
 import ExpenseByCategory from "@/components/dashboard/ExpenseByCategory";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet,
@@ -33,6 +34,7 @@ const formatCurrency = (value: number) => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { role, profile } = useAuth();
+  const { t } = useLanguage();
   const {
     kpis,
     categorySpend,
@@ -62,62 +64,62 @@ const Dashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('dashboard.title')}</h1>
             <Badge variant="secondary" className="bg-primary/10 text-primary capitalize">
               {role?.replace('_', ' ') || 'User'}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            {isSuperAdmin || isFinance ? 'Overview seluruh divisi' : `Overview ${profile?.full_name || 'divisi Anda'}`}
+            {isSuperAdmin || isFinance ? t('dashboard.overviewAllDivisions') : `${t('dashboard.overview')} ${profile?.full_name || ''}`}
           </p>
         </div>
         <Button className="gap-2 shadow-primary" onClick={() => navigate('/requests')}>
           <Plus className="h-4 w-4" />
-          Buat Pengajuan
+          {t('dashboard.createRequest')}
         </Button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         <KpiCard
-          title="Total Budget"
+          title={t('dashboard.totalBudget')}
           value={formatCurrency(kpis.totalBudget)}
-          subtitle={`Tahun ${new Date().getFullYear()}`}
+          subtitle={`${t('dashboard.year')} ${new Date().getFullYear()}`}
           icon={Wallet}
           variant="primary"
         />
         <KpiCard
-          title="Budget Terpakai"
+          title={t('dashboard.usedBudget')}
           value={formatCurrency(kpis.usedBudget)}
-          subtitle="Sudah disetujui"
+          subtitle={t('dashboard.approved')}
           icon={TrendingUp}
           variant="default"
         />
         <KpiCard
-          title="Sisa Budget"
+          title={t('dashboard.remainingBudget')}
           value={formatCurrency(kpis.remainingBudget)}
-          subtitle="Tersedia"
+          subtitle={t('dashboard.available')}
           icon={PiggyBank}
           variant="success"
         />
         <KpiCard
-          title="Utilisasi"
+          title={t('dashboard.utilization')}
           value={`${utilization}%`}
-          subtitle="Penggunaan budget"
+          subtitle={t('dashboard.budgetUsage')}
           icon={CheckCircle}
           variant="default"
         />
         <KpiCard
-          title="Pending Approval"
+          title={t('dashboard.pendingApprovals')}
           value={kpis.pendingApprovals}
-          subtitle="Menunggu persetujuan"
+          subtitle={t('dashboard.waitingApproval')}
           icon={Clock}
           variant={kpis.overdueApprovals > 0 ? "warning" : "default"}
         />
         <KpiCard
-          title="Pending Payment"
+          title={t('dashboard.pendingPayments')}
           value={kpis.pendingPayments}
-          subtitle="Siap dibayar"
+          subtitle={t('dashboard.readyToPay')}
           icon={CreditCard}
           variant={kpis.overduePayments > 0 ? "warning" : "default"}
         />
@@ -134,15 +136,15 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isSuperAdmin && (
             <RecentActivity
-              title="Menunggu Persetujuan"
+              title={t('dashboard.waitingYourApproval')}
               items={pendingApprovalItems}
-              emptyMessage="Semua pengajuan sudah diproses!"
+              emptyMessage={t('dashboard.allProcessed')}
             />
           )}
           <RecentActivity
-            title="Siap Dibayar"
+            title={t('dashboard.readyToPay')}
             items={pendingPaymentItems}
-            emptyMessage="Tidak ada pembayaran menunggu"
+            emptyMessage={t('dashboard.noPaymentsPending')}
           />
         </div>
       )}
@@ -152,7 +154,7 @@ const Dashboard = () => {
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Overdue Approvals</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.overdueApprovals')}</p>
               <p className="text-2xl font-bold text-foreground mt-1">
                 {kpis.overdueApprovals}
               </p>
@@ -171,7 +173,7 @@ const Dashboard = () => {
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Overdue Payments</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.overduePayments')}</p>
               <p className="text-2xl font-bold text-foreground mt-1">
                 {kpis.overduePayments}
               </p>
@@ -190,7 +192,7 @@ const Dashboard = () => {
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">To Pay Today</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.toPayToday')}</p>
               <p className="text-2xl font-bold text-foreground mt-1">
                 {kpis.pendingPayments}
               </p>
@@ -203,7 +205,7 @@ const Dashboard = () => {
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">This Month Requests</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.thisMonthRequests')}</p>
               <p className="text-2xl font-bold text-foreground mt-1">
                 {kpis.thisMonthRequests}
               </p>

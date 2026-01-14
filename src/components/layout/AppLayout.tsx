@@ -8,14 +8,18 @@ const AppLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="h-screen flex overflow-hidden bg-background">
+      {/* Fixed Sidebar */}
       <AppSidebar
         isCollapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <div className={cn("flex-1 flex flex-col min-w-0 transition-all duration-300")}>
+      {/* Content Area with fixed header and scrollable main */}
+      <div className={cn("flex-1 flex flex-col min-w-0 h-screen overflow-hidden transition-all duration-300")}>
+        {/* Fixed Header */}
         <AppHeader />
-        <main className="flex-1 overflow-auto">
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
