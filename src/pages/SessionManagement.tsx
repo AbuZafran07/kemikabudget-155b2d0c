@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { format, formatDistanceToNow } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { formatDistanceToNow } from 'date-fns';
+import { id as localeId, enUS } from 'date-fns/locale';
 import {
   Shield,
   Monitor,
@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -35,28 +35,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { useSessions, UserSession } from '@/hooks/useSessions';
 import { useSensitiveAction } from '@/hooks/useSensitiveAction';
 import { ReauthDialog } from '@/components/auth/ReauthDialog';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const PAGE_SIZES = [10, 25, 50];
 
 const SessionManagement = () => {
+  const { t, language } = useLanguage();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'revoked'>('all');
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const dateLocale = language === 'id' ? localeId : enUS;
 
   const {
     sessions,
@@ -102,8 +95,8 @@ const SessionManagement = () => {
 
   const handleRevokeSession = (session: UserSession) => {
     executeSensitiveAction(
-      'Cabut Sesi Pengguna',
-      `Mencabut sesi ${session.user?.full_name || 'pengguna'}`,
+      t('sessionManagement.revokeSession'),
+      `${t('action.revoke')} ${session.user?.full_name || t('users.title')}`,
       () => {
         revokeSession.mutate({ sessionId: session.id, userId: session.user_id });
       }
@@ -112,8 +105,8 @@ const SessionManagement = () => {
 
   const handleRevokeAllSessions = (userId: string, userName: string) => {
     executeSensitiveAction(
-      'Cabut Semua Sesi',
-      `Mencabut semua sesi ${userName}`,
+      t('sessionManagement.revokeAllSessions'),
+      `${t('action.revoke')} ${userName}`,
       () => {
         revokeAllUserSessions.mutate(userId);
       }
@@ -144,15 +137,15 @@ const SessionManagement = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            Manajemen Sesi
+            {t('sessionManagement.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Pantau dan kelola sesi aktif semua pengguna
+            {t('sessionManagement.description')}
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()} className="gap-2">
           <RefreshCw className="h-4 w-4" />
-          Refresh
+          {t('action.refresh')}
         </Button>
       </div>
 
@@ -161,19 +154,19 @@ const SessionManagement = () => {
         <Card>
           <CardContent className="pt-4">
             <p className="text-2xl font-bold text-foreground">{sessions.length}</p>
-            <p className="text-xs text-muted-foreground">Total Sesi</p>
+            <p className="text-xs text-muted-foreground">{t('sessionManagement.totalSessions')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <p className="text-2xl font-bold text-success">{activeSessions.length}</p>
-            <p className="text-xs text-muted-foreground">Sesi Aktif</p>
+            <p className="text-xs text-muted-foreground">{t('sessionManagement.activeSessions')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
             <p className="text-2xl font-bold text-destructive">{revokedSessions.length}</p>
-            <p className="text-xs text-muted-foreground">Sesi Dicabut</p>
+            <p className="text-xs text-muted-foreground">{t('sessionManagement.revokedSessions')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -181,7 +174,7 @@ const SessionManagement = () => {
             <p className="text-2xl font-bold text-primary">
               {new Set(activeSessions.map(s => s.user_id)).size}
             </p>
-            <p className="text-xs text-muted-foreground">Pengguna Online</p>
+            <p className="text-xs text-muted-foreground">{t('sessionManagement.onlineUsers')}</p>
           </CardContent>
         </Card>
       </div>
@@ -191,7 +184,7 @@ const SessionManagement = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Cari pengguna atau IP..."
+            placeholder={t('sessionManagement.searchPlaceholder')}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -208,12 +201,12 @@ const SessionManagement = () => {
           }}
         >
           <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('common.status')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Semua Status</SelectItem>
-            <SelectItem value="active">Aktif</SelectItem>
-            <SelectItem value="revoked">Dicabut</SelectItem>
+            <SelectItem value="all">{t('sessionManagement.allStatus')}</SelectItem>
+            <SelectItem value="active">{t('status.active')}</SelectItem>
+            <SelectItem value="revoked">{t('status.revoked')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -223,12 +216,12 @@ const SessionManagement = () => {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-48">Pengguna</TableHead>
-              <TableHead className="w-32">Perangkat</TableHead>
-              <TableHead className="w-32">IP Address</TableHead>
-              <TableHead className="w-40">Terakhir Aktif</TableHead>
-              <TableHead className="w-24">Status</TableHead>
-              <TableHead className="w-28 text-right">Aksi</TableHead>
+              <TableHead className="w-48">{t('sessionManagement.user')}</TableHead>
+              <TableHead className="w-32">{t('sessionManagement.device')}</TableHead>
+              <TableHead className="w-32">{t('sessionManagement.ipAddress')}</TableHead>
+              <TableHead className="w-40">{t('sessionManagement.lastActive')}</TableHead>
+              <TableHead className="w-24">{t('common.status')}</TableHead>
+              <TableHead className="w-28 text-right">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -237,7 +230,7 @@ const SessionManagement = () => {
                 <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <User className="h-8 w-8 opacity-50" />
-                    <p>Tidak ada sesi ditemukan</p>
+                    <p>{t('sessionManagement.noSessions')}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -281,7 +274,7 @@ const SessionManagement = () => {
                       <span className="text-sm">
                         {formatDistanceToNow(new Date(session.last_active_at), {
                           addSuffix: true,
-                          locale: localeId,
+                          locale: dateLocale,
                         })}
                       </span>
                     </div>
@@ -290,12 +283,12 @@ const SessionManagement = () => {
                     {session.is_revoked ? (
                       <Badge variant="destructive" className="gap-1">
                         <XCircle className="h-3 w-3" />
-                        Dicabut
+                        {t('status.revoked')}
                       </Badge>
                     ) : (
                       <Badge variant="default" className="gap-1 bg-success">
                         <CheckCircle className="h-3 w-3" />
-                        Aktif
+                        {t('status.active')}
                       </Badge>
                     )}
                   </TableCell>
@@ -309,7 +302,7 @@ const SessionManagement = () => {
                         className="text-destructive hover:text-destructive"
                       >
                         <Ban className="h-4 w-4 mr-1" />
-                        Cabut
+                        {t('action.revoke')}
                       </Button>
                     )}
                   </TableCell>
@@ -324,7 +317,7 @@ const SessionManagement = () => {
       {totalItems > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {startIndex + 1}–{endIndex} dari {totalItems} sesi
+            {t('common.showing')} {startIndex + 1}–{endIndex} {t('common.of')} {totalItems}
           </p>
           <div className="flex items-center gap-2">
             <Select
@@ -352,7 +345,7 @@ const SessionManagement = () => {
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
-                Prev
+                {t('common.previous')}
               </Button>
               <span className="px-3 text-sm text-muted-foreground">
                 {currentPage} / {totalPages}
@@ -363,7 +356,7 @@ const SessionManagement = () => {
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
               >
-                Next
+                {t('common.next')}
               </Button>
             </div>
           </div>

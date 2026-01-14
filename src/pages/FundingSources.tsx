@@ -31,6 +31,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -40,6 +50,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FundingSource {
   id: string;
@@ -56,10 +67,13 @@ interface FundingSource {
 
 const FundingSources = () => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<FundingSource | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [sourceToDelete, setSourceToDelete] = useState<FundingSource | null>(null);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -97,10 +111,10 @@ const FundingSources = () => {
       queryClient.invalidateQueries({ queryKey: ['funding-sources-management'] });
       setIsDialogOpen(false);
       resetForm();
-      toast({ title: 'Sumber dana berhasil ditambahkan' });
+      toast({ title: t('common.success'), description: t('fundingSources.addSuccess') });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -118,24 +132,35 @@ const FundingSources = () => {
       queryClient.invalidateQueries({ queryKey: ['funding-sources-management'] });
       setIsDialogOpen(false);
       resetForm();
-      toast({ title: 'Sumber dana berhasil diperbarui' });
+      toast({ title: t('common.success'), description: t('fundingSources.updateSuccess') });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Check if there are any requests using this funding source
+      const { data: requests } = await supabase
+        .from('requests')
+        .select('id')
+        .eq('funding_source_id', id)
+        .limit(1);
+      
+      if (requests && requests.length > 0) {
+        throw new Error(t('fundingSources.deleteError'));
+      }
+      
       const { error } = await supabase.from('funding_sources').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['funding-sources-management'] });
-      toast({ title: 'Sumber dana berhasil dihapus' });
+      toast({ title: t('common.success'), description: t('fundingSources.deleteSuccess') });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -168,6 +193,19 @@ const FundingSources = () => {
     setIsDialogOpen(true);
   };
 
+  const handleDelete = (source: FundingSource) => {
+    setSourceToDelete(source);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (sourceToDelete) {
+      deleteMutation.mutate(sourceToDelete.id);
+    }
+    setDeleteDialogOpen(false);
+    setSourceToDelete(null);
+  };
+
   const handleSubmit = () => {
     if (editingSource) {
       updateMutation.mutate({ id: editingSource.id, ...formData });
@@ -194,19 +232,19 @@ const FundingSources = () => {
     <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Sumber Dana</h1>
-          <p className="text-muted-foreground mt-1">Kelola sumber pendanaan</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('fundingSources.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('fundingSources.description')}</p>
         </div>
         <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
           <Plus className="h-4 w-4" />
-          Tambah Sumber Dana
+          {t('fundingSources.addSource')}
         </Button>
       </div>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Cari sumber dana..."
+          placeholder={t('fundingSources.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -217,13 +255,13 @@ const FundingSources = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Kode</TableHead>
-              <TableHead>Nama</TableHead>
-              <TableHead>Tipe</TableHead>
-              <TableHead>Bank / Rekening</TableHead>
-              <TableHead className="text-right">Saldo</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t('common.code')}</TableHead>
+              <TableHead>{t('common.name')}</TableHead>
+              <TableHead>{t('fundingSources.type')}</TableHead>
+              <TableHead>{t('fundingSources.bankAccount')}</TableHead>
+              <TableHead className="text-right">{t('fundingSources.balance')}</TableHead>
+              <TableHead>{t('common.status')}</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -237,7 +275,7 @@ const FundingSources = () => {
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12">
                   <Wallet className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Tidak ada sumber dana</p>
+                  <p className="text-muted-foreground">{t('fundingSources.noData')}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -248,9 +286,9 @@ const FundingSources = () => {
                   <TableCell>
                     <Badge variant="outline" className="gap-1">
                       {source.type === 'petty_cash' ? (
-                        <><Banknote className="h-3 w-3" /> Petty Cash</>
+                        <><Banknote className="h-3 w-3" /> {t('paymentQueue.pettyCash')}</>
                       ) : (
-                        <><Building className="h-3 w-3" /> Bank</>
+                        <><Building className="h-3 w-3" /> {t('paymentQueue.bank')}</>
                       )}
                     </Badge>
                   </TableCell>
@@ -267,7 +305,7 @@ const FundingSources = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={source.is_active ? 'default' : 'secondary'}>
-                      {source.is_active ? 'Aktif' : 'Nonaktif'}
+                      {source.is_active ? t('common.active') : t('common.inactive')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -279,7 +317,7 @@ const FundingSources = () => {
                         size="sm"
                         variant="ghost"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => deleteMutation.mutate(source.id)}
+                        onClick={() => handleDelete(source)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -295,15 +333,15 @@ const FundingSources = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingSource ? 'Edit Sumber Dana' : 'Tambah Sumber Dana'}</DialogTitle>
+            <DialogTitle>{editingSource ? t('fundingSources.editSource') : t('fundingSources.addSource')}</DialogTitle>
             <DialogDescription>
-              {editingSource ? 'Perbarui informasi sumber dana' : 'Tambah sumber dana baru'}
+              {editingSource ? t('fundingSources.editSourceDesc') : t('fundingSources.addSourceDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Kode</Label>
+                <Label>{t('common.code')}</Label>
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
@@ -311,7 +349,7 @@ const FundingSources = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Nama</Label>
+                <Label>{t('common.name')}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -321,7 +359,7 @@ const FundingSources = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tipe</Label>
+                <Label>{t('fundingSources.type')}</Label>
                 <Select
                   value={formData.type}
                   onValueChange={(value: 'petty_cash' | 'bank') => setFormData({ ...formData, type: value })}
@@ -330,13 +368,13 @@ const FundingSources = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="petty_cash">Petty Cash</SelectItem>
-                    <SelectItem value="bank">Bank</SelectItem>
+                    <SelectItem value="petty_cash">{t('paymentQueue.pettyCash')}</SelectItem>
+                    <SelectItem value="bank">{t('paymentQueue.bank')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Saldo Awal</Label>
+                <Label>{t('fundingSources.initialBalance')}</Label>
                 <Input
                   type="number"
                   value={formData.balance}
@@ -348,7 +386,7 @@ const FundingSources = () => {
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Nama Bank</Label>
+                    <Label>{t('fundingSources.bankName')}</Label>
                     <Input
                       value={formData.bank_name}
                       onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
@@ -356,7 +394,7 @@ const FundingSources = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>No. Rekening</Label>
+                    <Label>{t('fundingSources.accountNumber')}</Label>
                     <Input
                       value={formData.account_number}
                       onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
@@ -365,7 +403,7 @@ const FundingSources = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Nama Pemegang Rekening</Label>
+                  <Label>{t('fundingSources.accountHolder')}</Label>
                   <Input
                     value={formData.account_holder}
                     onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
@@ -375,7 +413,7 @@ const FundingSources = () => {
               </>
             )}
             <div className="flex items-center justify-between">
-              <Label>Status Aktif</Label>
+              <Label>{t('common.activeStatus')}</Label>
               <Switch
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
@@ -383,13 +421,30 @@ const FundingSources = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('action.cancel')}</Button>
             <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-              {(createMutation.isPending || updateMutation.isPending) ? 'Menyimpan...' : 'Simpan'}
+              {(createMutation.isPending || updateMutation.isPending) ? t('action.saving') : t('action.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('action.delete')} {sourceToDelete?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('users.deleteWarning')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('action.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t('action.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
