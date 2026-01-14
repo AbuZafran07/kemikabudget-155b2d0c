@@ -31,6 +31,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useBudgetPlanning, DivisionBudget } from "@/hooks/useBudgetPlanning";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -55,6 +56,8 @@ const BudgetPlanning = () => {
     totalUsed,
     totalRemaining,
   } = useBudgetPlanning();
+
+  const { t, language } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
@@ -152,7 +155,7 @@ const BudgetPlanning = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">Rencana Anggaran</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('budgetPlanning.title')}</h1>
             {activePeriod && (
               <Badge className="bg-primary text-primary-foreground gap-1">
                 <Calendar className="h-3 w-3" />
@@ -161,12 +164,12 @@ const BudgetPlanning = () => {
             )}
           </div>
           <p className="text-muted-foreground mt-1">
-            Kelola alokasi anggaran per divisi dan kategori
+            {t('budgetPlanning.description')}
           </p>
         </div>
         <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4" />
-          Tambah Alokasi
+          {t('budgetPlanning.addAllocation')}
         </Button>
       </div>
 
@@ -177,7 +180,7 @@ const BudgetPlanning = () => {
             <div className="p-2 rounded-lg bg-primary/10">
               <Calculator className="h-5 w-5 text-primary" />
             </div>
-            <span className="text-sm text-muted-foreground">Total Alokasi</span>
+            <span className="text-sm text-muted-foreground">{t('budgetPlanning.totalAllocation')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(totalAllocated)}</p>
         </div>
@@ -186,7 +189,7 @@ const BudgetPlanning = () => {
             <div className="p-2 rounded-lg bg-destructive/10">
               <TrendingDown className="h-5 w-5 text-destructive" />
             </div>
-            <span className="text-sm text-muted-foreground">Terpakai</span>
+            <span className="text-sm text-muted-foreground">{t('budgetPlanning.used')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(totalUsed)}</p>
         </div>
@@ -195,7 +198,7 @@ const BudgetPlanning = () => {
             <div className="p-2 rounded-lg bg-success/10">
               <TrendingUp className="h-5 w-5 text-success" />
             </div>
-            <span className="text-sm text-muted-foreground">Sisa Anggaran</span>
+            <span className="text-sm text-muted-foreground">{t('budgetPlanning.remaining')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(totalRemaining)}</p>
         </div>
@@ -207,7 +210,7 @@ const BudgetPlanning = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Cari divisi atau kategori..."
+              placeholder={t('budgetPlanning.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -215,10 +218,10 @@ const BudgetPlanning = () => {
           </div>
           <Select value={divisionFilter} onValueChange={setDivisionFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Divisi" />
+              <SelectValue placeholder={t('users.division')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Divisi</SelectItem>
+              <SelectItem value="all">{t('budgetPlanning.allDivisions')}</SelectItem>
               {divisions?.map((div) => (
                 <SelectItem key={div.id} value={div.id}>
                   {div.name}
@@ -228,10 +231,10 @@ const BudgetPlanning = () => {
           </Select>
           <Select value={periodFilter} onValueChange={setPeriodFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Periode" />
+              <SelectValue placeholder={language === 'id' ? 'Periode' : 'Period'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="active">Periode Aktif</SelectItem>
+              <SelectItem value="active">{t('budgetPlanning.activePeriod')}</SelectItem>
               {periods?.map((period) => (
                 <SelectItem key={period.id} value={period.id}>
                   {period.name}
@@ -257,12 +260,12 @@ const BudgetPlanning = () => {
                   <div className="flex items-center gap-3">
                     <Building2 className="h-5 w-5 text-primary" />
                     <h3 className="font-semibold text-foreground">{divisionName}</h3>
-                    <Badge variant="outline">{divBudgets.length} kategori</Badge>
+                    <Badge variant="outline">{divBudgets.length} {t('budgetPlanning.categories')}</Badge>
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold">{formatCurrency(divTotal)}</p>
                     <p className="text-xs text-muted-foreground">
-                      Terpakai {formatCurrency(divUsed)} ({divPercent.toFixed(1)}%)
+                      {t('budgetPlanning.used')} {formatCurrency(divUsed)} ({divPercent.toFixed(1)}%)
                     </p>
                   </div>
                 </div>
@@ -282,10 +285,10 @@ const BudgetPlanning = () => {
                       <div className="flex-1">
                         <p className="font-medium">{budget.cost_categories?.name}</p>
                         <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                          <span>Alokasi: {formatCurrency(budget.allocated_amount)}</span>
-                          <span>Terpakai: {formatCurrency(budget.used_amount)}</span>
+                          <span>{language === 'id' ? 'Alokasi' : 'Allocated'}: {formatCurrency(budget.allocated_amount)}</span>
+                          <span>{t('budgetPlanning.used')}: {formatCurrency(budget.used_amount)}</span>
                           <span className={remaining < 0 ? 'text-destructive' : 'text-success'}>
-                            Sisa: {formatCurrency(remaining)}
+                            {t('budgetPlanning.remaining')}: {formatCurrency(remaining)}
                           </span>
                         </div>
                         <Progress value={usedPercent} className="mt-2 h-1.5 w-48" />
@@ -310,14 +313,17 @@ const BudgetPlanning = () => {
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <Calculator className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
-            Belum Ada Alokasi Anggaran
+            {language === 'id' ? 'Belum Ada Alokasi Anggaran' : 'No Budget Allocations Yet'}
           </h3>
           <p className="text-muted-foreground mb-4">
-            Mulai dengan menambahkan alokasi anggaran untuk divisi dan kategori.
+            {language === 'id' 
+              ? 'Mulai dengan menambahkan alokasi anggaran untuk divisi dan kategori.'
+              : 'Start by adding budget allocations for divisions and categories.'
+            }
           </p>
           <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
-            Tambah Alokasi
+            {t('budgetPlanning.addAllocation')}
           </Button>
         </div>
       )}
@@ -326,18 +332,21 @@ const BudgetPlanning = () => {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tambah Alokasi Anggaran</DialogTitle>
+            <DialogTitle>{t('budgetPlanning.addAllocation')}</DialogTitle>
             <DialogDescription>
-              Buat alokasi anggaran baru untuk periode {activePeriod?.name}
+              {language === 'id' 
+                ? `Buat alokasi anggaran baru untuk periode ${activePeriod?.name}`
+                : `Create new budget allocation for period ${activePeriod?.name}`
+              }
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Divisi</Label>
+              <Label>{t('users.division')}</Label>
               <Select value={formDivisionId} onValueChange={setFormDivisionId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih divisi" />
+                  <SelectValue placeholder={t('users.selectDivision')} />
                 </SelectTrigger>
                 <SelectContent>
                   {divisions?.map((div) => (
@@ -350,10 +359,10 @@ const BudgetPlanning = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Kategori</Label>
+              <Label>{t('requests.category')}</Label>
               <Select value={formCategoryId} onValueChange={setFormCategoryId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih kategori" />
+                  <SelectValue placeholder={language === 'id' ? 'Pilih kategori' : 'Select category'} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories?.map((cat) => (
@@ -366,7 +375,7 @@ const BudgetPlanning = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Jumlah Alokasi (IDR)</Label>
+              <Label>{language === 'id' ? 'Jumlah Alokasi (IDR)' : 'Allocation Amount (IDR)'}</Label>
               <Input
                 type="number"
                 placeholder="100000000"
@@ -378,13 +387,13 @@ const BudgetPlanning = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               onClick={handleCreate}
               disabled={createBudget.isPending || !formDivisionId || !formCategoryId || !formAmount}
             >
-              Simpan
+              {t('action.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -394,7 +403,7 @@ const BudgetPlanning = () => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Alokasi Anggaran</DialogTitle>
+            <DialogTitle>{language === 'id' ? 'Edit Alokasi Anggaran' : 'Edit Budget Allocation'}</DialogTitle>
             <DialogDescription>
               {editBudget && (
                 <>
@@ -406,7 +415,7 @@ const BudgetPlanning = () => {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Jumlah Alokasi (IDR)</Label>
+              <Label>{language === 'id' ? 'Jumlah Alokasi (IDR)' : 'Allocation Amount (IDR)'}</Label>
               <Input
                 type="number"
                 placeholder="100000000"
@@ -416,17 +425,20 @@ const BudgetPlanning = () => {
             </div>
             {editBudget && editBudget.used_amount > 0 && (
               <p className="text-sm text-warning">
-                Perhatian: Sudah terpakai {formatCurrency(editBudget.used_amount)}
+                {language === 'id' 
+                  ? `Perhatian: Sudah terpakai ${formatCurrency(editBudget.used_amount)}`
+                  : `Warning: Already used ${formatCurrency(editBudget.used_amount)}`
+                }
               </p>
             )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button onClick={handleUpdate} disabled={updateBudget.isPending || !formAmount}>
-              Simpan
+              {t('action.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
