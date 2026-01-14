@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -5,10 +6,13 @@ import KpiCard from "@/components/dashboard/KpiCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import BudgetChart from "@/components/dashboard/BudgetChart";
 import ExpenseByCategory from "@/components/dashboard/ExpenseByCategory";
+import TransactionDetailDialog from "@/components/dashboard/TransactionDetailDialog";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Wallet,
   TrendingUp,
@@ -31,6 +35,13 @@ const formatCurrency = (value: number) => {
   return `Rp ${value.toLocaleString("id-ID")}`;
 };
 
+interface DrillDownState {
+  open: boolean;
+  type: 'category' | 'month' | null;
+  value: string;
+  dataType?: 'budget' | 'actual' | 'commitment';
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { role, profile } = useAuth();
@@ -44,11 +55,139 @@ const Dashboard = () => {
     isLoadingKpis,
   } = useDashboard();
 
+  const [drillDown, setDrillDown] = useState<DrillDownState>({
+    open: false,
+    type: null,
+    value: '',
+  });
+
   const isSuperAdmin = role === 'super_admin';
   const isFinance = role === 'finance';
+  const isSuperAdminOrFinance = isSuperAdmin || isFinance;
   const utilization = kpis.totalBudget > 0 
     ? Math.round((kpis.usedBudget / kpis.totalBudget) * 100) 
     : 0;
+
+  // Month name to number mapping
+  const monthMap: Record<string, number> = {
+    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5,
+    'Jul': 6, 'Agu': 7, 'Sep': 8, 'Okt': 9, 'Nov': 10, 'Des': 11,
+  };
+
+  // Query for drill-down data
+  const { data: drillDownTransactions = [], isLoading: isDrillDownLoading } = useQuery({
+    queryKey: ['dashboard-drilldown', drillDown.type, drillDown.value, drillDown.dataType, profile?.division_id],
+    queryFn: async () => {
+      let query = supabase
+        .from('requests')
+        .select(`
+          id,
+          request_number,
+          description,
+          amount,
+          status,
+          created_at,
+          division:divisions(name),
+          category:cost_categories(name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (!isSuperAdminOrFinance && profile?.division_id) {
+        query = query.eq('division_id', profile.division_id);
+      }
+
+      if (drillDown.type === 'category') {
+        // Filter by category name
+        const { data } = await query.in('status', ['approved', 'paid', 'settled']);
+        return (data || [])
+          .filter(r => (r.category as any)?.name === drillDown.value)
+          .map(r => ({
+            id: r.id,
+            request_number: r.request_number,
+            description: r.description,
+            amount: Number(r.amount),
+            status: r.status,
+            division_name: (r.division as any)?.name,
+            category_name: (r.category as any)?.name,
+            created_at: r.created_at,
+          }));
+      } else if (drillDown.type === 'month') {
+        const monthIndex = monthMap[drillDown.value];
+        const currentYear = new Date().getFullYear();
+        const startOfMonth = new Date(currentYear, monthIndex, 1);
+        const endOfMonth = new Date(currentYear, monthIndex + 1, 0, 23, 59, 59);
+
+        query = query
+          .gte('created_at', startOfMonth.toISOString())
+          .lte('created_at', endOfMonth.toISOString());
+
+        // Filter by data type
+        if (drillDown.dataType === 'actual') {
+          query = query.in('status', ['paid', 'settled']);
+        } else if (drillDown.dataType === 'commitment') {
+          query = query.eq('status', 'approved');
+        }
+        // 'budget' shows all for the month
+
+        const { data } = await query;
+        return (data || []).map(r => ({
+          id: r.id,
+          request_number: r.request_number,
+          description: r.description,
+          amount: Number(r.amount),
+          status: r.status,
+          division_name: (r.division as any)?.name,
+          category_name: (r.category as any)?.name,
+          created_at: r.created_at,
+        }));
+      }
+
+      return [];
+    },
+    enabled: drillDown.open && !!drillDown.type,
+  });
+
+  const handleCategoryClick = (categoryName: string) => {
+    setDrillDown({
+      open: true,
+      type: 'category',
+      value: categoryName,
+    });
+  };
+
+  const handleBarClick = (month: string, dataType: 'budget' | 'actual' | 'commitment') => {
+    setDrillDown({
+      open: true,
+      type: 'month',
+      value: month,
+      dataType,
+    });
+  };
+
+  const getDrillDownTitle = () => {
+    if (drillDown.type === 'category') {
+      return `${t('dashboard.expenseByCategory')}: ${drillDown.value}`;
+    }
+    if (drillDown.type === 'month') {
+      const typeLabel = drillDown.dataType === 'actual' 
+        ? 'Actual' 
+        : drillDown.dataType === 'commitment' 
+          ? 'Commitment' 
+          : 'Budget';
+      return `${typeLabel} - ${drillDown.value} ${new Date().getFullYear()}`;
+    }
+    return '';
+  };
+
+  const getDrillDownSubtitle = () => {
+    if (drillDown.type === 'category') {
+      return t('dashboard.transactionsByCategory');
+    }
+    if (drillDown.type === 'month') {
+      return t('dashboard.transactionsByMonth');
+    }
+    return '';
+  };
 
   if (isLoadingKpis) {
     return (
@@ -127,8 +266,15 @@ const Dashboard = () => {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <BudgetChart data={monthlyData} className="lg:col-span-2" />
-        <ExpenseByCategory data={categorySpend} />
+        <BudgetChart 
+          data={monthlyData} 
+          className="lg:col-span-2" 
+          onBarClick={handleBarClick}
+        />
+        <ExpenseByCategory 
+          data={categorySpend} 
+          onCategoryClick={handleCategoryClick}
+        />
       </div>
 
       {/* Activity Lists - Only for Super Admin and Finance */}
@@ -216,6 +362,18 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Drill-down Dialog */}
+      <TransactionDetailDialog
+        open={drillDown.open}
+        onOpenChange={(open) => setDrillDown(prev => ({ ...prev, open }))}
+        title={getDrillDownTitle()}
+        subtitle={getDrillDownSubtitle()}
+        transactions={drillDownTransactions}
+        isLoading={isDrillDownLoading}
+        filterType={drillDown.type || undefined}
+        filterValue={drillDown.value}
+      />
     </div>
   );
 };

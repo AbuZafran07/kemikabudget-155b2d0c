@@ -134,6 +134,10 @@ const translations: Translations = {
   'dashboard.budgetVsUsed': { id: 'Anggaran vs Terpakai', en: 'Budget vs Used' },
   'dashboard.createRequest': { id: 'Buat Pengajuan', en: 'Create Request' },
   'dashboard.year': { id: 'Tahun', en: 'Year' },
+  'dashboard.clickToViewDetails': { id: 'Klik untuk melihat detail', en: 'Click to view details' },
+  'dashboard.expenseByCategory': { id: 'Expense per Kategori', en: 'Expense by Category' },
+  'dashboard.transactionsByCategory': { id: 'Transaksi berdasarkan kategori', en: 'Transactions by category' },
+  'dashboard.transactionsByMonth': { id: 'Transaksi berdasarkan bulan', en: 'Transactions by month' },
   
   // Requests
   'requests.title': { id: 'Pengajuan', en: 'Requests' },
