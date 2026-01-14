@@ -74,6 +74,7 @@ const translations: Translations = {
   'header.notifications': { id: 'Notifikasi', en: 'Notifications' },
   'header.profile': { id: 'Profil Saya', en: 'My Profile' },
   'header.viewAllNotifications': { id: 'Lihat semua notifikasi', en: 'View all notifications' },
+  'header.noNotifications': { id: 'Belum ada notifikasi', en: 'No notifications yet' },
   
   // User Menu
   'user.myProfile': { id: 'Profil Saya', en: 'My Profile' },
@@ -95,7 +96,16 @@ const translations: Translations = {
   'profile.updateSuccess': { id: 'Profil Berhasil Diperbarui', en: 'Profile Updated Successfully' },
   'profile.updateSuccessDesc': { id: 'Informasi profil Anda telah diperbarui', en: 'Your profile information has been updated' },
   'profile.updateError': { id: 'Gagal memperbarui profil', en: 'Failed to update profile' },
-  'profile.avatarUploadComingSoon': { id: 'Fitur upload avatar akan segera hadir', en: 'Avatar upload feature coming soon' },
+  'profile.avatarHint': { id: 'JPG, PNG, GIF atau WebP. Maks 2MB', en: 'JPG, PNG, GIF or WebP. Max 2MB' },
+  'profile.avatarUpdated': { id: 'Foto Profil Diperbarui', en: 'Profile Photo Updated' },
+  'profile.avatarUpdatedDesc': { id: 'Foto profil Anda telah berhasil diubah', en: 'Your profile photo has been successfully changed' },
+  'profile.avatarUploadError': { id: 'Gagal mengupload foto profil', en: 'Failed to upload profile photo' },
+  'profile.avatarRemoved': { id: 'Foto Profil Dihapus', en: 'Profile Photo Removed' },
+  'profile.avatarRemovedDesc': { id: 'Foto profil Anda telah dihapus', en: 'Your profile photo has been removed' },
+  'profile.avatarRemoveError': { id: 'Gagal menghapus foto profil', en: 'Failed to remove profile photo' },
+  'profile.removeAvatar': { id: 'Hapus Foto', en: 'Remove Photo' },
+  'profile.invalidImageType': { id: 'Format file tidak didukung. Gunakan JPG, PNG, GIF atau WebP', en: 'File format not supported. Use JPG, PNG, GIF or WebP' },
+  'profile.imageTooLarge': { id: 'Ukuran file terlalu besar. Maksimal 2MB', en: 'File size too large. Maximum 2MB' },
   
   // Roles
   'role.superAdmin': { id: 'Super Admin', en: 'Super Admin' },
