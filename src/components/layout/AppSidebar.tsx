@@ -284,7 +284,16 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className={cn("flex items-center gap-3", isCollapsed && "justify-center w-full")}>
-          <img src={appIcon} alt="Kemika" className="w-10 h-10 rounded-lg" />
+          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-background/10">
+            <img 
+              src={appIcon} 
+              alt="Kemika" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
           {!isCollapsed && (
             <div>
               <h1 className="text-lg font-bold text-sidebar-foreground tracking-wide">

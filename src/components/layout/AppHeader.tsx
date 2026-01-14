@@ -174,14 +174,15 @@ const AppHeader = () => {
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 p-0">
-            <div className="p-4 border-b border-border">
+          <PopoverContent align="end" className="w-80 p-0 bg-popover border border-border shadow-lg">
+            <div className="p-4 border-b border-border bg-popover">
               <h3 className="font-semibold text-foreground">{t('header.notifications')}</h3>
             </div>
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto bg-popover">
               {notifications.map((notification, index) => (
                 <div
                   key={notification.id}
+                  onClick={() => navigate("/notification-history")}
                   className={`p-4 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer ${
                     index < 2 ? "bg-primary/5" : ""
                   }`}
@@ -205,7 +206,7 @@ const AppHeader = () => {
                 </div>
               ))}
             </div>
-            <div className="p-3 border-t border-border">
+            <div className="p-3 border-t border-border bg-popover">
               <Button 
                 variant="ghost" 
                 className="w-full text-sm"
