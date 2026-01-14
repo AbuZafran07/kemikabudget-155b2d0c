@@ -184,6 +184,54 @@ export function useUsers() {
     },
   });
 
+  // Create new user
+  const createUser = useMutation({
+    mutationFn: async ({
+      email,
+      fullName,
+      divisionId,
+      phone,
+      role,
+    }: {
+      email: string;
+      fullName: string;
+      divisionId: string;
+      phone?: string;
+      role: AppRole;
+    }) => {
+      const { data, error } = await supabase.rpc('admin_create_user', {
+        p_email: email,
+        p_full_name: fullName,
+        p_division_id: divisionId,
+        p_phone: phone || null,
+        p_role: role,
+      });
+
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string; user_id?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create user');
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: 'Berhasil',
+        description: 'Pengguna baru berhasil ditambahkan',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Gagal',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   return {
     users,
     divisions,
@@ -192,5 +240,6 @@ export function useUsers() {
     updateUser,
     updateUserRole,
     toggleUserActive,
+    createUser,
   };
 }

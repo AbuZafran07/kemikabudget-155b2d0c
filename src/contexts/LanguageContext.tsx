@@ -135,6 +135,49 @@ const translations: Translations = {
   'common.thisMonth': { id: 'Bulan Ini', en: 'This Month' },
   'common.thisYear': { id: 'Tahun Ini', en: 'This Year' },
   'common.expandSidebar': { id: 'Perluas Sidebar', en: 'Expand Sidebar' },
+  
+  // Budget Planning
+  'budgetPlanning.title': { id: 'Rencana Anggaran', en: 'Budget Planning' },
+  'budgetPlanning.description': { id: 'Kelola alokasi anggaran per divisi dan kategori', en: 'Manage budget allocation by division and category' },
+  'budgetPlanning.totalAllocation': { id: 'Total Alokasi', en: 'Total Allocation' },
+  'budgetPlanning.used': { id: 'Terpakai', en: 'Used' },
+  'budgetPlanning.remaining': { id: 'Sisa Anggaran', en: 'Remaining Budget' },
+  'budgetPlanning.addAllocation': { id: 'Tambah Alokasi', en: 'Add Allocation' },
+  'budgetPlanning.budgetYear': { id: 'Tahun Anggaran', en: 'Budget Year' },
+  'budgetPlanning.activePeriod': { id: 'Periode Aktif', en: 'Active Period' },
+  'budgetPlanning.allDivisions': { id: 'Semua Divisi', en: 'All Divisions' },
+  'budgetPlanning.searchPlaceholder': { id: 'Cari divisi atau kategori...', en: 'Search division or category...' },
+  'budgetPlanning.categories': { id: 'kategori', en: 'categories' },
+  
+  // Users
+  'users.title': { id: 'Pengguna', en: 'Users' },
+  'users.description': { id: 'Kelola pengguna sistem dan hak akses', en: 'Manage system users and access rights' },
+  'users.addUser': { id: 'Tambah Pengguna', en: 'Add User' },
+  'users.editUser': { id: 'Edit Pengguna', en: 'Edit User' },
+  'users.searchPlaceholder': { id: 'Cari nama atau email...', en: 'Search name or email...' },
+  'users.allRoles': { id: 'Semua Role', en: 'All Roles' },
+  'users.allDivisions': { id: 'Semua Divisi', en: 'All Divisions' },
+  'users.noUsers': { id: 'Tidak Ada Pengguna', en: 'No Users Found' },
+  'users.noUsersDesc': { id: 'Tidak ditemukan pengguna yang sesuai dengan filter.', en: 'No users found matching the filter.' },
+  'users.inactive': { id: 'Nonaktif', en: 'Inactive' },
+  'users.activate': { id: 'Aktifkan', en: 'Activate' },
+  'users.deactivate': { id: 'Nonaktifkan', en: 'Deactivate' },
+  'users.fullName': { id: 'Nama Lengkap', en: 'Full Name' },
+  'users.email': { id: 'Email', en: 'Email' },
+  'users.phone': { id: 'Telepon', en: 'Phone' },
+  'users.division': { id: 'Divisi', en: 'Division' },
+  'users.role': { id: 'Role', en: 'Role' },
+  'users.status': { id: 'Status Aktif', en: 'Active Status' },
+  'users.statusDesc': { id: 'Pengguna nonaktif tidak dapat login', en: 'Inactive users cannot login' },
+  'users.selectDivision': { id: 'Pilih divisi', en: 'Select division' },
+  'users.otpWarning': { id: 'Super Admin akan memerlukan verifikasi OTP saat login', en: 'Super Admin will require OTP verification at login' },
+  'users.updateSuccess': { id: 'Data pengguna berhasil diperbarui', en: 'User data updated successfully' },
+  'users.createSuccess': { id: 'Pengguna baru berhasil ditambahkan', en: 'New user added successfully' },
+  
+  // Form labels
+  'form.email': { id: 'Email', en: 'Email' },
+  'form.password': { id: 'Password', en: 'Password' },
+  'form.requiredField': { id: 'Wajib diisi', en: 'Required field' },
 };
 
 interface LanguageContextType {
