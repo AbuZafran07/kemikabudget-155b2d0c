@@ -42,21 +42,26 @@ import { Switch } from "@/components/ui/switch";
 import { useUsers, UserWithRole } from "@/hooks/useUsers";
 import { AppRole } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const roleConfig: Record<AppRole, { label: string; icon: React.ElementType; color: string }> = {
-  super_admin: { label: "Super Admin", icon: ShieldAlert, color: "text-destructive" },
-  finance: { label: "Finance", icon: ShieldCheck, color: "text-info" },
-  admin: { label: "Admin", icon: Shield, color: "text-warning" },
-  user: { label: "User", icon: UserIcon, color: "text-muted-foreground" },
-};
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Users = () => {
-  const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive } = useUsers();
+  const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, createUser } = useUsers();
+  const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
+  
+  // Edit dialog state
   const [editUser, setEditUser] = useState<UserWithRole | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Create dialog state
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [createEmail, setCreateEmail] = useState("");
+  const [createFullName, setCreateFullName] = useState("");
+  const [createDivisionId, setCreateDivisionId] = useState("");
+  const [createPhone, setCreatePhone] = useState("");
+  const [createRole, setCreateRole] = useState<AppRole>("user");
 
   // Edit form state
   const [editFullName, setEditFullName] = useState("");
@@ -64,6 +69,13 @@ const Users = () => {
   const [editPhone, setEditPhone] = useState("");
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editIsActive, setEditIsActive] = useState(true);
+
+  const roleConfig: Record<AppRole, { label: string; icon: React.ElementType; color: string }> = {
+    super_admin: { label: t('role.superAdmin'), icon: ShieldAlert, color: "text-destructive" },
+    finance: { label: t('role.finance'), icon: ShieldCheck, color: "text-info" },
+    admin: { label: t('role.admin'), icon: Shield, color: "text-warning" },
+    user: { label: t('role.user'), icon: UserIcon, color: "text-muted-foreground" },
+  };
 
   const filteredUsers = users?.filter((user) => {
     const matchesSearch =
@@ -115,6 +127,26 @@ const Users = () => {
     });
   };
 
+  const handleCreateUser = async () => {
+    if (!createEmail || !createFullName || !createDivisionId) return;
+
+    await createUser.mutateAsync({
+      email: createEmail,
+      fullName: createFullName,
+      divisionId: createDivisionId,
+      phone: createPhone || undefined,
+      role: createRole,
+    });
+
+    // Reset form
+    setCreateEmail("");
+    setCreateFullName("");
+    setCreateDivisionId("");
+    setCreatePhone("");
+    setCreateRole("user");
+    setIsCreateDialogOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -134,18 +166,18 @@ const Users = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">Pengguna</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('users.title')}</h1>
             <Badge className="bg-primary text-primary-foreground">
               {users?.length || 0}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            Kelola pengguna sistem dan hak akses
+            {t('users.description')}
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
           <UserPlus className="h-4 w-4" />
-          Tambah Pengguna
+          {t('users.addUser')}
         </Button>
       </div>
 
@@ -155,7 +187,7 @@ const Users = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Cari nama atau email..."
+              placeholder={t('users.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -166,19 +198,19 @@ const Users = () => {
               <SelectValue placeholder="Role" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Role</SelectItem>
-              <SelectItem value="super_admin">Super Admin</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="user">User</SelectItem>
+              <SelectItem value="all">{t('users.allRoles')}</SelectItem>
+              <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+              <SelectItem value="finance">{t('role.finance')}</SelectItem>
+              <SelectItem value="admin">{t('role.admin')}</SelectItem>
+              <SelectItem value="user">{t('role.user')}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={divisionFilter} onValueChange={setDivisionFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Divisi" />
+              <SelectValue placeholder={t('users.division')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Divisi</SelectItem>
+              <SelectItem value="all">{t('users.allDivisions')}</SelectItem>
               {divisions?.map((div) => (
                 <SelectItem key={div.id} value={div.id}>
                   {div.name}
@@ -222,7 +254,7 @@ const Users = () => {
                       </h3>
                       {!user.is_active && (
                         <Badge variant="secondary" className="text-xs">
-                          Nonaktif
+                          {t('users.inactive')}
                         </Badge>
                       )}
                     </div>
@@ -259,19 +291,19 @@ const Users = () => {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleEditUser(user)}>
                       <Edit2 className="h-4 w-4 mr-2" />
-                      Edit Pengguna
+                      {t('users.editUser')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleToggleActive(user)}>
                       {user.is_active ? (
                         <>
                           <X className="h-4 w-4 mr-2" />
-                          Nonaktifkan
+                          {t('users.deactivate')}
                         </>
                       ) : (
                         <>
                           <Check className="h-4 w-4 mr-2" />
-                          Aktifkan
+                          {t('users.activate')}
                         </>
                       )}
                     </DropdownMenuItem>
@@ -287,39 +319,50 @@ const Users = () => {
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <UserIcon className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
-            Tidak Ada Pengguna
+            {t('users.noUsers')}
           </h3>
           <p className="text-muted-foreground">
-            Tidak ditemukan pengguna yang sesuai dengan filter.
+            {t('users.noUsersDesc')}
           </p>
         </div>
       )}
 
-      {/* Edit User Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      {/* Create User Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Pengguna</DialogTitle>
+            <DialogTitle>{t('users.addUser')}</DialogTitle>
             <DialogDescription>
-              Perbarui informasi pengguna dan hak akses
+              {language === 'id' ? 'Tambah pengguna baru ke sistem' : 'Add a new user to the system'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Nama Lengkap</Label>
+              <Label htmlFor="createEmail">{t('users.email')} *</Label>
               <Input
-                id="fullName"
-                value={editFullName}
-                onChange={(e) => setEditFullName(e.target.value)}
+                id="createEmail"
+                type="email"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                placeholder="user@example.com"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="division">Divisi</Label>
-              <Select value={editDivisionId} onValueChange={setEditDivisionId}>
+              <Label htmlFor="createFullName">{t('users.fullName')} *</Label>
+              <Input
+                id="createFullName"
+                value={createFullName}
+                onChange={(e) => setCreateFullName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="createDivision">{t('users.division')} *</Label>
+              <Select value={createDivisionId} onValueChange={setCreateDivisionId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih divisi" />
+                  <SelectValue placeholder={t('users.selectDivision')} />
                 </SelectTrigger>
                 <SelectContent>
                   {divisions?.map((div) => (
@@ -332,7 +375,88 @@ const Users = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Telepon</Label>
+              <Label htmlFor="createPhone">{t('users.phone')}</Label>
+              <Input
+                id="createPhone"
+                value={createPhone}
+                onChange={(e) => setCreatePhone(e.target.value)}
+                placeholder="+62..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="createRole">{t('users.role')} *</Label>
+              <Select value={createRole} onValueChange={(v) => setCreateRole(v as AppRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                  <SelectItem value="finance">{t('role.finance')}</SelectItem>
+                  <SelectItem value="admin">{t('role.admin')}</SelectItem>
+                  <SelectItem value="user">{t('role.user')}</SelectItem>
+                </SelectContent>
+              </Select>
+              {createRole === "super_admin" && (
+                <p className="text-xs text-warning">
+                  {t('users.otpWarning')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              {t('action.cancel')}
+            </Button>
+            <Button
+              onClick={handleCreateUser}
+              disabled={createUser.isPending || !createEmail || !createFullName || !createDivisionId}
+            >
+              {createUser.isPending ? t('common.loading') : t('action.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t('users.editUser')}</DialogTitle>
+            <DialogDescription>
+              {language === 'id' ? 'Perbarui informasi pengguna dan hak akses' : 'Update user information and access rights'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">{t('users.fullName')}</Label>
+              <Input
+                id="fullName"
+                value={editFullName}
+                onChange={(e) => setEditFullName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="division">{t('users.division')}</Label>
+              <Select value={editDivisionId} onValueChange={setEditDivisionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('users.selectDivision')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {divisions?.map((div) => (
+                    <SelectItem key={div.id} value={div.id}>
+                      {div.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">{t('users.phone')}</Label>
               <Input
                 id="phone"
                 value={editPhone}
@@ -342,30 +466,30 @@ const Users = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="role">{t('users.role')}</Label>
               <Select value={editRole} onValueChange={(v) => setEditRole(v as AppRole)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="super_admin">Super Admin</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                  <SelectItem value="finance">{t('role.finance')}</SelectItem>
+                  <SelectItem value="admin">{t('role.admin')}</SelectItem>
+                  <SelectItem value="user">{t('role.user')}</SelectItem>
                 </SelectContent>
               </Select>
               {editRole === "super_admin" && (
                 <p className="text-xs text-warning">
-                  Super Admin akan memerlukan verifikasi OTP saat login
+                  {t('users.otpWarning')}
                 </p>
               )}
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="isActive">Status Aktif</Label>
+                <Label htmlFor="isActive">{t('users.status')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Pengguna nonaktif tidak dapat login
+                  {t('users.statusDesc')}
                 </p>
               </div>
               <Switch
@@ -378,13 +502,13 @@ const Users = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               onClick={handleSaveUser}
               disabled={updateUser.isPending || updateUserRole.isPending}
             >
-              Simpan
+              {t('action.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
