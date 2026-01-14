@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Loader2, Camera, X, Key } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { User, Loader2, Camera, X, Key, Eye, EyeOff, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,10 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { PasswordStrength, validatePassword } from '@/components/auth/PasswordStrength';
+import { ReauthDialog } from '@/components/auth/ReauthDialog';
+import { useSensitiveAction } from '@/hooks/useSensitiveAction';
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -23,9 +26,9 @@ interface EditProfileDialogProps {
 
 export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps) {
   const { toast } = useToast();
-  const { profile, user } = useAuth();
+  const { profile, user, role } = useAuth();
   const { t } = useLanguage();
-  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -35,6 +38,27 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
     phone: '',
   });
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const {
+    requiresReauth,
+    isDialogOpen,
+    actionName,
+    actionDescription,
+    executeSensitiveAction,
+    handleReauthSuccess,
+    handleDialogClose,
+  } = useSensitiveAction();
+
+  const isSuperAdmin = role === 'super_admin';
+
   useEffect(() => {
     if (profile && open) {
       setFormData({
@@ -42,8 +66,17 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         phone: profile.phone || '',
       });
       setAvatarUrl(profile.avatar_url);
+      // Reset password fields when dialog opens
+      resetPasswordForm();
+      setActiveTab('profile');
     }
   }, [profile, open]);
+
+  const resetPasswordForm = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -53,7 +86,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       toast({
@@ -64,7 +96,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
       return;
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: t('common.error'),
@@ -79,21 +110,18 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/avatar.${fileExt}`;
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
       const newAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      // Update profile
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: newAvatarUrl, updated_at: new Date().toISOString() })
@@ -114,7 +142,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
       });
     } finally {
       setIsUploadingAvatar(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -126,12 +153,10 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
 
     setIsUploadingAvatar(true);
     try {
-      // Remove from storage
-      const { error: deleteError } = await supabase.storage
+      await supabase.storage
         .from('avatars')
         .remove([`${user.id}/avatar.jpg`, `${user.id}/avatar.png`, `${user.id}/avatar.gif`, `${user.id}/avatar.webp`]);
 
-      // Update profile to remove avatar_url
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: null, updated_at: new Date().toISOString() })
@@ -185,7 +210,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         description: t('profile.updateSuccessDesc'),
       });
       onOpenChange(false);
-      // Reload to refresh profile data
       window.location.reload();
     } catch (error) {
       toast({
@@ -198,6 +222,81 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
     }
   };
 
+  const performPasswordChange = async () => {
+    setIsChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: t('settings.passwordChanged'),
+        description: t('settings.passwordChangedDesc'),
+      });
+      resetPasswordForm();
+      setActiveTab('profile');
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('settings.passwordChangeError'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleChangePassword = () => {
+    if (!currentPassword) {
+      toast({
+        title: t('common.error'),
+        description: t('settings.currentPasswordRequired'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
+      toast({
+        title: t('common.error'),
+        description: t('settings.newPasswordWeak'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: t('common.error'),
+        description: t('settings.passwordMismatch'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      toast({
+        title: t('common.error'),
+        description: t('settings.passwordSameAsCurrent'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (requiresReauth) {
+      executeSensitiveAction(
+        t('settings.changePassword'),
+        t('settings.changePasswordReauthDesc'),
+        performPasswordChange
+      );
+    } else {
+      performPasswordChange();
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -207,153 +306,287 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
       .slice(0, 2);
   };
 
+  const passwordValidation = validatePassword(newPassword);
+  const canSubmitPassword = 
+    currentPassword.length > 0 && 
+    passwordValidation.isValid && 
+    newPassword === confirmPassword &&
+    currentPassword !== newPassword;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            {t('profile.editProfile')}
-          </DialogTitle>
-          <DialogDescription>
-            {t('profile.editProfileDesc')}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              {t('profile.editProfile')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('profile.editProfileDesc')}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Avatar */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative">
-              {avatarUrl ? (
-                <img 
-                  src={avatarUrl} 
-                  alt="Avatar" 
-                  className="w-20 h-20 rounded-full object-cover border-2 border-primary/20"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                  }}
-                />
-              ) : null}
-              <div className={`w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center ${avatarUrl ? 'hidden' : ''}`}>
-                <span className="text-2xl font-semibold text-primary">
-                  {getInitials(formData.full_name || 'U')}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-                onClick={handleAvatarClick}
-                disabled={isUploadingAvatar}
-              >
-                {isUploadingAvatar ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="h-4 w-4" />
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="profile" className="gap-2">
+                <User className="h-4 w-4" />
+                {t('profile.profile')}
+              </TabsTrigger>
+              <TabsTrigger value="password" className="gap-2">
+                <Key className="h-4 w-4" />
+                {t('profile.changePassword')}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="space-y-6 py-4">
+              {/* Avatar */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative">
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt="Avatar" 
+                      className="w-20 h-20 rounded-full object-cover border-2 border-primary/20"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center ${avatarUrl ? 'hidden' : ''}`}>
+                    <span className="text-2xl font-semibold text-primary">
+                      {getInitials(formData.full_name || 'U')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    onClick={handleAvatarClick}
+                    disabled={isUploadingAvatar}
+                  >
+                    {isUploadingAvatar ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </div>
+                {avatarUrl && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs text-destructive hover:text-destructive"
+                    onClick={handleRemoveAvatar}
+                    disabled={isUploadingAvatar}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    {t('profile.removeAvatar')}
+                  </Button>
                 )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-            </div>
-            {avatarUrl && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-xs text-destructive hover:text-destructive"
-                onClick={handleRemoveAvatar}
-                disabled={isUploadingAvatar}
-              >
-                <X className="h-3 w-3 mr-1" />
-                {t('profile.removeAvatar')}
-              </Button>
-            )}
-            <p className="text-xs text-muted-foreground">{t('profile.avatarHint')}</p>
-          </div>
+                <p className="text-xs text-muted-foreground">{t('profile.avatarHint')}</p>
+              </div>
 
-          {/* Email (read-only) */}
-          <div className="space-y-2">
-            <Label>{t('profile.email')}</Label>
-            <Input
-              value={profile?.email || ''}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">{t('profile.emailCannotChange')}</p>
-          </div>
+              {/* Email (read-only) */}
+              <div className="space-y-2">
+                <Label>{t('profile.email')}</Label>
+                <Input
+                  value={profile?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">{t('profile.emailCannotChange')}</p>
+              </div>
 
-          {/* Full Name */}
-          <div className="space-y-2">
-            <Label htmlFor="full-name">{t('profile.fullName')}</Label>
-            <Input
-              id="full-name"
-              value={formData.full_name}
-              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-              placeholder={t('profile.enterFullName')}
-            />
-          </div>
+              {/* Full Name */}
+              <div className="space-y-2">
+                <Label htmlFor="full-name">{t('profile.fullName')}</Label>
+                <Input
+                  id="full-name"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  placeholder={t('profile.enterFullName')}
+                />
+              </div>
 
-          {/* Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="phone">{t('profile.phone')}</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder={t('profile.enterPhone')}
-            />
-          </div>
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">{t('profile.phone')}</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder={t('profile.enterPhone')}
+                />
+              </div>
 
-          {/* Change Password Link */}
-          <div className="pt-2 border-t border-border">
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => {
-                onOpenChange(false);
-                navigate('/settings');
-              }}
-            >
-              <Key className="h-4 w-4" />
-              {t('profile.changePassword')}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-1 text-center">
-              {t('profile.changePasswordHint')}
-            </p>
-          </div>
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isLoading}
+                >
+                  {t('action.cancel')}
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleSave}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('action.saving')}
+                    </>
+                  ) : (
+                    t('action.save')
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
 
-          {/* Buttons */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              {t('action.cancel')}
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={handleSave}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('action.saving')}
-                </>
-              ) : (
-                t('action.save')
+            <TabsContent value="password" className="space-y-4 py-4">
+              {isSuperAdmin && profile?.requires_otp && (
+                <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                  <p className="text-sm text-warning">
+                    {t('settings.otpRequiredForChange')}
+                  </p>
+                </div>
               )}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+              {/* Current Password */}
+              <div className="space-y-2">
+                <Label htmlFor="current-password">{t('settings.currentPassword')}</Label>
+                <div className="relative">
+                  <Input
+                    id="current-password"
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder={t('settings.enterCurrentPassword')}
+                    className="pr-10"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="new-password">{t('settings.newPassword')}</Label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={t('settings.enterNewPassword')}
+                    className="pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {newPassword && <PasswordStrength password={newPassword} />}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">{t('settings.confirmPassword')}</Label>
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder={t('settings.enterConfirmPassword')}
+                    className="pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {confirmPassword && newPassword && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {newPassword === confirmPassword ? (
+                      <>
+                        <Check className="h-4 w-4 text-success" />
+                        <span className="text-success">{t('settings.passwordsMatch')}</span>
+                      </>
+                    ) : (
+                      <span className="text-destructive">{t('settings.passwordsDontMatch')}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    resetPasswordForm();
+                    setActiveTab('profile');
+                  }}
+                  disabled={isChangingPassword}
+                >
+                  {t('action.cancel')}
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleChangePassword}
+                  disabled={!canSubmitPassword || isChangingPassword}
+                >
+                  {isChangingPassword ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('settings.changingPassword')}
+                    </>
+                  ) : (
+                    t('settings.changePasswordBtn')
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* OTP Re-authentication Dialog */}
+      <ReauthDialog
+        open={isDialogOpen}
+        onOpenChange={handleDialogClose}
+        onSuccess={handleReauthSuccess}
+        actionName={actionName}
+        actionDescription={actionDescription}
+      />
+    </>
   );
 }

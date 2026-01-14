@@ -84,6 +84,7 @@ const translations: Translations = {
   'user.logoutMessage': { id: 'Anda telah keluar dari sistem', en: 'You have been logged out' },
   
   // Profile
+  'profile.profile': { id: 'Profil', en: 'Profile' },
   'profile.editProfile': { id: 'Edit Profil', en: 'Edit Profile' },
   'profile.editProfileDesc': { id: 'Perbarui informasi profil Anda', en: 'Update your profile information' },
   'profile.email': { id: 'Email', en: 'Email' },
