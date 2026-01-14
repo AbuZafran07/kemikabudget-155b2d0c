@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Loader2, Camera, X } from 'lucide-react';
+import { User, Loader2, Camera, X, Key } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
   const { toast } = useToast();
   const { profile, user } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -305,6 +307,24 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               placeholder={t('profile.enterPhone')}
             />
+          </div>
+
+          {/* Change Password Link */}
+          <div className="pt-2 border-t border-border">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/settings');
+              }}
+            >
+              <Key className="h-4 w-4" />
+              {t('profile.changePassword')}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              {t('profile.changePasswordHint')}
+            </p>
           </div>
 
           {/* Buttons */}
