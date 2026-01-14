@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
 import { OtpSetupCard } from '@/components/settings/OtpSetupCard';
+import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -222,6 +223,9 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Change Password */}
+        <ChangePasswordCard />
 
         {/* OTP Setup for Super Admin */}
         {isSuperAdmin && <OtpSetupCard />}
