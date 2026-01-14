@@ -109,7 +109,7 @@ const AppHeader = () => {
   const initials = getInitials(displayName);
 
   return (
-    <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-40">
+    <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-40 flex-shrink-0">
       {/* Search */}
       <div className="flex-1 max-w-md">
         <div className="relative">
