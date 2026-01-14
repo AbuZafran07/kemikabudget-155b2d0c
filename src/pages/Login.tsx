@@ -10,13 +10,21 @@ import { OtpVerification } from "@/components/auth/OtpVerification";
 import { useLanguage } from "@/contexts/LanguageContext";
 import logoKemika from "@/assets/logo-kemika.png";
 import appIcon from "@/assets/app-icon.png";
-
 const Login = () => {
   const navigate = useNavigate();
-  const { user, signIn, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
-  const { t, language, setLanguage } = useLanguage();
-  
+  const {
+    user,
+    signIn,
+    isLoading: authLoading
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    t,
+    language,
+    setLanguage
+  } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -29,44 +37,40 @@ const Login = () => {
       navigate("/dashboard");
     }
   }, [user, authLoading, navigate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
       toast({
         title: language === 'id' ? "Error" : "Error",
         description: language === 'id' ? "Email dan password harus diisi" : "Email and password are required",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setIsLoading(true);
-    const { error, requiresOtp } = await signIn(email, password);
+    const {
+      error,
+      requiresOtp
+    } = await signIn(email, password);
     setIsLoading(false);
-
     if (error) {
       toast({
         title: language === 'id' ? "Login Gagal" : "Login Failed",
         description: getErrorMessage(error.message),
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     if (requiresOtp) {
       setShowOtp(true);
       return;
     }
-
     toast({
       title: language === 'id' ? "Login Berhasil" : "Login Successful",
-      description: language === 'id' ? "Selamat datang kembali!" : "Welcome back!",
+      description: language === 'id' ? "Selamat datang kembali!" : "Welcome back!"
     });
     navigate("/dashboard");
   };
-
   const getErrorMessage = (message: string): string => {
     if (message.includes("Invalid login credentials")) {
       return language === 'id' ? "Email atau password salah" : "Invalid email or password";
@@ -79,35 +83,27 @@ const Login = () => {
     }
     return message;
   };
-
   const handleOtpSuccess = () => {
     setShowOtp(false);
     toast({
       title: language === 'id' ? "Verifikasi Berhasil" : "Verification Successful",
-      description: language === 'id' ? "Selamat datang, Super Admin!" : "Welcome, Super Admin!",
+      description: language === 'id' ? "Selamat datang, Super Admin!" : "Welcome, Super Admin!"
     });
     navigate("/dashboard");
   };
-
   const handleOtpCancel = () => {
     setShowOtp(false);
     setPassword("");
   };
-
   const toggleLanguage = () => {
     setLanguage(language === 'id' ? 'en' : 'id');
   };
-
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen flex">
+  return <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-sidebar flex-col justify-between p-12 relative overflow-hidden">
         {/* Background Pattern */}
@@ -123,8 +119,8 @@ const Login = () => {
               <img src={appIcon} alt="App Icon" className="w-10 h-10 rounded-lg" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-sidebar-foreground tracking-wide">KEMIKA</h1>
-              <p className="text-sm text-sidebar-muted">PT. Kemika Karya Pratama</p>
+              <h1 className="text-xl font-bold text-sidebar-foreground tracking-wide">PT KEMIKA KARYA PRATAMA</h1>
+              <p className="text-sm text-sidebar-muted">Spreading Solution</p>
             </div>
           </div>
         </div>
@@ -136,10 +132,7 @@ const Login = () => {
             & Budget System
           </h2>
           <p className="text-lg text-sidebar-muted max-w-md leading-relaxed">
-            {language === 'id' 
-              ? 'Kelola anggaran, pengajuan biaya, approval berjenjang, dan reimburse dengan mudah dalam satu platform terintegrasi.'
-              : 'Manage budgets, expense requests, tiered approvals, and reimbursements easily in one integrated platform.'
-            }
+            {language === 'id' ? 'Kelola anggaran, pengajuan biaya, approval berjenjang, dan reimburse dengan mudah dalam satu platform terintegrasi.' : 'Manage budgets, expense requests, tiered approvals, and reimbursements easily in one integrated platform.'}
           </p>
         </div>
 
@@ -165,12 +158,7 @@ const Login = () => {
       {/* Right Panel - Login Form */}
       <div className="flex-1 flex flex-col justify-center items-center p-8 lg:p-12 bg-background relative">
         {/* Language Toggle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute top-4 right-4 gap-2"
-          onClick={toggleLanguage}
-        >
+        <Button variant="ghost" size="sm" className="absolute top-4 right-4 gap-2" onClick={toggleLanguage}>
           <Globe className="h-4 w-4" />
           {language === 'id' ? 'EN' : 'ID'}
         </Button>
@@ -183,22 +171,13 @@ const Login = () => {
 
           {/* Login Card */}
           <div className="bg-card rounded-2xl shadow-card p-8 animate-fade-in">
-            {showOtp ? (
-              <OtpVerification
-                onSuccess={handleOtpSuccess}
-                onCancel={handleOtpCancel}
-              />
-            ) : (
-              <>
+            {showOtp ? <OtpVerification onSuccess={handleOtpSuccess} onCancel={handleOtpCancel} /> : <>
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold text-foreground mb-2">
                     {language === 'id' ? 'Masuk ke Akun' : 'Sign In'}
                   </h2>
                   <p className="text-muted-foreground">
-                    {language === 'id' 
-                      ? 'Gunakan email dan password yang diberikan administrator'
-                      : 'Use the email and password provided by your administrator'
-                    }
+                    {language === 'id' ? 'Gunakan email dan password yang diberikan administrator' : 'Use the email and password provided by your administrator'}
                   </p>
                 </div>
 
@@ -207,16 +186,7 @@ const Login = () => {
                     <Label htmlFor="email">{t('form.email')}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="nama@kemika.co.id"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 h-12"
-                        required
-                        autoComplete="email"
-                      />
+                      <Input id="email" type="email" placeholder="nama@kemika.co.id" value={email} onChange={e => setEmail(e.target.value)} className="pl-10 h-12" required autoComplete="email" />
                     </div>
                   </div>
 
@@ -224,43 +194,18 @@ const Login = () => {
                     <Label htmlFor="password">{t('form.password')}</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder={language === 'id' ? 'Masukkan password' : 'Enter password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 pr-10 h-12"
-                        required
-                        autoComplete="current-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
+                      <Input id="password" type={showPassword ? "text" : "password"} placeholder={language === 'id' ? 'Masukkan password' : 'Enter password'} value={password} onChange={e => setPassword(e.target.value)} className="pl-10 pr-10 h-12" required autoComplete="current-password" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full h-12 text-base font-semibold"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
+                  <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isLoading}>
+                    {isLoading ? <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         {language === 'id' ? 'Memproses...' : 'Processing...'}
-                      </div>
-                    ) : (
-                      language === 'id' ? 'Masuk' : 'Sign In'
-                    )}
+                      </div> : language === 'id' ? 'Masuk' : 'Sign In'}
                   </Button>
                 </form>
 
@@ -269,14 +214,10 @@ const Login = () => {
                     {language === 'id' ? 'Tidak memiliki akun?' : "Don't have an account?"}
                   </p>
                   <p className="text-sm text-center text-muted-foreground mt-1">
-                    {language === 'id' 
-                      ? 'Hubungi Super Admin untuk pembuatan akun baru'
-                      : 'Contact Super Admin for new account creation'
-                    }
+                    {language === 'id' ? 'Hubungi Super Admin untuk pembuatan akun baru' : 'Contact Super Admin for new account creation'}
                   </p>
                 </div>
-              </>
-            )}
+              </>}
           </div>
 
           {/* Footer */}
@@ -285,8 +226,6 @@ const Login = () => {
           </p>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Login;
