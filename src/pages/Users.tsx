@@ -12,6 +12,7 @@ import {
   X,
   Building2,
   Trash2,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,12 +45,16 @@ import { useUsers, UserWithRole } from "@/hooks/useUsers";
 import { AppRole } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Users = () => {
   const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, deleteUser, createUser } = useUsers();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const { t, language } = useLanguage();
+  const { toast } = useToast();
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
@@ -140,6 +145,30 @@ const Users = () => {
     await deleteUser.mutateAsync({ userId: userToDelete.id });
     setIsDeleteDialogOpen(false);
     setUserToDelete(null);
+  };
+
+  const handleResetPassword = async (user: UserWithRole) => {
+    setIsResettingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/settings`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: t('users.resetPasswordSuccess'),
+        description: `Email dikirim ke ${user.email}`,
+      });
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: t('users.resetPasswordError'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
   const handleCreateUser = async () => {
@@ -307,6 +336,13 @@ const Users = () => {
                     <DropdownMenuItem onClick={() => handleEditUser(user)}>
                       <Edit2 className="h-4 w-4 mr-2" />
                       {t('users.editUser')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleResetPassword(user)}
+                      disabled={isResettingPassword}
+                    >
+                      <KeyRound className="h-4 w-4 mr-2" />
+                      {t('users.resetPassword')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleToggleActive(user)}>

@@ -106,6 +106,8 @@ const translations: Translations = {
   'profile.removeAvatar': { id: 'Hapus Foto', en: 'Remove Photo' },
   'profile.invalidImageType': { id: 'Format file tidak didukung. Gunakan JPG, PNG, GIF atau WebP', en: 'File format not supported. Use JPG, PNG, GIF or WebP' },
   'profile.imageTooLarge': { id: 'Ukuran file terlalu besar. Maksimal 2MB', en: 'File size too large. Maximum 2MB' },
+  'profile.changePassword': { id: 'Ganti Password', en: 'Change Password' },
+  'profile.changePasswordHint': { id: 'Buka halaman pengaturan untuk mengganti password', en: 'Go to settings page to change password' },
   
   // Roles
   'role.superAdmin': { id: 'Super Admin', en: 'Super Admin' },
@@ -358,6 +360,10 @@ const translations: Translations = {
   'users.confirmDelete': { id: 'Apakah Anda yakin ingin menghapus pengguna ini?', en: 'Are you sure you want to delete this user?' },
   'users.deleteWarning': { id: 'Tindakan ini tidak dapat dibatalkan.', en: 'This action cannot be undone.' },
   'users.deleteSuccess': { id: 'Pengguna berhasil dihapus', en: 'User deleted successfully' },
+  'users.resetPassword': { id: 'Reset Password', en: 'Reset Password' },
+  'users.resetPasswordDesc': { id: 'Kirim email reset password ke pengguna ini', en: 'Send password reset email to this user' },
+  'users.resetPasswordSuccess': { id: 'Email reset password berhasil dikirim', en: 'Password reset email sent successfully' },
+  'users.resetPasswordError': { id: 'Gagal mengirim email reset password', en: 'Failed to send password reset email' },
   
   // Settings
   'settings.title': { id: 'Pengaturan', en: 'Settings' },
