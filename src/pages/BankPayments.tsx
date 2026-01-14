@@ -2,18 +2,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { id as localeId, enUS } from 'date-fns/locale';
 import {
   Building,
-  Download,
   Search,
   Check,
-  CreditCard,
   FileSpreadsheet,
   Loader2,
   Package,
-  CheckSquare,
-  Square,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,15 +31,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface BankPayment {
   id: string;
@@ -62,11 +51,14 @@ interface BankPayment {
 
 const BankPayments = () => {
   const { toast } = useToast();
+  const { t, language } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const dateLocale = language === 'id' ? localeId : enUS;
 
   // Fetch bank payments (approved requests with bank funding source)
   const { data: payments = [], isLoading } = useQuery({
@@ -146,8 +138,8 @@ const BankPayments = () => {
     
     if (selectedItems.length === 0) {
       toast({
-        title: 'Tidak ada item dipilih',
-        description: 'Pilih minimal satu pembayaran untuk export',
+        title: t('common.noItemSelected'),
+        description: t('common.selectAtLeastOne'),
         variant: 'destructive',
       });
       return;
@@ -188,8 +180,8 @@ const BankPayments = () => {
     link.click();
 
     toast({
-      title: 'CSV Exported',
-      description: `${selectedItems.length} pembayaran telah di-export`,
+      title: t('bankPayments.csvExported'),
+      description: `${selectedItems.length} ${t('bankPayments.paymentsExported')}`,
     });
   };
 
@@ -228,15 +220,15 @@ const BankPayments = () => {
       setIsProcessing(false);
 
       toast({
-        title: 'Batch Payment Selesai',
-        description: `${successCount} berhasil, ${failCount} gagal`,
+        title: t('bankPayments.batchComplete'),
+        description: `${successCount} ${t('bankPayments.successCount')}, ${failCount} ${t('bankPayments.failCount')}`,
         variant: failCount > 0 ? 'destructive' : 'default',
       });
     },
     onError: (error: Error) => {
       setIsProcessing(false);
       toast({
-        title: 'Error',
+        title: t('common.error'),
         description: error.message,
         variant: 'destructive',
       });
@@ -248,9 +240,9 @@ const BankPayments = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Bank Payments</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t('bankPayments.title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Kelola pembayaran bank dan batch transfer
+            {t('bankPayments.description')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -261,7 +253,7 @@ const BankPayments = () => {
             className="gap-2"
           >
             <FileSpreadsheet className="h-4 w-4" />
-            Export CSV
+            {t('bankPayments.exportCsv')}
           </Button>
           <Button
             onClick={() => setIsBatchDialogOpen(true)}
@@ -269,7 +261,7 @@ const BankPayments = () => {
             className="gap-2"
           >
             <Package className="h-4 w-4" />
-            Batch Pay ({selectedPayments.length})
+            {t('bankPayments.batchPay')} ({selectedPayments.length})
           </Button>
         </div>
       </div>
@@ -279,7 +271,7 @@ const BankPayments = () => {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Cari nomor request, deskripsi, atau penerima..."
+            placeholder={t('bankPayments.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -288,7 +280,7 @@ const BankPayments = () => {
         {selectedPayments.length > 0 && (
           <div className="bg-primary/10 rounded-lg px-4 py-2">
             <p className="text-sm text-primary font-medium">
-              {selectedPayments.length} dipilih • Total: {formatCurrency(selectedTotal)}
+              {selectedPayments.length} {t('bankPayments.selected')} • Total: {formatCurrency(selectedTotal)}
             </p>
           </div>
         )}
@@ -305,13 +297,13 @@ const BankPayments = () => {
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead>No. Request</TableHead>
-              <TableHead>Divisi</TableHead>
-              <TableHead>Penerima</TableHead>
-              <TableHead>Bank</TableHead>
-              <TableHead>No. Rekening</TableHead>
-              <TableHead className="text-right">Jumlah</TableHead>
-              <TableHead>Tanggal Approve</TableHead>
+              <TableHead>{t('requests.requestNumber')}</TableHead>
+              <TableHead>{t('requests.division')}</TableHead>
+              <TableHead>{t('bankPayments.recipient')}</TableHead>
+              <TableHead>{t('paymentQueue.bank')}</TableHead>
+              <TableHead>{t('bankPayments.accountNumber')}</TableHead>
+              <TableHead className="text-right">{t('requests.amount')}</TableHead>
+              <TableHead>{t('bankPayments.approvedDate')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -325,7 +317,7 @@ const BankPayments = () => {
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12">
                   <Building className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Tidak ada pembayaran bank menunggu</p>
+                  <p className="text-muted-foreground">{t('bankPayments.noData')}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -369,7 +361,7 @@ const BankPayments = () => {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {payment.approved_at
-                      ? format(new Date(payment.approved_at), 'dd MMM yyyy', { locale: localeId })
+                      ? format(new Date(payment.approved_at), 'dd MMM yyyy', { locale: dateLocale })
                       : '-'}
                   </TableCell>
                 </TableRow>
@@ -383,20 +375,20 @@ const BankPayments = () => {
       <Dialog open={isBatchDialogOpen} onOpenChange={setIsBatchDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Konfirmasi Batch Payment</DialogTitle>
+            <DialogTitle>{t('bankPayments.confirmBatch')}</DialogTitle>
             <DialogDescription>
-              Proses pembayaran untuk {selectedPayments.length} transaksi sekaligus
+              {t('bankPayments.confirmBatchDesc')} {selectedPayments.length}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Jumlah Transaksi</span>
+                <span className="text-muted-foreground">{t('bankPayments.transactionCount')}</span>
                 <span className="font-medium">{selectedPayments.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Pembayaran</span>
+                <span className="text-muted-foreground">{t('bankPayments.totalPayment')}</span>
                 <span className="font-bold text-primary text-lg">
                   {formatCurrency(selectedTotal)}
                 </span>
@@ -405,13 +397,12 @@ const BankPayments = () => {
 
             <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
               <p className="text-sm text-foreground">
-                <strong>Perhatian:</strong> Tindakan ini akan memproses pembayaran dan mengurangi
-                saldo kas secara otomatis. Pastikan semua data sudah benar sebelum melanjutkan.
+                <strong>{t('common.attention')}:</strong> {t('bankPayments.warningNote')}
               </p>
             </div>
 
             <div className="text-sm text-muted-foreground">
-              <p>Daftar Request yang akan dibayar:</p>
+              <p>{t('bankPayments.requestList')}:</p>
               <ul className="list-disc list-inside mt-2 max-h-32 overflow-y-auto">
                 {payments
                   .filter((p) => selectedPayments.includes(p.id))
@@ -430,7 +421,7 @@ const BankPayments = () => {
               onClick={() => setIsBatchDialogOpen(false)}
               disabled={isProcessing}
             >
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               onClick={() => processBatchPayment.mutate()}
@@ -442,7 +433,7 @@ const BankPayments = () => {
               ) : (
                 <Check className="h-4 w-4" />
               )}
-              {isProcessing ? 'Memproses...' : 'Proses Pembayaran'}
+              {isProcessing ? t('paymentQueue.processing') : t('bankPayments.processPayment')}
             </Button>
           </DialogFooter>
         </DialogContent>

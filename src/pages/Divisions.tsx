@@ -28,10 +28,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Division {
   id: string;
@@ -44,10 +55,13 @@ interface Division {
 
 const Divisions = () => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDivision, setEditingDivision] = useState<Division | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [divisionToDelete, setDivisionToDelete] = useState<Division | null>(null);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -76,10 +90,10 @@ const Divisions = () => {
       queryClient.invalidateQueries({ queryKey: ['divisions-management'] });
       setIsDialogOpen(false);
       resetForm();
-      toast({ title: 'Divisi berhasil ditambahkan' });
+      toast({ title: t('common.success'), description: t('divisions.addSuccess') });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -92,10 +106,10 @@ const Divisions = () => {
       queryClient.invalidateQueries({ queryKey: ['divisions-management'] });
       setIsDialogOpen(false);
       resetForm();
-      toast({ title: 'Divisi berhasil diperbarui' });
+      toast({ title: t('common.success'), description: t('divisions.updateSuccess') });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -106,10 +120,10 @@ const Divisions = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['divisions-management'] });
-      toast({ title: 'Divisi berhasil dihapus' });
+      toast({ title: t('common.success'), description: t('divisions.deleteSuccess') });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('divisions.deleteError'), variant: 'destructive' });
     },
   });
 
@@ -127,6 +141,19 @@ const Divisions = () => {
       is_active: division.is_active,
     });
     setIsDialogOpen(true);
+  };
+
+  const handleDelete = (division: Division) => {
+    setDivisionToDelete(division);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (divisionToDelete) {
+      deleteMutation.mutate(divisionToDelete.id);
+    }
+    setDeleteDialogOpen(false);
+    setDivisionToDelete(null);
   };
 
   const handleSubmit = () => {
@@ -147,19 +174,19 @@ const Divisions = () => {
     <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Divisi</h1>
-          <p className="text-muted-foreground mt-1">Kelola data divisi perusahaan</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('divisions.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('divisions.description')}</p>
         </div>
         <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
           <Plus className="h-4 w-4" />
-          Tambah Divisi
+          {t('divisions.addDivision')}
         </Button>
       </div>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Cari divisi..."
+          placeholder={t('divisions.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -170,11 +197,11 @@ const Divisions = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Kode</TableHead>
-              <TableHead>Nama</TableHead>
-              <TableHead>Deskripsi</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
+              <TableHead>{t('common.code')}</TableHead>
+              <TableHead>{t('common.name')}</TableHead>
+              <TableHead>{t('common.description')}</TableHead>
+              <TableHead>{t('common.status')}</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -188,7 +215,7 @@ const Divisions = () => {
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-12">
                   <Building className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Tidak ada divisi</p>
+                  <p className="text-muted-foreground">{t('divisions.noData')}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -201,7 +228,7 @@ const Divisions = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={division.is_active ? 'default' : 'secondary'}>
-                      {division.is_active ? 'Aktif' : 'Nonaktif'}
+                      {division.is_active ? t('common.active') : t('common.inactive')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -213,7 +240,7 @@ const Divisions = () => {
                         size="sm"
                         variant="ghost"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => deleteMutation.mutate(division.id)}
+                        onClick={() => handleDelete(division)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -229,15 +256,15 @@ const Divisions = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingDivision ? 'Edit Divisi' : 'Tambah Divisi'}</DialogTitle>
+            <DialogTitle>{editingDivision ? t('divisions.editDivision') : t('divisions.addDivision')}</DialogTitle>
             <DialogDescription>
-              {editingDivision ? 'Perbarui informasi divisi' : 'Tambah divisi baru'}
+              {editingDivision ? t('divisions.editDivisionDesc') : t('divisions.addDivisionDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Kode</Label>
+                <Label>{t('common.code')}</Label>
                 <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
@@ -245,7 +272,7 @@ const Divisions = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Nama</Label>
+                <Label>{t('common.name')}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -254,16 +281,16 @@ const Divisions = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Deskripsi</Label>
+              <Label>{t('common.description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Deskripsi divisi..."
+                placeholder={t('common.description') + '...'}
                 rows={3}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Status Aktif</Label>
+              <Label>{t('common.activeStatus')}</Label>
               <Switch
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
@@ -271,13 +298,30 @@ const Divisions = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('action.cancel')}</Button>
             <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-              {(createMutation.isPending || updateMutation.isPending) ? 'Menyimpan...' : 'Simpan'}
+              {(createMutation.isPending || updateMutation.isPending) ? t('action.saving') : t('action.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('action.delete')} {divisionToDelete?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('users.deleteWarning')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('action.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t('action.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

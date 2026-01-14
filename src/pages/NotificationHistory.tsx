@@ -2,14 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { id as localeId } from "date-fns/locale";
+import { id as localeId, enUS } from "date-fns/locale";
 import {
   Mail,
   CheckCircle,
   XCircle,
   Clock,
   Search,
-  Filter,
   RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -31,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface NotificationLog {
   id: string;
@@ -45,24 +45,27 @@ interface NotificationLog {
   request?: { request_number: string } | null;
 }
 
-const eventTypeLabels: Record<string, { label: string; color: string }> = {
-  submitted: { label: "Diajukan", color: "bg-info/10 text-info" },
-  approved: { label: "Disetujui", color: "bg-success/10 text-success" },
-  rejected: { label: "Ditolak", color: "bg-destructive/10 text-destructive" },
-  paid: { label: "Dibayar", color: "bg-primary/10 text-primary" },
-  settled: { label: "Selesai", color: "bg-muted text-muted-foreground" },
-};
-
-const statusIcons: Record<string, { icon: React.ElementType; color: string }> = {
-  sent: { icon: CheckCircle, color: "text-success" },
-  failed: { icon: XCircle, color: "text-destructive" },
-  pending: { icon: Clock, color: "text-warning" },
-};
-
 const NotificationHistory = () => {
+  const { t, language } = useLanguage();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [eventFilter, setEventFilter] = useState<string>("all");
+
+  const dateLocale = language === 'id' ? localeId : enUS;
+
+  const eventTypeLabels: Record<string, { label: string; color: string }> = {
+    submitted: { label: t('status.submitted'), color: "bg-info/10 text-info" },
+    approved: { label: t('status.approved'), color: "bg-success/10 text-success" },
+    rejected: { label: t('status.rejected'), color: "bg-destructive/10 text-destructive" },
+    paid: { label: t('status.paid'), color: "bg-primary/10 text-primary" },
+    settled: { label: t('status.settled'), color: "bg-muted text-muted-foreground" },
+  };
+
+  const statusIcons: Record<string, { icon: React.ElementType; color: string }> = {
+    sent: { icon: CheckCircle, color: "text-success" },
+    failed: { icon: XCircle, color: "text-destructive" },
+    pending: { icon: Clock, color: "text-warning" },
+  };
 
   const { data: logs, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["notification-logs", statusFilter, eventFilter],
@@ -113,10 +116,10 @@ const NotificationHistory = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Mail className="h-6 w-6" />
-            Riwayat Notifikasi
+            {t('notificationHistory.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Riwayat email notifikasi yang dikirim oleh sistem
+            {t('notificationHistory.description')}
           </p>
         </div>
         <Button
@@ -126,34 +129,34 @@ const NotificationHistory = () => {
           className="gap-2"
         >
           <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Refresh
+          {t('action.refresh')}
         </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-sm text-muted-foreground">Total</p>
+          <p className="text-sm text-muted-foreground">{t('notificationHistory.total')}</p>
           <p className="text-2xl font-bold text-foreground">{stats.total}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-success" />
-            <p className="text-sm text-muted-foreground">Terkirim</p>
+            <p className="text-sm text-muted-foreground">{t('notificationHistory.sent')}</p>
           </div>
           <p className="text-2xl font-bold text-success">{stats.sent}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-destructive" />
-            <p className="text-sm text-muted-foreground">Gagal</p>
+            <p className="text-sm text-muted-foreground">{t('notificationHistory.failed')}</p>
           </div>
           <p className="text-2xl font-bold text-destructive">{stats.failed}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-warning" />
-            <p className="text-sm text-muted-foreground">Pending</p>
+            <p className="text-sm text-muted-foreground">{t('notificationHistory.pending')}</p>
           </div>
           <p className="text-2xl font-bold text-warning">{stats.pending}</p>
         </div>
@@ -165,7 +168,7 @@ const NotificationHistory = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Cari subject, penerima, atau nomor request..."
+              placeholder={t('notificationHistory.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -173,26 +176,26 @@ const NotificationHistory = () => {
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t('common.status')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Status</SelectItem>
-              <SelectItem value="sent">Terkirim</SelectItem>
-              <SelectItem value="failed">Gagal</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="all">{t('notificationHistory.allStatus')}</SelectItem>
+              <SelectItem value="sent">{t('notificationHistory.sent')}</SelectItem>
+              <SelectItem value="failed">{t('notificationHistory.failed')}</SelectItem>
+              <SelectItem value="pending">{t('notificationHistory.pending')}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={eventFilter} onValueChange={setEventFilter}>
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Event" />
+              <SelectValue placeholder={t('notificationHistory.event')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Event</SelectItem>
-              <SelectItem value="submitted">Diajukan</SelectItem>
-              <SelectItem value="approved">Disetujui</SelectItem>
-              <SelectItem value="rejected">Ditolak</SelectItem>
-              <SelectItem value="paid">Dibayar</SelectItem>
-              <SelectItem value="settled">Selesai</SelectItem>
+              <SelectItem value="all">{t('notificationHistory.allEvents')}</SelectItem>
+              <SelectItem value="submitted">{t('status.submitted')}</SelectItem>
+              <SelectItem value="approved">{t('status.approved')}</SelectItem>
+              <SelectItem value="rejected">{t('status.rejected')}</SelectItem>
+              <SelectItem value="paid">{t('status.paid')}</SelectItem>
+              <SelectItem value="settled">{t('status.settled')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -203,13 +206,13 @@ const NotificationHistory = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Event</TableHead>
-              <TableHead>Request</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Penerima</TableHead>
-              <TableHead>Error</TableHead>
+              <TableHead>{t('common.status')}</TableHead>
+              <TableHead>{t('notificationHistory.date')}</TableHead>
+              <TableHead>{t('notificationHistory.event')}</TableHead>
+              <TableHead>{t('notificationHistory.request')}</TableHead>
+              <TableHead>{t('notificationHistory.subject')}</TableHead>
+              <TableHead>{t('notificationHistory.recipients')}</TableHead>
+              <TableHead>{t('notificationHistory.error')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -226,7 +229,7 @@ const NotificationHistory = () => {
                 <TableCell colSpan={7} className="text-center py-12">
                   <Mail className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-muted-foreground">
-                    Tidak ada notifikasi ditemukan
+                    {t('notificationHistory.noData')}
                   </p>
                 </TableCell>
               </TableRow>
@@ -249,7 +252,7 @@ const NotificationHistory = () => {
                     </TableCell>
                     <TableCell className="text-sm">
                       {format(new Date(log.created_at), "dd MMM yyyy HH:mm", {
-                        locale: localeId,
+                        locale: dateLocale,
                       })}
                     </TableCell>
                     <TableCell>
