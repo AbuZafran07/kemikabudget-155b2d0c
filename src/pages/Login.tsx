@@ -116,7 +116,7 @@ const Login = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-xl bg-card/10 backdrop-blur-sm flex items-center justify-center">
-              <img src={appIcon} alt="App Icon" className="w-10 h-10 rounded-lg" />
+              <img alt="App Icon" className="w-10 h-10 rounded-lg" src="/lovable-uploads/cb7d852a-00a6-461a-ad8f-806dbf150cf5.png" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-sidebar-foreground tracking-wide">PT KEMIKA KARYA PRATAMA</h1>
