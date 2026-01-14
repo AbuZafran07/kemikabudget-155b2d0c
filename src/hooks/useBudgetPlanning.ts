@@ -175,6 +175,32 @@ export function useBudgetPlanning() {
     },
   });
 
+  // Delete budget allocation
+  const deleteBudget = useMutation({
+    mutationFn: async (budgetId: string) => {
+      const { error } = await supabase
+        .from('division_budgets')
+        .delete()
+        .eq('id', budgetId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['division_budgets'] });
+      toast({
+        title: 'Berhasil',
+        description: 'Alokasi anggaran berhasil dihapus',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Calculate totals
   const activePeriod = periods?.find(p => p.is_active);
   const activeBudgets = budgets?.filter(b => b.period_id === activePeriod?.id) || [];
@@ -192,6 +218,7 @@ export function useBudgetPlanning() {
     refetch,
     createBudget,
     updateBudget,
+    deleteBudget,
     totalAllocated,
     totalUsed,
     totalRemaining,
