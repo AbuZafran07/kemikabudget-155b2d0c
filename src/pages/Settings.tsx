@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
 import { OtpSetupCard } from '@/components/settings/OtpSetupCard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AppSettings {
   approval_sla_days: number;
@@ -37,6 +38,7 @@ const defaultSettings: AppSettings = {
 const Settings = () => {
   const { toast } = useToast();
   const { role } = useAuth();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [hasChanges, setHasChanges] = useState(false);
@@ -67,10 +69,10 @@ const Settings = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app-settings'] });
       setHasChanges(false);
-      toast({ title: 'Pengaturan berhasil disimpan' });
+      toast({ title: t('settings.settingsSaved') });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -103,8 +105,8 @@ const Settings = () => {
     <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Pengaturan</h1>
-          <p className="text-muted-foreground mt-1">Konfigurasi sistem dan preferensi</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('settings.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('settings.description')}</p>
         </div>
         <Button
           onClick={handleSave}
@@ -116,7 +118,7 @@ const Settings = () => {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Simpan Pengaturan
+          {t('settings.saveSettings')}
         </Button>
       </div>
 
@@ -126,16 +128,16 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
-              Konfigurasi SLA
+              {t('settings.slaConfig')}
             </CardTitle>
             <CardDescription>
-              Atur batas waktu untuk proses persetujuan dan pembayaran
+              {t('settings.slaConfigDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>SLA Persetujuan (hari)</Label>
+                <Label>{t('settings.approvalSla')}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -144,11 +146,11 @@ const Settings = () => {
                   onChange={(e) => updateSetting('approval_sla_days', parseInt(e.target.value) || 3)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Pengajuan akan ditandai overdue setelah {settings.approval_sla_days} hari
+                  {t('settings.approvalSlaDesc')} {settings.approval_sla_days} {t('settings.days')}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>SLA Pembayaran (hari)</Label>
+                <Label>{t('settings.paymentSla')}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -157,7 +159,7 @@ const Settings = () => {
                   onChange={(e) => updateSetting('payment_sla_days', parseInt(e.target.value) || 3)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Pembayaran akan ditandai overdue setelah {settings.payment_sla_days} hari
+                  {t('settings.paymentSlaDesc')} {settings.payment_sla_days} {t('settings.days')}
                 </p>
               </div>
             </div>
@@ -169,15 +171,15 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              Aturan Persetujuan
+              {t('settings.approvalRules')}
             </CardTitle>
             <CardDescription>
-              Konfigurasi aturan dan validasi untuk proses approval
+              {t('settings.approvalRulesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>Batas Nilai Tinggi (High Value Threshold)</Label>
+              <Label>{t('settings.highValueThreshold')}</Label>
               <Input
                 type="number"
                 min={0}
@@ -185,7 +187,7 @@ const Settings = () => {
                 onChange={(e) => updateSetting('high_value_threshold', parseInt(e.target.value) || 0)}
               />
               <p className="text-xs text-muted-foreground">
-                Pengajuan di atas {formatCurrency(settings.high_value_threshold)} memerlukan catatan persetujuan dan dokumen pendukung
+                {t('settings.highValueThresholdDesc')}: {formatCurrency(settings.high_value_threshold)}
               </p>
             </div>
 
@@ -194,9 +196,9 @@ const Settings = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">Wajib Invoice Sebelum Bayar</p>
+                  <p className="font-medium">{t('settings.requireInvoice')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Invoice atau quotation harus ada sebelum pembayaran
+                    {t('settings.requireInvoiceDesc')}
                   </p>
                 </div>
                 <Switch
@@ -207,9 +209,9 @@ const Settings = () => {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">Wajib Receipt Sebelum Settle</p>
+                  <p className="font-medium">{t('settings.requireReceipt')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Receipt harus ada sebelum penyelesaian transaksi
+                    {t('settings.requireReceiptDesc')}
                   </p>
                 </div>
                 <Switch
@@ -232,25 +234,25 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <SettingsIcon className="h-5 w-5 text-primary" />
-              Informasi Sistem
+              {t('settings.systemInfo')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-muted rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Versi</p>
+                <p className="text-xs text-muted-foreground">{t('settings.version')}</p>
                 <p className="font-semibold">1.0.0</p>
               </div>
               <div className="bg-muted rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Environment</p>
+                <p className="text-xs text-muted-foreground">{t('settings.environment')}</p>
                 <p className="font-semibold">Production</p>
               </div>
               <div className="bg-muted rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Database</p>
+                <p className="text-xs text-muted-foreground">{t('settings.database')}</p>
                 <p className="font-semibold">PostgreSQL</p>
               </div>
               <div className="bg-muted rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Backend</p>
+                <p className="text-xs text-muted-foreground">{t('settings.backend')}</p>
                 <p className="font-semibold">Lovable Cloud</p>
               </div>
             </div>
