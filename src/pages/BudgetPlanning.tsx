@@ -3,11 +3,14 @@ import {
   Search,
   Plus,
   Edit2,
+  Trash2,
+  Eye,
   TrendingUp,
   TrendingDown,
   Calculator,
   Building2,
   Calendar,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +31,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useBudgetPlanning, DivisionBudget } from "@/hooks/useBudgetPlanning";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { format } from "date-fns";
+import { id as idLocale, enUS } from "date-fns/locale";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -52,6 +75,7 @@ const BudgetPlanning = () => {
     isLoading,
     createBudget,
     updateBudget,
+    deleteBudget,
     totalAllocated,
     totalUsed,
     totalRemaining,
@@ -66,7 +90,9 @@ const BudgetPlanning = () => {
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editBudget, setEditBudget] = useState<DivisionBudget | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [selectedBudget, setSelectedBudget] = useState<DivisionBudget | null>(null);
 
   // Form states
   const [formDivisionId, setFormDivisionId] = useState("");
@@ -111,22 +137,41 @@ const BudgetPlanning = () => {
   };
 
   const handleEdit = (budget: DivisionBudget) => {
-    setEditBudget(budget);
+    setSelectedBudget(budget);
     setFormAmount(budget.allocated_amount.toString());
     setIsEditDialogOpen(true);
   };
 
   const handleUpdate = async () => {
-    if (!editBudget || !formAmount) return;
+    if (!selectedBudget || !formAmount) return;
 
     await updateBudget.mutateAsync({
-      budgetId: editBudget.id,
+      budgetId: selectedBudget.id,
       allocatedAmount: parseFloat(formAmount),
     });
 
     setIsEditDialogOpen(false);
-    setEditBudget(null);
+    setSelectedBudget(null);
     resetForm();
+  };
+
+  const handleDeleteClick = (budget: DivisionBudget) => {
+    setSelectedBudget(budget);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedBudget) return;
+
+    await deleteBudget.mutateAsync(selectedBudget.id);
+
+    setIsDeleteDialogOpen(false);
+    setSelectedBudget(null);
+  };
+
+  const handleViewDetail = (budget: DivisionBudget) => {
+    setSelectedBudget(budget);
+    setIsDetailSheetOpen(true);
   };
 
   const resetForm = () => {
@@ -134,6 +179,8 @@ const BudgetPlanning = () => {
     setFormCategoryId("");
     setFormAmount("");
   };
+
+  const dateLocale = language === 'id' ? idLocale : enUS;
 
   if (isLoading) {
     return (
@@ -293,13 +340,33 @@ const BudgetPlanning = () => {
                         </div>
                         <Progress value={usedPercent} className="mt-2 h-1.5 w-48" />
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(budget)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewDetail(budget)}
+                          title={language === 'id' ? 'Lihat Detail' : 'View Detail'}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(budget)}
+                          title={language === 'id' ? 'Edit' : 'Edit'}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(budget)}
+                          title={language === 'id' ? 'Hapus' : 'Delete'}
+                          disabled={budget.used_amount > 0}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -405,9 +472,9 @@ const BudgetPlanning = () => {
           <DialogHeader>
             <DialogTitle>{language === 'id' ? 'Edit Alokasi Anggaran' : 'Edit Budget Allocation'}</DialogTitle>
             <DialogDescription>
-              {editBudget && (
+              {selectedBudget && (
                 <>
-                  {editBudget.divisions?.name} - {editBudget.cost_categories?.name}
+                  {selectedBudget.divisions?.name} - {selectedBudget.cost_categories?.name}
                 </>
               )}
             </DialogDescription>
@@ -423,11 +490,11 @@ const BudgetPlanning = () => {
                 onChange={(e) => setFormAmount(e.target.value)}
               />
             </div>
-            {editBudget && editBudget.used_amount > 0 && (
+            {selectedBudget && selectedBudget.used_amount > 0 && (
               <p className="text-sm text-warning">
                 {language === 'id' 
-                  ? `Perhatian: Sudah terpakai ${formatCurrency(editBudget.used_amount)}`
-                  : `Warning: Already used ${formatCurrency(editBudget.used_amount)}`
+                  ? `Perhatian: Sudah terpakai ${formatCurrency(selectedBudget.used_amount)}`
+                  : `Warning: Already used ${formatCurrency(selectedBudget.used_amount)}`
                 }
               </p>
             )}
@@ -443,6 +510,182 @@ const BudgetPlanning = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === 'id' ? 'Hapus Alokasi Anggaran?' : 'Delete Budget Allocation?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedBudget && (
+                <>
+                  {language === 'id' 
+                    ? `Anda akan menghapus alokasi anggaran untuk ${selectedBudget.divisions?.name} - ${selectedBudget.cost_categories?.name}. Tindakan ini tidak dapat dibatalkan.`
+                    : `You are about to delete budget allocation for ${selectedBudget.divisions?.name} - ${selectedBudget.cost_categories?.name}. This action cannot be undone.`
+                  }
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('action.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {language === 'id' ? 'Hapus' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Detail Sheet */}
+      <Sheet open={isDetailSheetOpen} onOpenChange={setIsDetailSheetOpen}>
+        <SheetContent className="sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-primary" />
+              {language === 'id' ? 'Detail Alokasi Anggaran' : 'Budget Allocation Detail'}
+            </SheetTitle>
+            <SheetDescription>
+              {selectedBudget && (
+                <>
+                  {selectedBudget.divisions?.name} - {selectedBudget.cost_categories?.name}
+                </>
+              )}
+            </SheetDescription>
+          </SheetHeader>
+
+          {selectedBudget && (
+            <div className="mt-6 space-y-6">
+              {/* Division & Category Info */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t('users.division')}</p>
+                    <p className="font-medium">{selectedBudget.divisions?.name}</p>
+                    <p className="text-xs text-muted-foreground">{selectedBudget.divisions?.code}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t('requests.category')}</p>
+                    <p className="font-medium">{selectedBudget.cost_categories?.name}</p>
+                    <p className="text-xs text-muted-foreground">{selectedBudget.cost_categories?.code}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{language === 'id' ? 'Periode' : 'Period'}</p>
+                    <p className="font-medium">{selectedBudget.budget_periods?.name}</p>
+                    <p className="text-xs text-muted-foreground">{selectedBudget.budget_periods?.year}</p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Budget Summary */}
+              <div className="space-y-4">
+                <h4 className="font-semibold">{language === 'id' ? 'Ringkasan Anggaran' : 'Budget Summary'}</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-primary/10 rounded-lg">
+                    <p className="text-sm text-muted-foreground">{language === 'id' ? 'Alokasi' : 'Allocated'}</p>
+                    <p className="text-xl font-bold text-primary">{formatCurrency(selectedBudget.allocated_amount)}</p>
+                  </div>
+                  <div className="p-4 bg-destructive/10 rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t('budgetPlanning.used')}</p>
+                    <p className="text-xl font-bold text-destructive">{formatCurrency(selectedBudget.used_amount)}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-success/10 rounded-lg">
+                  <p className="text-sm text-muted-foreground">{t('budgetPlanning.remaining')}</p>
+                  <p className="text-2xl font-bold text-success">
+                    {formatCurrency(selectedBudget.allocated_amount - selectedBudget.used_amount)}
+                  </p>
+                </div>
+
+                {/* Progress Bar */}
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-muted-foreground">{language === 'id' ? 'Penggunaan' : 'Usage'}</span>
+                    <span className="font-medium">
+                      {selectedBudget.allocated_amount > 0 
+                        ? ((selectedBudget.used_amount / selectedBudget.allocated_amount) * 100).toFixed(1) 
+                        : 0}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={selectedBudget.allocated_amount > 0 
+                      ? (selectedBudget.used_amount / selectedBudget.allocated_amount) * 100 
+                      : 0
+                    } 
+                    className="h-3" 
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Metadata */}
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{language === 'id' ? 'Dibuat' : 'Created'}</span>
+                  <span>{format(new Date(selectedBudget.created_at), 'dd MMM yyyy HH:mm', { locale: dateLocale })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{language === 'id' ? 'Terakhir Diubah' : 'Last Updated'}</span>
+                  <span>{format(new Date(selectedBudget.updated_at), 'dd MMM yyyy HH:mm', { locale: dateLocale })}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setIsDetailSheetOpen(false);
+                    handleEdit(selectedBudget);
+                  }}
+                >
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  {language === 'id' ? 'Edit' : 'Edit'}
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  className="flex-1"
+                  onClick={() => {
+                    setIsDetailSheetOpen(false);
+                    handleDeleteClick(selectedBudget);
+                  }}
+                  disabled={selectedBudget.used_amount > 0}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {language === 'id' ? 'Hapus' : 'Delete'}
+                </Button>
+              </div>
+              {selectedBudget.used_amount > 0 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {language === 'id' 
+                    ? 'Tidak dapat dihapus karena sudah ada penggunaan anggaran.'
+                    : 'Cannot be deleted because budget has been used.'
+                  }
+                </p>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
