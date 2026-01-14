@@ -34,7 +34,8 @@ import { Label } from "@/components/ui/label";
 import { usePettyCash, PettyCashTransaction, CashReconciliation } from "@/hooks/usePettyCash";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { id } from "date-fns/locale";
+import { id as idLocale, enUS } from "date-fns/locale";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -43,13 +44,6 @@ const formatCurrency = (value: number) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
-};
-
-const transactionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  top_up: { label: "Top-up", icon: ArrowUpCircle, color: "text-success" },
-  withdrawal: { label: "Penarikan", icon: ArrowDownCircle, color: "text-warning" },
-  payment: { label: "Pembayaran", icon: ArrowDownCircle, color: "text-destructive" },
-  adjustment: { label: "Penyesuaian", icon: RefreshCw, color: "text-info" },
 };
 
 const PettyCash = () => {
@@ -64,6 +58,15 @@ const PettyCash = () => {
     todayIn,
     todayOut,
   } = usePettyCash();
+
+  const { t, language } = useLanguage();
+
+  const transactionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+    top_up: { label: t('action.topUp'), icon: ArrowUpCircle, color: "text-success" },
+    withdrawal: { label: language === 'id' ? 'Penarikan' : 'Withdrawal', icon: ArrowDownCircle, color: "text-warning" },
+    payment: { label: language === 'id' ? 'Pembayaran' : 'Payment', icon: ArrowDownCircle, color: "text-destructive" },
+    adjustment: { label: language === 'id' ? 'Penyesuaian' : 'Adjustment', icon: RefreshCw, color: "text-info" },
+  };
 
   const [activeTab, setActiveTab] = useState("overview");
   
@@ -138,19 +141,19 @@ const PettyCash = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Kas Kecil</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t('pettyCash.title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Kelola saldo kas kecil, transaksi, dan rekonsiliasi
+            {t('pettyCash.description')}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2" onClick={() => setIsReconcileDialogOpen(true)}>
             <RefreshCw className="h-4 w-4" />
-            Rekonsiliasi
+            {t('action.reconcile')}
           </Button>
           <Button className="gap-2" onClick={() => setIsTopUpDialogOpen(true)}>
             <Plus className="h-4 w-4" />
-            Top-up
+            {t('action.topUp')}
           </Button>
         </div>
       </div>
@@ -163,7 +166,7 @@ const PettyCash = () => {
               <Wallet className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <span className="text-sm text-muted-foreground">Total Saldo Kas Kecil</span>
+              <span className="text-sm text-muted-foreground">{t('pettyCash.totalBalance')}</span>
               <p className="text-3xl font-bold text-foreground">{formatCurrency(totalBalance)}</p>
             </div>
           </div>
@@ -173,7 +176,7 @@ const PettyCash = () => {
             <div className="p-2 rounded-lg bg-success/10">
               <ArrowUpCircle className="h-5 w-5 text-success" />
             </div>
-            <span className="text-sm text-muted-foreground">Masuk Hari Ini</span>
+            <span className="text-sm text-muted-foreground">{t('pettyCash.todayIn')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(todayIn)}</p>
         </div>
@@ -182,7 +185,7 @@ const PettyCash = () => {
             <div className="p-2 rounded-lg bg-destructive/10">
               <ArrowDownCircle className="h-5 w-5 text-destructive" />
             </div>
-            <span className="text-sm text-muted-foreground">Keluar Hari Ini</span>
+            <span className="text-sm text-muted-foreground">{t('pettyCash.todayOut')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(todayOut)}</p>
         </div>
@@ -208,7 +211,7 @@ const PettyCash = () => {
                 }}
               >
                 <Plus className="h-4 w-4 mr-1" />
-                Top-up
+                {t('action.topUp')}
               </Button>
               <Button 
                 size="sm" 
@@ -221,7 +224,7 @@ const PettyCash = () => {
                 }}
               >
                 <RefreshCw className="h-4 w-4 mr-1" />
-                Reconcile
+                {t('action.reconcile')}
               </Button>
             </div>
           </div>
@@ -233,11 +236,11 @@ const PettyCash = () => {
         <TabsList>
           <TabsTrigger value="overview" className="gap-2">
             <FileText className="h-4 w-4" />
-            Transaksi
+            {t('pettyCash.transactions')}
           </TabsTrigger>
           <TabsTrigger value="reconciliations" className="gap-2">
             <RefreshCw className="h-4 w-4" />
-            Rekonsiliasi
+            {t('pettyCash.reconciliation')}
           </TabsTrigger>
         </TabsList>
 
@@ -262,10 +265,10 @@ const PettyCash = () => {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground truncate">
-                      {txn.description || 'Tanpa keterangan'}
+                      {txn.description || (language === 'id' ? 'Tanpa keterangan' : 'No description')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(txn.created_at), 'dd MMM yyyy, HH:mm', { locale: id })}
+                      {format(new Date(txn.created_at), 'dd MMM yyyy, HH:mm', { locale: language === 'id' ? idLocale : enUS })}
                       {txn.profiles && ` • ${txn.profiles.full_name}`}
                     </p>
                   </div>
@@ -274,7 +277,7 @@ const PettyCash = () => {
                       {txn.transaction_type === 'top_up' ? '+' : '-'}{formatCurrency(txn.amount)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Saldo: {formatCurrency(txn.balance_after)}
+                      {language === 'id' ? 'Saldo' : 'Balance'}: {formatCurrency(txn.balance_after)}
                     </p>
                   </div>
                 </div>
@@ -284,7 +287,7 @@ const PettyCash = () => {
             {(!transactions || transactions.length === 0) && (
               <div className="p-12 text-center">
                 <Clock className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="text-muted-foreground">Belum ada transaksi</p>
+                <p className="text-muted-foreground">{t('pettyCash.noTransactions')}</p>
               </div>
             )}
           </div>
@@ -308,14 +311,19 @@ const PettyCash = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
-                        Rekonsiliasi {format(new Date(recon.reconciliation_date), 'dd MMM yyyy', { locale: id })}
+                        {t('pettyCash.reconciliation')} {format(new Date(recon.reconciliation_date), 'dd MMM yyyy', { locale: language === 'id' ? idLocale : enUS })}
                       </span>
                       <Badge variant={recon.status === 'approved' ? 'default' : 'secondary'}>
-                        {recon.status === 'approved' ? 'Disetujui' : recon.status === 'pending' ? 'Pending' : 'Ditolak'}
+                        {recon.status === 'approved' 
+                          ? t('status.approved') 
+                          : recon.status === 'pending' 
+                            ? (language === 'id' ? 'Pending' : 'Pending') 
+                            : t('status.rejected')
+                        }
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Sistem: {formatCurrency(recon.system_balance)} • Fisik: {formatCurrency(recon.physical_balance)}
+                      {language === 'id' ? 'Sistem' : 'System'}: {formatCurrency(recon.system_balance)} • {language === 'id' ? 'Fisik' : 'Physical'}: {formatCurrency(recon.physical_balance)}
                     </p>
                     {recon.notes && (
                       <p className="text-xs text-muted-foreground mt-1">{recon.notes}</p>
@@ -336,7 +344,9 @@ const PettyCash = () => {
             {(!reconciliations || reconciliations.length === 0) && (
               <div className="p-12 text-center">
                 <RefreshCw className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="text-muted-foreground">Belum ada rekonsiliasi</p>
+                <p className="text-muted-foreground">
+                  {language === 'id' ? 'Belum ada rekonsiliasi' : 'No reconciliations yet'}
+                </p>
               </div>
             )}
           </div>
@@ -347,18 +357,18 @@ const PettyCash = () => {
       <Dialog open={isTopUpDialogOpen} onOpenChange={setIsTopUpDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Top-up Kas Kecil</DialogTitle>
+            <DialogTitle>{language === 'id' ? 'Top-up Kas Kecil' : 'Top-up Petty Cash'}</DialogTitle>
             <DialogDescription>
-              Tambah saldo kas kecil
+              {language === 'id' ? 'Tambah saldo kas kecil' : 'Add petty cash balance'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Akun Kas Kecil</Label>
+              <Label>{language === 'id' ? 'Akun Kas Kecil' : 'Petty Cash Account'}</Label>
               <Select value={topUpAccountId} onValueChange={setTopUpAccountId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih akun" />
+                  <SelectValue placeholder={language === 'id' ? 'Pilih akun' : 'Select account'} />
                 </SelectTrigger>
                 <SelectContent>
                   {pettyCashAccounts?.map((acc) => (
@@ -371,7 +381,7 @@ const PettyCash = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Jumlah (IDR)</Label>
+              <Label>{language === 'id' ? 'Jumlah (IDR)' : 'Amount (IDR)'}</Label>
               <Input
                 type="number"
                 placeholder="1000000"
@@ -381,7 +391,7 @@ const PettyCash = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Nomor Referensi</Label>
+              <Label>{language === 'id' ? 'Nomor Referensi' : 'Reference Number'}</Label>
               <Input
                 placeholder="BKK-001"
                 value={topUpReference}
@@ -390,9 +400,9 @@ const PettyCash = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Keterangan</Label>
+              <Label>{language === 'id' ? 'Keterangan' : 'Description'}</Label>
               <Textarea
-                placeholder="Keterangan top-up..."
+                placeholder={language === 'id' ? 'Keterangan top-up...' : 'Top-up description...'}
                 value={topUpDescription}
                 onChange={(e) => setTopUpDescription(e.target.value)}
                 rows={2}
@@ -402,13 +412,13 @@ const PettyCash = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTopUpDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               onClick={handleTopUp}
               disabled={topUp.isPending || !topUpAccountId || !topUpAmount}
             >
-              Top-up
+              {t('action.topUp')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -418,27 +428,30 @@ const PettyCash = () => {
       <Dialog open={isReconcileDialogOpen} onOpenChange={setIsReconcileDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rekonsiliasi Kas</DialogTitle>
+            <DialogTitle>{language === 'id' ? 'Rekonsiliasi Kas' : 'Cash Reconciliation'}</DialogTitle>
             <DialogDescription>
-              Bandingkan saldo sistem dengan saldo fisik
+              {language === 'id' 
+                ? 'Bandingkan saldo sistem dengan saldo fisik'
+                : 'Compare system balance with physical balance'
+              }
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Akun Kas Kecil</Label>
+              <Label>{language === 'id' ? 'Akun Kas Kecil' : 'Petty Cash Account'}</Label>
               <Select value={reconcileAccountId} onValueChange={(v) => {
                 setReconcileAccountId(v);
                 const acc = pettyCashAccounts?.find(a => a.id === v);
                 if (acc) setReconcilePhysicalBalance(acc.balance.toString());
               }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih akun" />
+                  <SelectValue placeholder={language === 'id' ? 'Pilih akun' : 'Select account'} />
                 </SelectTrigger>
                 <SelectContent>
                   {pettyCashAccounts?.map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>
-                      {acc.name} (Sistem: {formatCurrency(acc.balance)})
+                      {acc.name} ({language === 'id' ? 'Sistem' : 'System'}: {formatCurrency(acc.balance)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -446,7 +459,7 @@ const PettyCash = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Saldo Fisik (IDR)</Label>
+              <Label>{language === 'id' ? 'Saldo Fisik (IDR)' : 'Physical Balance (IDR)'}</Label>
               <Input
                 type="number"
                 placeholder="50000000"
@@ -458,10 +471,10 @@ const PettyCash = () => {
                   {(() => {
                     const acc = pettyCashAccounts?.find(a => a.id === reconcileAccountId);
                     const variance = parseFloat(reconcilePhysicalBalance) - (acc?.balance || 0);
-                    if (variance === 0) return <span className="text-success">✓ Saldo cocok</span>;
+                    if (variance === 0) return <span className="text-success">✓ {language === 'id' ? 'Saldo cocok' : 'Balance matches'}</span>;
                     return (
                       <span className={variance > 0 ? 'text-warning' : 'text-destructive'}>
-                        Selisih: {formatCurrency(variance)}
+                        {language === 'id' ? 'Selisih' : 'Variance'}: {variance > 0 ? '+' : ''}{formatCurrency(variance)}
                       </span>
                     );
                   })()}
@@ -470,9 +483,9 @@ const PettyCash = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Catatan</Label>
+              <Label>{t('requests.notes')}</Label>
               <Textarea
-                placeholder="Catatan rekonsiliasi..."
+                placeholder={language === 'id' ? 'Catatan rekonsiliasi...' : 'Reconciliation notes...'}
                 value={reconcileNotes}
                 onChange={(e) => setReconcileNotes(e.target.value)}
                 rows={2}
@@ -482,13 +495,13 @@ const PettyCash = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsReconcileDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               onClick={handleReconcile}
               disabled={createReconciliation.isPending || !reconcileAccountId || !reconcilePhysicalBalance}
             >
-              Simpan Rekonsiliasi
+              {t('action.reconcile')}
             </Button>
           </DialogFooter>
         </DialogContent>
