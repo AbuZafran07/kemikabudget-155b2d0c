@@ -198,9 +198,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * CLIENT-SIDE ROLE CHECK - FOR UI DISPLAY ONLY
+   * 
+   * ⚠️ SECURITY WARNING: This function is used ONLY for UI rendering decisions
+   * (e.g., showing/hiding menu items, buttons). It does NOT provide security!
+   * 
+   * All actual authorization is enforced server-side via:
+   * - Row Level Security (RLS) policies in the database
+   * - The has_role() PostgreSQL function which uses EXACT role matching
+   * - Edge function authorization checks
+   * 
+   * The hierarchy here (super_admin > finance > admin > user) means higher roles
+   * inherit UI access of lower roles. This is intentional for UI convenience but
+   * server-side RLS uses exact role matching for security.
+   * 
+   * NEVER rely on this function for security-critical decisions!
+   */
   const hasRole = (requiredRole: AppRole): boolean => {
     if (!role) return false;
     
+    // Role hierarchy for UI display purposes only
+    // Server-side uses exact role matching via has_role() RPC
     const roleHierarchy: Record<AppRole, number> = {
       super_admin: 4,
       finance: 3,
