@@ -285,7 +285,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
             {badgeCount > 0 && (
               <Badge
                 variant="secondary"
-                className="bg-accent text-accent-foreground text-xs px-2 py-0.5 min-w-[1.5rem] justify-center"
+                className="bg-accent text-accent-foreground text-xs px-2 py-0.5 min-w-[1.5rem] justify-center animate-pulse"
               >
                 {badgeCount}
               </Badge>
@@ -302,7 +302,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
           <TooltipContent side="right" className="flex items-center gap-2">
             {title}
             {badgeCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs animate-pulse">
                 {badgeCount}
               </Badge>
             )}
