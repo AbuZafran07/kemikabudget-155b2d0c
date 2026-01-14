@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -34,13 +34,15 @@ import {
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import appIcon from "@/assets/app-icon.png";
 
 interface MenuItem {
   titleKey: string;
   icon: React.ElementType;
   href?: string;
-  badge?: number;
+  badgeKey?: string; // Changed from static badge to dynamic key
   children?: MenuItem[];
   roles?: AppRole[];
 }
@@ -51,7 +53,7 @@ interface MenuSection {
   roles?: AppRole[];
 }
 
-const menuSections: MenuSection[] = [
+const getMenuSections = (): MenuSection[] => [
   {
     titleKey: "nav.summary",
     items: [
@@ -62,13 +64,13 @@ const menuSections: MenuSection[] = [
     titleKey: "nav.transactions",
     items: [
       { titleKey: "nav.requests", icon: FileText, href: "/requests" },
-      { titleKey: "nav.approvals", icon: CheckSquare, href: "/approvals", badge: 5, roles: ["super_admin"] },
+      { titleKey: "nav.approvals", icon: CheckSquare, href: "/approvals", badgeKey: "pendingApprovals", roles: ["super_admin"] },
     ],
   },
   {
     titleKey: "nav.finance",
     items: [
-      { titleKey: "nav.paymentQueue", icon: CreditCard, href: "/payment-queue", badge: 3, roles: ["super_admin", "finance"] },
+      { titleKey: "nav.paymentQueue", icon: CreditCard, href: "/payment-queue", badgeKey: "pendingPayments", roles: ["super_admin", "finance"] },
       { titleKey: "nav.pettyCash", icon: Wallet, href: "/petty-cash", roles: ["super_admin", "finance"] },
       { titleKey: "nav.bankPayments", icon: Building2, href: "/bank-payments", roles: ["super_admin", "finance"] },
     ],
@@ -112,10 +114,62 @@ interface AppSidebarProps {
 const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, role, signOut } = useAuth();
+  const { profile, role, signOut, user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+
+  // Fetch real pending counts from database
+  const { data: badgeCounts = { pendingApprovals: 0, pendingPayments: 0 } } = useQuery({
+    queryKey: ['sidebar-badge-counts', user?.id],
+    queryFn: async () => {
+      // Count pending approvals (submitted or under_review)
+      const { count: pendingApprovals } = await supabase
+        .from('requests')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['submitted', 'under_review']);
+
+      // Count pending payments (approved but not paid)
+      const { count: pendingPayments } = await supabase
+        .from('requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'approved');
+
+      return {
+        pendingApprovals: pendingApprovals || 0,
+        pendingPayments: pendingPayments || 0,
+      };
+    },
+    enabled: !!user?.id && (role === 'super_admin' || role === 'finance'),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Subscribe to real-time updates for badge counts
+  useEffect(() => {
+    if (!user?.id || (role !== 'super_admin' && role !== 'finance')) return;
+
+    const channel = supabase
+      .channel('sidebar-badge-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requests'
+        },
+        () => {
+          // Refetch badge counts when requests change
+          // The query will automatically refetch via queryKey invalidation
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, role]);
+
+  const menuSections = getMenuSections();
 
   const toggleMenu = (titleKey: string) => {
     setExpandedMenus((prev) =>
@@ -134,6 +188,11 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
     if (!item.roles || item.roles.length === 0) return true;
     if (!role) return false;
     return item.roles.includes(role);
+  };
+
+  const getBadgeCount = (badgeKey?: string): number => {
+    if (!badgeKey) return 0;
+    return badgeCounts[badgeKey as keyof typeof badgeCounts] || 0;
   };
 
   const handleLogout = async () => {
@@ -171,6 +230,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
     const isExpanded = expandedMenus.includes(item.titleKey);
     const active = isActive(item.href);
     const title = t(item.titleKey);
+    const badgeCount = getBadgeCount(item.badgeKey);
 
     if (hasChildren) {
       const visibleChildren = item.children?.filter(canAccessItem) || [];
@@ -222,12 +282,12 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
         {!isCollapsed && (
           <>
             <span className="flex-1">{title}</span>
-            {item.badge && item.badge > 0 && (
+            {badgeCount > 0 && (
               <Badge
                 variant="secondary"
                 className="bg-accent text-accent-foreground text-xs px-2 py-0.5 min-w-[1.5rem] justify-center"
               >
-                {item.badge}
+                {badgeCount}
               </Badge>
             )}
           </>
@@ -241,9 +301,9 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
           <TooltipContent side="right" className="flex items-center gap-2">
             {title}
-            {item.badge && item.badge > 0 && (
+            {badgeCount > 0 && (
               <Badge variant="secondary" className="text-xs">
-                {item.badge}
+                {badgeCount}
               </Badge>
             )}
           </TooltipContent>
