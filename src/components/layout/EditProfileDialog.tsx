@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { User, Loader2, Camera } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { User, Loader2, Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,9 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
   const { profile, user } = useAuth();
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -36,8 +39,119 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         full_name: profile.full_name || '',
         phone: profile.phone || '',
       });
+      setAvatarUrl(profile.avatar_url);
     }
   }, [profile, open]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: t('common.error'),
+        description: t('profile.invalidImageType'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: t('common.error'),
+        description: t('profile.imageTooLarge'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      const newAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: newAvatarUrl, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(newAvatarUrl);
+      toast({
+        title: t('profile.avatarUpdated'),
+        description: t('profile.avatarUpdatedDesc'),
+      });
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('profile.avatarUploadError'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user?.id) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // Remove from storage
+      const { error: deleteError } = await supabase.storage
+        .from('avatars')
+        .remove([`${user.id}/avatar.jpg`, `${user.id}/avatar.png`, `${user.id}/avatar.gif`, `${user.id}/avatar.webp`]);
+
+      // Update profile to remove avatar_url
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(null);
+      toast({
+        title: t('profile.avatarRemoved'),
+        description: t('profile.avatarRemovedDesc'),
+      });
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('profile.avatarRemoveError'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!user?.id) return;
@@ -106,26 +220,57 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
 
         <div className="space-y-6 py-4">
           {/* Avatar */}
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              {avatarUrl ? (
+                <img 
+                  src={avatarUrl} 
+                  alt="Avatar" 
+                  className="w-20 h-20 rounded-full object-cover border-2 border-primary/20"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div className={`w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center ${avatarUrl ? 'hidden' : ''}`}>
                 <span className="text-2xl font-semibold text-primary">
                   {getInitials(formData.full_name || 'U')}
                 </span>
               </div>
               <button
                 type="button"
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
-                onClick={() => {
-                  toast({
-                    title: t('common.comingSoon'),
-                    description: t('profile.avatarUploadComingSoon'),
-                  });
-                }}
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                onClick={handleAvatarClick}
+                disabled={isUploadingAvatar}
               >
-                <Camera className="h-4 w-4" />
+                {isUploadingAvatar ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
             </div>
+            {avatarUrl && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs text-destructive hover:text-destructive"
+                onClick={handleRemoveAvatar}
+                disabled={isUploadingAvatar}
+              >
+                <X className="h-3 w-3 mr-1" />
+                {t('profile.removeAvatar')}
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">{t('profile.avatarHint')}</p>
           </div>
 
           {/* Email (read-only) */}
