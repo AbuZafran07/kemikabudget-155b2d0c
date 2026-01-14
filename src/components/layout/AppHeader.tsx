@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Search, Moon, Sun, ChevronDown, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,83 +15,71 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-
-const routeTitles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/requests": "Pengajuan",
-  "/approvals": "Persetujuan",
-  "/payment-queue": "Antrian Pembayaran",
-  "/petty-cash": "Kas Kecil",
-  "/bank-payments": "Pembayaran Bank",
-  "/budget-planning": "Rencana Anggaran",
-  "/budget-transfer": "Transfer Anggaran",
-  "/divisions": "Divisi",
-  "/categories": "Kategori Biaya",
-  "/funding-sources": "Sumber Dana",
-  "/users": "Pengguna",
-  "/settings": "Pengaturan",
-  "/reports": "Laporan",
-  "/audit-logs": "Audit Log",
-};
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const notifications = [
   {
     id: 1,
-    title: "Pengajuan baru",
-    description: "Transport meeting client dari HRGA",
-    time: "5 menit lalu",
-    unread: true,
+    titleId: "Pengajuan baru",
+    titleEn: "New request",
+    descId: "Transport meeting client dari HRGA",
+    descEn: "Transport meeting client from HRGA",
+    time: "5",
   },
   {
     id: 2,
-    title: "Menunggu persetujuan",
-    description: "3 pengajuan menunggu approval Anda",
-    time: "1 jam lalu",
-    unread: true,
+    titleId: "Menunggu persetujuan",
+    titleEn: "Pending approval",
+    descId: "3 pengajuan menunggu approval Anda",
+    descEn: "3 requests waiting for your approval",
+    time: "60",
   },
   {
     id: 3,
-    title: "Pembayaran selesai",
-    description: "Invoice vendor ABC telah dibayar",
-    time: "2 jam lalu",
-    unread: false,
+    titleId: "Pembayaran selesai",
+    titleEn: "Payment completed",
+    descId: "Invoice vendor ABC telah dibayar",
+    descEn: "Invoice for vendor ABC has been paid",
+    time: "120",
   },
 ];
 
-const roleLabels: Record<string, string> = {
-  super_admin: "Super Admin",
-  finance: "Finance",
-  admin: "Admin",
-  user: "User",
-};
-
 const AppHeader = () => {
-  const location = useLocation();
   const navigate = useNavigate();
   const { profile, role, signOut } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
-  const [isDark, setIsDark] = useState(false);
-  const [language, setLanguage] = useState<"ID" | "EN">("ID");
+  const [isDark, setIsDark] = useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
 
-  const pageTitle = routeTitles[location.pathname] || "Dashboard";
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = 2;
+
+  useEffect(() => {
+    // Sync dark mode state with document
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
   };
 
   const handleLogout = async () => {
     await signOut();
     toast({
-      title: "Logout Berhasil",
-      description: "Anda telah keluar dari sistem",
+      title: t('user.logoutSuccess'),
+      description: t('user.logoutMessage'),
     });
     navigate("/");
   };
 
-  // Get user initials
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -103,8 +89,23 @@ const AppHeader = () => {
       .slice(0, 2);
   };
 
+  const getRoleLabel = (role: string | null) => {
+    if (!role) return t('role.user');
+    const roleKey = `role.${role === 'super_admin' ? 'superAdmin' : role}`;
+    return t(roleKey);
+  };
+
+  const getTimeLabel = (minutes: string) => {
+    const min = parseInt(minutes);
+    if (min < 60) {
+      return language === 'id' ? `${min} menit lalu` : `${min} minutes ago`;
+    }
+    const hours = Math.floor(min / 60);
+    return language === 'id' ? `${hours} jam lalu` : `${hours} hours ago`;
+  };
+
   const displayName = profile?.full_name || "User";
-  const displayRole = role ? roleLabels[role] : "User";
+  const displayRole = getRoleLabel(role);
   const initials = getInitials(displayName);
 
   return (
@@ -115,7 +116,7 @@ const AppHeader = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Cari transaksi, request..."
+            placeholder={t('header.search')}
             className="pl-9 bg-background border-border"
           />
         </div>
@@ -126,9 +127,9 @@ const AppHeader = () => {
         {/* Language Toggle */}
         <div className="flex items-center bg-secondary rounded-lg p-1">
           <button
-            onClick={() => setLanguage("EN")}
+            onClick={() => setLanguage("en")}
             className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-              language === "EN"
+              language === "en"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
@@ -136,9 +137,9 @@ const AppHeader = () => {
             EN
           </button>
           <button
-            onClick={() => setLanguage("ID")}
+            onClick={() => setLanguage("id")}
             className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-              language === "ID"
+              language === "id"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
@@ -175,29 +176,29 @@ const AppHeader = () => {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0">
             <div className="p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground">Notifikasi</h3>
+              <h3 className="font-semibold text-foreground">{t('header.notifications')}</h3>
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {notifications.map((notification) => (
+              {notifications.map((notification, index) => (
                 <div
                   key={notification.id}
                   className={`p-4 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer ${
-                    notification.unread ? "bg-primary/5" : ""
+                    index < 2 ? "bg-primary/5" : ""
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {notification.unread && (
+                    {index < 2 && (
                       <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
                     )}
-                    <div className={notification.unread ? "" : "ml-5"}>
+                    <div className={index < 2 ? "" : "ml-5"}>
                       <p className="text-sm font-medium text-foreground">
-                        {notification.title}
+                        {language === 'id' ? notification.titleId : notification.titleEn}
                       </p>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        {notification.description}
+                        {language === 'id' ? notification.descId : notification.descEn}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {notification.time}
+                        {getTimeLabel(notification.time)}
                       </p>
                     </div>
                   </div>
@@ -205,8 +206,12 @@ const AppHeader = () => {
               ))}
             </div>
             <div className="p-3 border-t border-border">
-              <Button variant="ghost" className="w-full text-sm">
-                Lihat semua notifikasi
+              <Button 
+                variant="ghost" 
+                className="w-full text-sm"
+                onClick={() => navigate("/notification-history")}
+              >
+                {t('header.viewAllNotifications')}
               </Button>
             </div>
           </PopoverContent>
@@ -229,18 +234,18 @@ const AppHeader = () => {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
+            <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
               <User className="mr-2 h-4 w-4" />
-              Profil Saya
+              {t('user.myProfile')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
+            <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
-              Pengaturan
+              {t('user.settings')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
-              Keluar
+              {t('user.logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
