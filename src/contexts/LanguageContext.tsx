@@ -82,6 +82,21 @@ const translations: Translations = {
   'user.logoutSuccess': { id: 'Logout Berhasil', en: 'Logout Successful' },
   'user.logoutMessage': { id: 'Anda telah keluar dari sistem', en: 'You have been logged out' },
   
+  // Profile
+  'profile.editProfile': { id: 'Edit Profil', en: 'Edit Profile' },
+  'profile.editProfileDesc': { id: 'Perbarui informasi profil Anda', en: 'Update your profile information' },
+  'profile.email': { id: 'Email', en: 'Email' },
+  'profile.emailCannotChange': { id: 'Email tidak dapat diubah', en: 'Email cannot be changed' },
+  'profile.fullName': { id: 'Nama Lengkap', en: 'Full Name' },
+  'profile.enterFullName': { id: 'Masukkan nama lengkap', en: 'Enter full name' },
+  'profile.phone': { id: 'Telepon', en: 'Phone' },
+  'profile.enterPhone': { id: 'Masukkan nomor telepon', en: 'Enter phone number' },
+  'profile.nameRequired': { id: 'Nama lengkap harus diisi', en: 'Full name is required' },
+  'profile.updateSuccess': { id: 'Profil Berhasil Diperbarui', en: 'Profile Updated Successfully' },
+  'profile.updateSuccessDesc': { id: 'Informasi profil Anda telah diperbarui', en: 'Your profile information has been updated' },
+  'profile.updateError': { id: 'Gagal memperbarui profil', en: 'Failed to update profile' },
+  'profile.avatarUploadComingSoon': { id: 'Fitur upload avatar akan segera hadir', en: 'Avatar upload feature coming soon' },
+  
   // Roles
   'role.superAdmin': { id: 'Super Admin', en: 'Super Admin' },
   'role.finance': { id: 'Finance', en: 'Finance' },
