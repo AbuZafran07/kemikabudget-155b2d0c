@@ -5,10 +5,12 @@ import { RequestList } from '@/components/requests/RequestList';
 import { RequestForm } from '@/components/requests/RequestForm';
 import { RequestDetail } from '@/components/requests/RequestDetail';
 import { Request, RequestFormData } from '@/hooks/useRequests';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type ViewMode = 'list' | 'create' | 'edit' | 'view';
 
 const Requests = () => {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [duplicateData, setDuplicateData] = useState<Partial<RequestFormData> | null>(null);
@@ -68,13 +70,13 @@ const Requests = () => {
     <div className="p-6 space-y-6">
       {viewMode === 'list' ? (
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Pengajuan</h1>
-          <p className="text-muted-foreground">Kelola pengajuan biaya divisi Anda</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('requests.title')}</h1>
+          <p className="text-muted-foreground">{t('requests.description')}</p>
         </div>
       ) : (
         <Button variant="ghost" onClick={handleBack} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Kembali ke Daftar
+          {t('action.backToList')}
         </Button>
       )}
 

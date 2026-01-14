@@ -11,6 +11,7 @@ import {
   Check,
   X,
   Building2,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Users = () => {
-  const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, createUser } = useUsers();
+  const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, deleteUser, createUser } = useUsers();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -125,6 +128,18 @@ const Users = () => {
       userId: user.id,
       isActive: !user.is_active,
     });
+  };
+
+  const handleDeleteUser = (user: UserWithRole) => {
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    await deleteUser.mutateAsync({ userId: userToDelete.id });
+    setIsDeleteDialogOpen(false);
+    setUserToDelete(null);
   };
 
   const handleCreateUser = async () => {
@@ -306,6 +321,14 @@ const Users = () => {
                           {t('users.activate')}
                         </>
                       )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="text-destructive"
+                      onClick={() => handleDeleteUser(user)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t('action.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -509,6 +532,33 @@ const Users = () => {
               disabled={updateUser.isPending || updateUserRole.isPending}
             >
               {t('action.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{language === 'id' ? 'Hapus Pengguna' : 'Delete User'}</DialogTitle>
+            <DialogDescription>
+              {language === 'id' 
+                ? `Apakah Anda yakin ingin menghapus ${userToDelete?.full_name}? Tindakan ini tidak dapat dibatalkan.`
+                : `Are you sure you want to delete ${userToDelete?.full_name}? This action cannot be undone.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              {t('action.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteUser}
+              disabled={deleteUser.isPending}
+            >
+              {deleteUser.isPending ? t('common.loading') : t('action.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

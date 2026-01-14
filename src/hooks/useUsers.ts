@@ -184,6 +184,41 @@ export function useUsers() {
     },
   });
 
+  // Delete user (remove from profiles and user_roles)
+  const deleteUser = useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      // First delete user roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (roleError) throw roleError;
+
+      // Then delete profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: 'Berhasil',
+        description: 'Pengguna berhasil dihapus',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Gagal',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Create new user
   const createUser = useMutation({
     mutationFn: async ({
@@ -240,6 +275,7 @@ export function useUsers() {
     updateUser,
     updateUserRole,
     toggleUserActive,
+    deleteUser,
     createUser,
   };
 }

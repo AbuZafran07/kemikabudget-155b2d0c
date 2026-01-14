@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { id as idLocale } from 'date-fns/locale';
+import { id as idLocale, enUS } from 'date-fns/locale';
 import {
   Search,
   Filter,
@@ -41,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatusBadge from '@/components/common/StatusBadge';
 import { useRequests, Request } from '@/hooks/useRequests';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface RequestListProps {
   onCreateNew: () => void;
@@ -53,6 +54,7 @@ const PAGE_SIZES = [10, 25, 50];
 
 export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: RequestListProps) {
   const { requests, isLoading, cancelRequest } = useRequests();
+  const { t, language } = useLanguage();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,7 +108,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
   };
 
   const handleCancel = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin membatalkan pengajuan ini?')) {
+    if (confirm(t('requests.confirmCancel'))) {
       await cancelRequest.mutateAsync(id);
     }
   };
@@ -140,7 +142,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Cari pengajuan..."
+            placeholder={t('requests.searchPlaceholder')}
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
@@ -149,23 +151,23 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
         <Select value={statusFilter} onValueChange={handleFilterChange}>
           <SelectTrigger className="w-full sm:w-40">
             <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('common.status')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Semua Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="submitted">Diajukan</SelectItem>
-            <SelectItem value="under_review">Dalam Review</SelectItem>
-            <SelectItem value="approved">Disetujui</SelectItem>
-            <SelectItem value="rejected">Ditolak</SelectItem>
-            <SelectItem value="paid">Dibayar</SelectItem>
-            <SelectItem value="settled">Selesai</SelectItem>
-            <SelectItem value="cancelled">Dibatalkan</SelectItem>
+            <SelectItem value="all">{t('status.all')}</SelectItem>
+            <SelectItem value="draft">{t('status.draft')}</SelectItem>
+            <SelectItem value="submitted">{t('status.submitted')}</SelectItem>
+            <SelectItem value="under_review">{t('status.underReview')}</SelectItem>
+            <SelectItem value="approved">{t('status.approved')}</SelectItem>
+            <SelectItem value="rejected">{t('status.rejected')}</SelectItem>
+            <SelectItem value="paid">{t('status.paid')}</SelectItem>
+            <SelectItem value="settled">{t('status.settled')}</SelectItem>
+            <SelectItem value="cancelled">{t('status.cancelled')}</SelectItem>
           </SelectContent>
         </Select>
         <Button onClick={onCreateNew}>
           <Plus className="mr-2 h-4 w-4" />
-          Pengajuan Baru
+          {t('requests.new')}
         </Button>
       </div>
 
@@ -174,12 +176,12 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-40">No. Pengajuan</TableHead>
-              <TableHead>Deskripsi</TableHead>
-              <TableHead className="w-32">Kategori</TableHead>
-              <TableHead className="w-32 text-right">Jumlah</TableHead>
-              <TableHead className="w-28">Tanggal</TableHead>
-              <TableHead className="w-28">Status</TableHead>
+              <TableHead className="w-40">{t('requests.requestNumber')}</TableHead>
+              <TableHead>{t('common.description')}</TableHead>
+              <TableHead className="w-32">{t('requests.category')}</TableHead>
+              <TableHead className="w-32 text-right">{t('requests.amount')}</TableHead>
+              <TableHead className="w-28">{t('requests.date')}</TableHead>
+              <TableHead className="w-28">{t('common.status')}</TableHead>
               <TableHead className="w-16"></TableHead>
             </TableRow>
           </TableHeader>
@@ -188,10 +190,10 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
               <TableRow>
                 <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <p>Tidak ada pengajuan ditemukan</p>
+                    <p>{t('requests.noData')}</p>
                     <Button variant="outline" size="sm" onClick={onCreateNew}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Buat Pengajuan Baru
+                      {t('requests.createNew')}
                     </Button>
                   </div>
                 </TableCell>
@@ -223,7 +225,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                     {formatCurrency(request.amount)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(request.created_at), 'dd MMM yyyy', { locale: idLocale })}
+                    {format(new Date(request.created_at), 'dd MMM yyyy', { locale: language === 'id' ? idLocale : enUS })}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={request.status} />
@@ -238,17 +240,17 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onView(request)}>
                           <Eye className="mr-2 h-4 w-4" />
-                          Lihat Detail
+                          {t('action.viewDetail')}
                         </DropdownMenuItem>
                         {request.status === 'draft' && (
                           <DropdownMenuItem onClick={() => onEdit(request)}>
                             <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                            {t('action.edit')}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={() => onDuplicate(request)}>
                           <Copy className="mr-2 h-4 w-4" />
-                          Duplikat
+                          {t('action.duplicate')}
                         </DropdownMenuItem>
                         {['draft', 'submitted'].includes(request.status) && (
                           <>
@@ -258,7 +260,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                               onClick={() => handleCancel(request.id)}
                             >
                               <XCircle className="mr-2 h-4 w-4" />
-                              Batalkan
+                              {t('action.cancel')}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -276,7 +278,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
       {totalItems > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {startIndex + 1}–{endIndex} dari {totalItems} data
+            {t('common.showing')} {startIndex + 1}–{endIndex} {t('common.of')} {totalItems} {t('common.data')}
           </p>
           <div className="flex items-center gap-2">
             <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
