@@ -199,48 +199,59 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Early validation of request body
+    let requestBody: { action?: string; userId?: string; otp?: string };
+    try {
+      requestBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    const { action, userId, otp } = requestBody;
+
+    // Early input validation - validate action first
+    if (!action || typeof action !== 'string' || !['verify', 'generate-secret'].includes(action)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Early userId validation for all actions that require it
+    if (action === 'verify' || action === 'generate-secret') {
+      if (!userId || typeof userId !== 'string' || !isValidUUID(userId)) {
+        // Generic error to prevent user enumeration
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid request' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, userId, otp } = await req.json();
     console.log(`[verify-otp] Action: ${action}, using RFC 6238 HMAC-SHA1`);
 
-    // Validate action
-    if (!action || !['verify', 'generate-secret'].includes(action)) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid action' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
     if (action === 'verify') {
-      // Validate userId format
-      if (!userId || !isValidUUID(userId)) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Invalid user ID' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
+      // userId already validated above, assert type
+      const validUserId = userId as string;
 
-      if (!otp) {
+      // Validate OTP - use generic error to prevent enumeration
+      if (!otp || typeof otp !== 'string' || !/^\d{6}$/.test(otp)) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Missing OTP' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      // Validate OTP format
-      if (!/^\d{6}$/.test(otp)) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'OTP must be 6 digits' }),
+          JSON.stringify({ success: false, error: 'Invalid request' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
       }
 
       // Check database-backed rate limit
-      const rateLimit = await checkRateLimit(userId, supabase);
+      const rateLimit = await checkRateLimit(validUserId, supabase);
       
       if (!rateLimit.allowed) {
         console.log(`[verify-otp] Rate limit exceeded or account locked`);
@@ -266,7 +277,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Get user's OTP secret
-      const secret = await getUserOtpSecret(userId, supabase);
+      const secret = await getUserOtpSecret(validUserId, supabase);
       
       if (!secret) {
         console.log(`[verify-otp] No OTP secret found for user`);
@@ -281,12 +292,12 @@ Deno.serve(async (req: Request) => {
 
       if (isValid) {
         // Reset rate limit on success
-        await resetRateLimit(userId, supabase);
+        await resetRateLimit(validUserId, supabase);
         console.log(`[verify-otp] OTP verified successfully (RFC 6238 HMAC-SHA1)`);
         
         // Log successful OTP verification
         await supabase.from('audit_logs').insert({
-          user_id: userId,
+          user_id: validUserId,
           entity_type: 'auth',
           event_type: 'otp_verified',
           description: 'OTP verification successful (RFC 6238)',
@@ -299,12 +310,12 @@ Deno.serve(async (req: Request) => {
         );
       } else {
         // Record failed attempt
-        await recordFailure(userId, supabase);
+        await recordFailure(validUserId, supabase);
         console.log(`[verify-otp] Invalid OTP, remaining attempts: ${rateLimit.remaining}`);
         
         // Log failed OTP attempt
         await supabase.from('audit_logs').insert({
-          user_id: userId,
+          user_id: validUserId,
           entity_type: 'auth',
           event_type: 'otp_failed',
           description: 'OTP verification failed',
@@ -321,17 +332,22 @@ Deno.serve(async (req: Request) => {
         );
       }
     } else if (action === 'generate-secret') {
-      // Validate userId format
-      if (!userId || !isValidUUID(userId)) {
+      // userId already validated above, assert type
+      const validUserId = userId as string;
+      // Generate a new OTP secret (only for super_admin use)
+      const authHeader = req.headers.get('Authorization');
+      
+      // Validate authorization header format before processing
+      if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+        // Generic error for all auth failures to prevent enumeration
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid user ID' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
         );
       }
 
-      // Generate a new OTP secret (only for super_admin use)
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
+      const token = authHeader.slice(7); // Remove 'Bearer ' prefix
+      if (!token || token.length < 10) {
         return new Response(
           JSON.stringify({ success: false, error: 'Unauthorized' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
@@ -339,13 +355,12 @@ Deno.serve(async (req: Request) => {
       }
 
       // Verify caller is super_admin
-      const { data: { user }, error: authError } = await supabase.auth.getUser(
-        authHeader.replace('Bearer ', '')
-      );
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
       if (authError || !user) {
+        // Generic error for all auth failures
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid token' }),
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
         );
       }
@@ -357,9 +372,10 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!isSuperAdmin) {
+        // Generic error to prevent role enumeration
         return new Response(
-          JSON.stringify({ success: false, error: 'Insufficient permissions' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
         );
       }
 
@@ -367,7 +383,7 @@ Deno.serve(async (req: Request) => {
       
       // Update user's OTP secret using the secure function
       const { data: updateResult, error: updateError } = await supabase.rpc('set_user_otp_secret', {
-        p_user_id: userId,
+        p_user_id: validUserId,
         p_secret: newSecret,
       });
 
@@ -385,7 +401,7 @@ Deno.serve(async (req: Request) => {
       const { data: userProfile } = await supabase
         .from('profiles')
         .select('email')
-        .eq('id', userId)
+        .eq('id', validUserId)
         .single();
 
       const issuer = 'KemikaExpenseSystem';
