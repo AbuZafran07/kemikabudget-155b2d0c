@@ -16,8 +16,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PasswordStrength, validatePassword } from '@/components/auth/PasswordStrength';
-import { ReauthDialog } from '@/components/auth/ReauthDialog';
-import { useSensitiveAction } from '@/hooks/useSensitiveAction';
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -47,17 +45,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  const {
-    requiresReauth,
-    isDialogOpen,
-    actionName,
-    actionDescription,
-    executeSensitiveAction,
-    handleReauthSuccess,
-    handleDialogClose,
-  } = useSensitiveAction();
-
-  const isSuperAdmin = role === 'super_admin';
 
   useEffect(() => {
     if (profile && open) {
@@ -286,15 +273,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
       return;
     }
 
-    if (requiresReauth) {
-      executeSensitiveAction(
-        t('settings.changePassword'),
-        t('settings.changePasswordReauthDesc'),
-        performPasswordChange
-      );
-    } else {
-      performPasswordChange();
-    }
+    performPasswordChange();
   };
 
   const getInitials = (name: string) => {
@@ -571,14 +550,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         </DialogContent>
       </Dialog>
 
-      {/* OTP Re-authentication Dialog */}
-      <ReauthDialog
-        open={isDialogOpen}
-        onOpenChange={handleDialogClose}
-        onSuccess={handleReauthSuccess}
-        actionName={actionName}
-        actionDescription={actionDescription}
-      />
     </>
   );
 }
