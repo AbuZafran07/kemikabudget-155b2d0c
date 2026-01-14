@@ -47,6 +47,7 @@ import {
   PaymentExportRow,
 } from "@/lib/exportUtils";
 import { generatePaymentReceiptPDF } from "@/lib/generateReceiptPDF";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -55,11 +56,6 @@ const formatCurrency = (value: number) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
-};
-
-const fundingSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  petty_cash: { label: "Kas Kecil", icon: Wallet, color: "text-success" },
-  bank: { label: "Bank", icon: Building2, color: "text-info" },
 };
 
 const PaymentQueue = () => {
@@ -72,8 +68,14 @@ const PaymentQueue = () => {
     totalAmount,
   } = usePaymentQueue();
 
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const fundingSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+    petty_cash: { label: t('paymentQueue.pettyCash'), icon: Wallet, color: "text-success" },
+    bank: { label: t('paymentQueue.bank'), icon: Building2, color: "text-info" },
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -175,8 +177,8 @@ const PaymentQueue = () => {
     if (successCount > 0) {
       setSelectedItems([]);
       toast({
-        title: 'Batch Payment Selesai',
-        description: `${successCount} berhasil${failCount > 0 ? `, ${failCount} gagal` : ''}`,
+        title: t('paymentQueue.batchComplete'),
+        description: `${successCount} ${language === 'id' ? 'berhasil' : 'succeeded'}${failCount > 0 ? `, ${failCount} ${language === 'id' ? 'gagal' : 'failed'}` : ''}`,
         variant: failCount > 0 ? 'destructive' : 'default',
       });
     }
@@ -201,8 +203,8 @@ const PaymentQueue = () => {
 
     if (error || !data) {
       toast({
-        title: 'Error',
-        description: 'Gagal mengambil data untuk kwitansi',
+        title: t('common.error'),
+        description: language === 'id' ? 'Gagal mengambil data untuk kwitansi' : 'Failed to fetch receipt data',
         variant: 'destructive',
       });
       return;
@@ -227,8 +229,8 @@ const PaymentQueue = () => {
   const handleExportSelected = () => {
     if (selectedItems.length === 0) {
       toast({
-        title: 'Tidak ada item dipilih',
-        description: 'Pilih satu atau lebih pembayaran untuk diekspor',
+        title: language === 'id' ? 'Tidak ada item dipilih' : 'No items selected',
+        description: language === 'id' ? 'Pilih satu atau lebih pembayaran untuk diekspor' : 'Select one or more payments to export',
         variant: 'destructive',
       });
       return;
@@ -258,13 +260,13 @@ const PaymentQueue = () => {
       downloadCSV(csv, filename);
 
       toast({
-        title: 'Export berhasil',
-        description: `${selectedItems.length} pembayaran berhasil diekspor ke CSV`,
+        title: t('paymentQueue.exportSuccess'),
+        description: `${selectedItems.length} ${t('paymentQueue.paymentsExported')}`,
       });
     } catch (error) {
       toast({
-        title: 'Export gagal',
-        description: 'Terjadi kesalahan saat mengekspor data',
+        title: language === 'id' ? 'Export gagal' : 'Export failed',
+        description: language === 'id' ? 'Terjadi kesalahan saat mengekspor data' : 'An error occurred while exporting data',
         variant: 'destructive',
       });
     } finally {
@@ -275,8 +277,8 @@ const PaymentQueue = () => {
   const handleExportAll = () => {
     if (!filteredPayments.length) {
       toast({
-        title: 'Tidak ada data',
-        description: 'Tidak ada pembayaran untuk diekspor',
+        title: t('common.noData'),
+        description: language === 'id' ? 'Tidak ada pembayaran untuk diekspor' : 'No payments to export',
         variant: 'destructive',
       });
       return;
@@ -304,13 +306,13 @@ const PaymentQueue = () => {
       downloadCSV(csv, filename);
 
       toast({
-        title: 'Export berhasil',
-        description: `${filteredPayments.length} pembayaran berhasil diekspor ke CSV`,
+        title: t('paymentQueue.exportSuccess'),
+        description: `${filteredPayments.length} ${t('paymentQueue.paymentsExported')}`,
       });
     } catch (error) {
       toast({
-        title: 'Export gagal',
-        description: 'Terjadi kesalahan saat mengekspor data',
+        title: language === 'id' ? 'Export gagal' : 'Export failed',
+        description: language === 'id' ? 'Terjadi kesalahan saat mengekspor data' : 'An error occurred while exporting data',
         variant: 'destructive',
       });
     } finally {
@@ -338,27 +340,27 @@ const PaymentQueue = () => {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">
-              Antrian Pembayaran
+              {t('paymentQueue.title')}
             </h1>
             <Badge className="bg-primary text-primary-foreground">
               {totalPending}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            Pengajuan yang disetujui siap untuk dibayar • Total: {formatCurrency(totalAmount)}
+            {t('paymentQueue.description')} • {t('paymentQueue.total')}: {formatCurrency(totalAmount)}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {overdueCount > 0 && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg">
               <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm font-medium">{overdueCount} overdue</span>
+              <span className="text-sm font-medium">{overdueCount} {t('paymentQueue.overdue')}</span>
             </div>
           )}
           {selectedItems.length > 0 && (
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">
-                {selectedItems.length} dipilih • {formatCurrency(selectedTotal)}
+                {selectedItems.length} {t('paymentQueue.selected')} • {formatCurrency(selectedTotal)}
               </span>
               <Button 
                 variant="outline"
@@ -367,14 +369,14 @@ const PaymentQueue = () => {
                 disabled={isExporting}
               >
                 <Download className="h-4 w-4" />
-                Export
+                {t('action.export')}
               </Button>
               <Button 
                 className="gap-2"
                 onClick={() => setIsBatchDialogOpen(true)}
               >
                 <Package className="h-4 w-4" />
-                Batch Pay ({selectedItems.length})
+                {t('paymentQueue.batchPay')} ({selectedItems.length})
               </Button>
             </div>
           )}
@@ -387,7 +389,7 @@ const PaymentQueue = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Cari nomor atau deskripsi..."
+              placeholder={t('common.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -395,12 +397,12 @@ const PaymentQueue = () => {
           </div>
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sumber Dana" />
+              <SelectValue placeholder={t('requests.fundingSource')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Sumber</SelectItem>
-              <SelectItem value="petty_cash">Kas Kecil</SelectItem>
-              <SelectItem value="bank">Bank</SelectItem>
+              <SelectItem value="all">{t('paymentQueue.allSources')}</SelectItem>
+              <SelectItem value="petty_cash">{t('paymentQueue.pettyCash')}</SelectItem>
+              <SelectItem value="bank">{t('paymentQueue.bank')}</SelectItem>
             </SelectContent>
           </Select>
           <Button 
@@ -410,7 +412,7 @@ const PaymentQueue = () => {
             disabled={isExporting || !filteredPayments.length}
           >
             <Download className="h-4 w-4" />
-            Export CSV
+            {t('paymentQueue.exportCsv')}
           </Button>
         </div>
       </div>
@@ -426,7 +428,7 @@ const PaymentQueue = () => {
               }
               onCheckedChange={selectAll}
             />
-            <span className="text-sm text-muted-foreground">Pilih Semua</span>
+            <span className="text-sm text-muted-foreground">{t('paymentQueue.selectAll')}</span>
           </div>
         )}
 
@@ -470,7 +472,7 @@ const PaymentQueue = () => {
                     {item.isOverdue && (
                       <Badge variant="destructive" className="text-xs gap-1">
                         <AlertTriangle className="h-3 w-3" />
-                        Overdue
+                        {t('paymentQueue.overdue')}
                       </Badge>
                     )}
                   </div>
@@ -478,11 +480,11 @@ const PaymentQueue = () => {
                     {item.description}
                   </h3>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <span>Oleh: {item.profiles?.full_name || 'N/A'}</span>
+                    <span>{t('common.by')}: {item.profiles?.full_name || 'N/A'}</span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
                       <CheckCircle className="h-3.5 w-3.5 text-success" />
-                      Approved {item.daysSinceApproval} hari lalu
+                      Approved {item.daysSinceApproval} {t('paymentQueue.daysAgo')}
                     </span>
                   </div>
 
@@ -497,7 +499,7 @@ const PaymentQueue = () => {
                       ) : (
                         <Clock className="h-3.5 w-3.5" />
                       )}
-                      Invoice
+                      {t('paymentQueue.invoice')}
                     </div>
                     <div
                       className={`flex items-center gap-1.5 text-xs ${
@@ -525,7 +527,7 @@ const PaymentQueue = () => {
                     {formatCurrency(item.amount)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {item.vendor || 'Tanpa vendor'}
+                    {item.vendor || t('requests.noVendor')}
                   </p>
                 </div>
 
@@ -538,7 +540,7 @@ const PaymentQueue = () => {
                     }}
                   >
                     <CreditCard className="h-4 w-4" />
-                    Bayar
+                    {t('action.pay')}
                   </Button>
                   <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
@@ -552,10 +554,10 @@ const PaymentQueue = () => {
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <CheckCircle className="h-16 w-16 text-success/40 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
-            Tidak Ada Pembayaran Menunggu
+            {t('paymentQueue.noPayments')}
           </h3>
           <p className="text-muted-foreground">
-            Semua pembayaran sudah diproses.
+            {t('paymentQueue.allPaid')}
           </p>
         </div>
       )}
@@ -564,16 +566,17 @@ const PaymentQueue = () => {
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Proses Pembayaran</DialogTitle>
+            <DialogTitle>{t('paymentQueue.confirmPay')}</DialogTitle>
             <DialogDescription>
               {selectedPayment && (
                 <>
-                  Anda akan memproses pembayaran untuk{" "}
-                  <strong>{selectedPayment.request_number}</strong> sebesar{" "}
-                  <strong>{formatCurrency(selectedPayment.amount)}</strong>.
+                  {language === 'id' 
+                    ? `Anda akan memproses pembayaran untuk ${selectedPayment.request_number} sebesar ${formatCurrency(selectedPayment.amount)}.`
+                    : `You will process payment for ${selectedPayment.request_number} of ${formatCurrency(selectedPayment.amount)}.`
+                  }
                   <br />
                   <span className="text-warning">
-                    Dana akan dikurangi dari {selectedPayment.funding_sources?.name || 'sumber dana'}.
+                    {t('paymentQueue.fundsWillBeDeducted')}
                   </span>
                 </>
               )}
@@ -585,12 +588,12 @@ const PaymentQueue = () => {
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <h4 className="font-medium flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Detail Penerima
+                  {t('requests.beneficiaryInfo')}
                 </h4>
                 <div className="text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Nama:</span> {selectedPayment.beneficiary_name}</p>
-                  <p><span className="text-muted-foreground">Bank:</span> {selectedPayment.beneficiary_bank}</p>
-                  <p><span className="text-muted-foreground">Rekening:</span> {selectedPayment.beneficiary_account}</p>
+                  <p><span className="text-muted-foreground">{t('common.name')}:</span> {selectedPayment.beneficiary_name}</p>
+                  <p><span className="text-muted-foreground">{t('requests.beneficiaryBank')}:</span> {selectedPayment.beneficiary_bank}</p>
+                  <p><span className="text-muted-foreground">{t('requests.beneficiaryAccount')}:</span> {selectedPayment.beneficiary_account}</p>
                 </div>
               </div>
             )}
@@ -598,12 +601,12 @@ const PaymentQueue = () => {
             <div className="space-y-2">
               <h4 className="font-medium flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
-                Kelengkapan Dokumen
+                {language === 'id' ? 'Kelengkapan Dokumen' : 'Document Checklist'}
               </h4>
               <div className="flex gap-4">
                 <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasInvoice ? "text-success" : "text-warning"}`}>
                   {selectedPayment?.hasInvoice ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                  Invoice
+                  {t('paymentQueue.invoice')}
                 </div>
                 <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasQuotation ? "text-success" : "text-warning"}`}>
                   {selectedPayment?.hasQuotation ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
@@ -612,16 +615,19 @@ const PaymentQueue = () => {
               </div>
               {(!selectedPayment?.hasInvoice && !selectedPayment?.hasQuotation) && (
                 <p className="text-xs text-warning">
-                  Perhatian: Tidak ada invoice atau quotation. Pembayaran tetap dapat diproses dengan catatan.
+                  {language === 'id' 
+                    ? 'Perhatian: Tidak ada invoice atau quotation. Pembayaran tetap dapat diproses dengan catatan.'
+                    : 'Warning: No invoice or quotation attached. Payment can still be processed with a note.'
+                  }
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentNote">Catatan Pembayaran</Label>
+              <Label htmlFor="paymentNote">{t('paymentQueue.paymentNote')}</Label>
               <Textarea
                 id="paymentNote"
-                placeholder="Tambahkan catatan pembayaran..."
+                placeholder={t('common.addNote')}
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value)}
                 rows={2}
@@ -631,7 +637,7 @@ const PaymentQueue = () => {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsPayDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               onClick={confirmPay}
@@ -639,7 +645,7 @@ const PaymentQueue = () => {
               className="gap-2"
             >
               <CreditCard className="h-4 w-4" />
-              Proses Pembayaran
+              {language === 'id' ? 'Proses Pembayaran' : 'Process Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -649,20 +655,23 @@ const PaymentQueue = () => {
       <Dialog open={isBatchDialogOpen} onOpenChange={setIsBatchDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Konfirmasi Batch Payment</DialogTitle>
+            <DialogTitle>{t('paymentQueue.batchPayment')}</DialogTitle>
             <DialogDescription>
-              Proses pembayaran untuk {selectedItems.length} transaksi sekaligus
+              {language === 'id' 
+                ? `Proses pembayaran untuk ${selectedItems.length} transaksi sekaligus`
+                : `Process payment for ${selectedItems.length} transactions at once`
+              }
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Jumlah Transaksi</span>
+                <span className="text-muted-foreground">{language === 'id' ? 'Jumlah Transaksi' : 'Transaction Count'}</span>
                 <span className="font-medium">{selectedItems.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Pembayaran</span>
+                <span className="text-muted-foreground">{language === 'id' ? 'Total Pembayaran' : 'Total Payment'}</span>
                 <span className="font-bold text-primary text-lg">
                   {formatCurrency(selectedTotal)}
                 </span>
@@ -671,8 +680,10 @@ const PaymentQueue = () => {
 
             <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
               <p className="text-sm text-foreground">
-                <strong>Perhatian:</strong> Tindakan ini akan memproses pembayaran dan mengurangi
-                saldo kas secara otomatis. Pastikan semua data sudah benar sebelum melanjutkan.
+                <strong>{language === 'id' ? 'Perhatian:' : 'Warning:'}</strong> {language === 'id' 
+                  ? 'Tindakan ini akan memproses pembayaran dan mengurangi saldo kas secara otomatis. Pastikan semua data sudah benar sebelum melanjutkan.'
+                  : 'This action will process payments and automatically deduct cash balance. Make sure all data is correct before proceeding.'
+                }
               </p>
             </div>
 
@@ -683,7 +694,7 @@ const PaymentQueue = () => {
                   return (
                     <div key={r.id} className={`text-sm flex items-center gap-2 ${r.success ? 'text-success' : 'text-destructive'}`}>
                       {r.success ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-                      {payment?.request_number}: {r.success ? 'Berhasil' : r.error}
+                      {payment?.request_number}: {r.success ? (language === 'id' ? 'Berhasil' : 'Success') : r.error}
                     </div>
                   );
                 })}
@@ -700,7 +711,7 @@ const PaymentQueue = () => {
               }}
               disabled={isBatchProcessing}
             >
-              {batchResults.length > 0 ? 'Tutup' : 'Batal'}
+              {batchResults.length > 0 ? t('action.close') : t('action.cancel')}
             </Button>
             {batchResults.filter(r => !r.success).length === 0 && batchResults.length === 0 && (
               <Button
@@ -713,7 +724,7 @@ const PaymentQueue = () => {
                 ) : (
                   <CreditCard className="h-4 w-4" />
                 )}
-                {isBatchProcessing ? 'Memproses...' : 'Proses Pembayaran'}
+                {isBatchProcessing ? t('paymentQueue.processing') : (language === 'id' ? 'Proses Pembayaran' : 'Process Payment')}
               </Button>
             )}
           </DialogFooter>
@@ -727,20 +738,26 @@ const PaymentQueue = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-success">
                 <CheckCircle className="h-5 w-5" />
-                Pembayaran Berhasil
+                {language === 'id' ? 'Pembayaran Berhasil' : 'Payment Successful'}
               </DialogTitle>
               <DialogDescription>
-                Pembayaran untuk {lastPaidPayment.request_number} telah diproses.
+                {language === 'id' 
+                  ? `Pembayaran untuk ${lastPaidPayment.request_number} telah diproses.`
+                  : `Payment for ${lastPaidPayment.request_number} has been processed.`
+                }
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <p className="text-muted-foreground">
-                Apakah Anda ingin mencetak kwitansi pembayaran?
+                {language === 'id' 
+                  ? 'Apakah Anda ingin mencetak kwitansi pembayaran?'
+                  : 'Would you like to print the payment receipt?'
+                }
               </p>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setLastPaidPayment(null)}>
-                Tutup
+                {t('action.close')}
               </Button>
               <Button 
                 onClick={() => {
@@ -750,7 +767,7 @@ const PaymentQueue = () => {
                 className="gap-2"
               >
                 <FileText className="h-4 w-4" />
-                Cetak Kwitansi
+                {t('paymentQueue.generateReceipt')}
               </Button>
             </DialogFooter>
           </DialogContent>

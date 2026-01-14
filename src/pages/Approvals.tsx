@@ -30,6 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useApprovals, ApprovalRequest } from "@/hooks/useApprovals";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -49,6 +50,8 @@ const Approvals = () => {
     overdueCount,
     totalPending,
   } = useApprovals();
+
+  const { t, language } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
@@ -132,20 +135,20 @@ const Approvals = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">Persetujuan</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('approvals.title')}</h1>
             <Badge className="bg-primary text-primary-foreground">
               {totalPending}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            Pengajuan menunggu persetujuan Anda
+            {t('approvals.description')}
           </p>
         </div>
         {overdueCount > 0 && (
           <div className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive rounded-lg">
             <AlertTriangle className="h-4 w-4" />
             <span className="text-sm font-medium">
-              {overdueCount} pengajuan melewati batas SLA
+              {overdueCount} {t('approvals.overdueWarning')}
             </span>
           </div>
         )}
@@ -157,7 +160,7 @@ const Approvals = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Cari nomor atau deskripsi..."
+              placeholder={t('common.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -165,10 +168,10 @@ const Approvals = () => {
           </div>
           <Select value={divisionFilter} onValueChange={setDivisionFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Divisi" />
+              <SelectValue placeholder={t('users.division')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Divisi</SelectItem>
+              <SelectItem value="all">{t('common.allDivisions')}</SelectItem>
               {divisions.map((div) => (
                 <SelectItem key={div} value={div}>
                   {div}
@@ -201,13 +204,13 @@ const Approvals = () => {
                   {item.isOverdue && (
                     <Badge variant="destructive" className="text-xs gap-1">
                       <AlertTriangle className="h-3 w-3" />
-                      Overdue
+                      {t('paymentQueue.overdue')}
                     </Badge>
                   )}
                   {item.amount > 50000000 && (
                     <Badge variant="secondary" className="text-xs gap-1 bg-warning/10 text-warning">
                       <MessageSquare className="h-3 w-3" />
-                      Perlu Catatan
+                      {t('approvals.noteRequired')}
                     </Badge>
                   )}
                 </div>
@@ -215,13 +218,13 @@ const Approvals = () => {
                   {item.description}
                 </h3>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span>Kategori: {item.cost_categories?.name || 'N/A'}</span>
+                  <span>{t('requests.category')}: {item.cost_categories?.name || 'N/A'}</span>
                   <span>•</span>
-                  <span>Oleh: {item.profiles?.full_name || 'N/A'}</span>
+                  <span>{t('common.by')}: {item.profiles?.full_name || 'N/A'}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5" />
-                    {item.daysPending} hari pending
+                    {item.daysPending} {t('approvals.daysPending')}
                   </span>
                 </div>
               </div>
@@ -232,7 +235,7 @@ const Approvals = () => {
                   {formatCurrency(item.amount)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {item.vendor || 'Tanpa vendor'}
+                  {item.vendor || t('requests.noVendor')}
                 </p>
               </div>
 
@@ -247,7 +250,7 @@ const Approvals = () => {
                   }}
                 >
                   <XCircle className="h-4 w-4" />
-                  Tolak
+                  {t('action.reject')}
                 </Button>
                 <Button
                   className="gap-2"
@@ -257,7 +260,7 @@ const Approvals = () => {
                   }}
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Setujui
+                  {t('action.approve')}
                 </Button>
                 <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -270,10 +273,10 @@ const Approvals = () => {
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <CheckCircle className="h-16 w-16 text-success/40 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
-            Semua Pengajuan Sudah Diproses
+            {t('approvals.allProcessed')}
           </h3>
           <p className="text-muted-foreground">
-            Tidak ada pengajuan yang menunggu persetujuan Anda saat ini.
+            {t('approvals.noWaiting')}
           </p>
         </div>
       )}
@@ -282,16 +285,17 @@ const Approvals = () => {
       <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Setujui Pengajuan</DialogTitle>
+            <DialogTitle>{t('approvals.confirmApprove')}</DialogTitle>
             <DialogDescription>
               {selectedRequest && (
                 <>
-                  Anda akan menyetujui pengajuan{" "}
-                  <strong>{selectedRequest.request_number}</strong> sebesar{" "}
-                  <strong>{formatCurrency(selectedRequest.amount)}</strong>.
+                  {language === 'id' 
+                    ? `Anda akan menyetujui pengajuan ${selectedRequest.request_number} sebesar ${formatCurrency(selectedRequest.amount)}.`
+                    : `You will approve request ${selectedRequest.request_number} for ${formatCurrency(selectedRequest.amount)}.`
+                  }
                   <br />
                   <span className="text-warning">
-                    Anggaran divisi akan dikurangi sesuai jumlah ini.
+                    {t('approvals.budgetWillBeDeducted')}
                   </span>
                 </>
               )}
@@ -301,21 +305,21 @@ const Approvals = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="approvalNote">
-                Catatan Persetujuan
+                {t('approvals.approvalNote')}
                 {selectedRequest && selectedRequest.amount > 50000000 && (
                   <span className="text-destructive ml-1">*</span>
                 )}
               </Label>
               <Textarea
                 id="approvalNote"
-                placeholder="Tambahkan catatan..."
+                placeholder={t('common.addNote')}
                 value={approvalNote}
                 onChange={(e) => setApprovalNote(e.target.value)}
                 rows={3}
               />
               {selectedRequest && selectedRequest.amount > 50000000 && !approvalNote.trim() && (
                 <p className="text-xs text-destructive">
-                  Catatan wajib untuk pengajuan di atas Rp 50.000.000
+                  {t('approvals.noteRequiredOver50M')}
                 </p>
               )}
             </div>
@@ -323,7 +327,7 @@ const Approvals = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               onClick={confirmApprove}
@@ -334,7 +338,7 @@ const Approvals = () => {
               className="gap-2"
             >
               <CheckCircle className="h-4 w-4" />
-              Setujui
+              {t('action.approve')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -344,13 +348,12 @@ const Approvals = () => {
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tolak Pengajuan</DialogTitle>
+            <DialogTitle>{t('approvals.confirmReject')}</DialogTitle>
             <DialogDescription>
               {selectedRequest && (
-                <>
-                  Anda akan menolak pengajuan{" "}
-                  <strong>{selectedRequest.request_number}</strong>.
-                </>
+                language === 'id'
+                  ? `Anda akan menolak pengajuan ${selectedRequest.request_number}.`
+                  : `You will reject request ${selectedRequest.request_number}.`
               )}
             </DialogDescription>
           </DialogHeader>
@@ -358,18 +361,18 @@ const Approvals = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="rejectionReason">
-                Alasan Penolakan <span className="text-destructive">*</span>
+                {t('approvals.rejectionReason')} <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="rejectionReason"
-                placeholder="Jelaskan alasan penolakan..."
+                placeholder={language === 'id' ? 'Jelaskan alasan penolakan...' : 'Explain the rejection reason...'}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={3}
               />
               {!rejectionReason.trim() && (
                 <p className="text-xs text-destructive">
-                  Alasan penolakan wajib diisi
+                  {t('approvals.rejectionRequired')}
                 </p>
               )}
             </div>
@@ -377,7 +380,7 @@ const Approvals = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
-              Batal
+              {t('action.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -386,7 +389,7 @@ const Approvals = () => {
               className="gap-2"
             >
               <XCircle className="h-4 w-4" />
-              Tolak
+              {t('action.reject')}
             </Button>
           </DialogFooter>
         </DialogContent>
