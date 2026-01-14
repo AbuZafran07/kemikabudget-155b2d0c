@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { id as localeId, enUS } from 'date-fns/locale';
 import {
   FileSpreadsheet,
   Download,
@@ -33,17 +33,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type ReportType = 'budget-utilization' | 'expense' | 'audit';
 
 const Reports = () => {
   const { role, profile } = useAuth();
+  const { t, language } = useLanguage();
   const [reportType, setReportType] = useState<ReportType>('budget-utilization');
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('current');
 
   const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
+  const dateLocale = language === 'id' ? localeId : enUS;
 
   // Fetch divisions
   const { data: divisions = [] } = useQuery({
@@ -237,9 +240,9 @@ const Reports = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Laporan</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t('reports.title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Generate dan export laporan keuangan
+            {t('reports.description')}
           </p>
         </div>
       </div>
@@ -249,15 +252,15 @@ const Reports = () => {
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
           <TabsTrigger value="budget-utilization" className="gap-2">
             <Wallet className="h-4 w-4" />
-            <span className="hidden sm:inline">Budget Utilization</span>
+            <span className="hidden sm:inline">{t('reports.budgetUtilization')}</span>
           </TabsTrigger>
           <TabsTrigger value="expense" className="gap-2">
             <TrendingUp className="h-4 w-4" />
-            <span className="hidden sm:inline">Expense Report</span>
+            <span className="hidden sm:inline">{t('reports.expenseReport')}</span>
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
             <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Audit Log</span>
+            <span className="hidden sm:inline">{t('reports.auditLog')}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -265,13 +268,13 @@ const Reports = () => {
         <div className="flex flex-wrap gap-4 mt-4">
           {isSuperAdminOrFinance && (
             <div className="space-y-1">
-              <Label className="text-xs">Divisi</Label>
+              <Label className="text-xs">{t('reports.division')}</Label>
               <Select value={selectedDivision} onValueChange={setSelectedDivision}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Pilih Divisi" />
+                  <SelectValue placeholder={t('reports.selectDivision')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Divisi</SelectItem>
+                  <SelectItem value="all">{t('reports.allDivisions')}</SelectItem>
                   {divisions.map((div) => (
                     <SelectItem key={div.id} value={div.id}>
                       {div.name}
@@ -288,14 +291,14 @@ const Reports = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Budget Utilization Report</CardTitle>
+                <CardTitle>{t('reports.budgetUtilizationReport')}</CardTitle>
                 <CardDescription>
-                  Alokasi dan penggunaan budget per divisi dan kategori
+                  {t('reports.budgetUtilizationDesc')}
                 </CardDescription>
               </div>
               <Button onClick={handleExportBudget} disabled={!budgetReport?.length} className="gap-2">
                 <Download className="h-4 w-4" />
-                Export CSV
+                {t('reports.exportCsv')}
               </Button>
             </CardHeader>
             <CardContent>
@@ -308,19 +311,19 @@ const Reports = () => {
                   {/* Summary Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     <div className="bg-primary/5 rounded-lg p-4">
-                      <p className="text-sm text-muted-foreground">Total Alokasi</p>
+                      <p className="text-sm text-muted-foreground">{t('reports.totalAllocation')}</p>
                       <p className="text-2xl font-bold text-primary">
                         {formatCurrency(budgetTotals.allocated)}
                       </p>
                     </div>
                     <div className="bg-muted rounded-lg p-4">
-                      <p className="text-sm text-muted-foreground">Total Terpakai</p>
+                      <p className="text-sm text-muted-foreground">{t('reports.totalUsed')}</p>
                       <p className="text-2xl font-bold text-foreground">
                         {formatCurrency(budgetTotals.used)}
                       </p>
                     </div>
                     <div className="bg-success/5 rounded-lg p-4">
-                      <p className="text-sm text-muted-foreground">Total Sisa</p>
+                      <p className="text-sm text-muted-foreground">{t('reports.totalRemaining')}</p>
                       <p className="text-2xl font-bold text-success">
                         {formatCurrency(budgetTotals.allocated - budgetTotals.used)}
                       </p>
@@ -330,12 +333,12 @@ const Reports = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Divisi</TableHead>
-                        <TableHead>Kategori</TableHead>
-                        <TableHead className="text-right">Alokasi</TableHead>
-                        <TableHead className="text-right">Terpakai</TableHead>
-                        <TableHead className="text-right">Sisa</TableHead>
-                        <TableHead className="text-right">Utilisasi</TableHead>
+                        <TableHead>{t('reports.division')}</TableHead>
+                        <TableHead>{t('reports.category')}</TableHead>
+                        <TableHead className="text-right">{t('reports.allocation')}</TableHead>
+                        <TableHead className="text-right">{t('reports.used')}</TableHead>
+                        <TableHead className="text-right">{t('reports.remaining')}</TableHead>
+                        <TableHead className="text-right">{t('reports.utilization')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -380,14 +383,14 @@ const Reports = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Expense Report</CardTitle>
+                <CardTitle>{t('reports.expenseReportTitle')}</CardTitle>
                 <CardDescription>
-                  Daftar pengeluaran yang telah disetujui dan dibayar
+                  {t('reports.expenseReportDesc')}
                 </CardDescription>
               </div>
               <Button onClick={handleExportExpense} disabled={!expenseReport?.length} className="gap-2">
                 <Download className="h-4 w-4" />
-                Export CSV
+                {t('reports.exportCsv')}
               </Button>
             </CardHeader>
             <CardContent>
@@ -398,25 +401,25 @@ const Reports = () => {
               ) : (
                 <>
                   <div className="bg-primary/5 rounded-lg p-4 mb-6">
-                    <p className="text-sm text-muted-foreground">Total Expense</p>
+                    <p className="text-sm text-muted-foreground">{t('reports.totalExpense')}</p>
                     <p className="text-2xl font-bold text-primary">
                       {formatCurrency(expenseTotals)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {expenseReport?.length || 0} transaksi
+                      {expenseReport?.length || 0} {t('reports.transactions')}
                     </p>
                   </div>
 
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>No. Request</TableHead>
-                        <TableHead>Divisi</TableHead>
-                        <TableHead>Kategori</TableHead>
-                        <TableHead>Deskripsi</TableHead>
-                        <TableHead className="text-right">Jumlah</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Tanggal</TableHead>
+                        <TableHead>{t('reports.requestNumber')}</TableHead>
+                        <TableHead>{t('reports.division')}</TableHead>
+                        <TableHead>{t('reports.category')}</TableHead>
+                        <TableHead>{t('common.description')}</TableHead>
+                        <TableHead className="text-right">{t('reports.amount')}</TableHead>
+                        <TableHead>{t('reports.status')}</TableHead>
+                        <TableHead>{t('reports.date')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -433,7 +436,7 @@ const Reports = () => {
                           </TableCell>
                           <TableCell className="capitalize">{row.status}</TableCell>
                           <TableCell className="text-muted-foreground">
-                            {format(new Date(row.created_at), 'dd MMM yyyy', { locale: localeId })}
+                            {format(new Date(row.created_at), 'dd MMM yyyy', { locale: dateLocale })}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -450,14 +453,14 @@ const Reports = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Audit Log</CardTitle>
+                <CardTitle>{t('reports.auditLogTitle')}</CardTitle>
                 <CardDescription>
-                  Histori aktivitas dan perubahan sistem
+                  {t('reports.auditLogDesc')}
                 </CardDescription>
               </div>
               <Button onClick={handleExportAudit} disabled={!auditReport?.length} className="gap-2">
                 <Download className="h-4 w-4" />
-                Export CSV
+                {t('reports.exportCsv')}
               </Button>
             </CardHeader>
             <CardContent>
@@ -469,18 +472,18 @@ const Reports = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Waktu</TableHead>
-                      <TableHead>No. Request</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Deskripsi</TableHead>
-                      <TableHead>User</TableHead>
+                      <TableHead>{t('reports.time')}</TableHead>
+                      <TableHead>{t('reports.requestNumber')}</TableHead>
+                      <TableHead>{t('reports.event')}</TableHead>
+                      <TableHead>{t('common.description')}</TableHead>
+                      <TableHead>{t('reports.user')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {auditReport?.map((row) => (
                       <TableRow key={row.id}>
                         <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {format(new Date(row.created_at), 'dd MMM yyyy HH:mm', { locale: localeId })}
+                          {format(new Date(row.created_at), 'dd MMM yyyy HH:mm', { locale: dateLocale })}
                         </TableCell>
                         <TableCell className="font-mono text-sm">
                           {(row.request as any)?.request_number || '-'}

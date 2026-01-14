@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { id as localeId, enUS } from 'date-fns/locale';
 import {
   FileSearch,
   Search,
@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { useAuditLogs } from '@/hooks/useAuditLogsQuery';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
 const eventIcons: Record<string, React.ElementType> = {
@@ -81,7 +82,9 @@ const eventColors: Record<string, string> = {
 const PAGE_SIZES = [10, 25, 50, 100];
 
 const AuditLogs = () => {
+  const { t, language } = useLanguage();
   const [pageSize, setPageSize] = useState(25);
+  const dateLocale = language === 'id' ? localeId : enUS;
   
   const {
     logs,
@@ -125,20 +128,20 @@ const AuditLogs = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <FileSearch className="h-6 w-6 text-primary" />
-            Audit Log
+            {t('auditLogs.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Riwayat semua aktivitas dan perubahan sistem
+            {t('auditLogs.description')}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => refetch()} className="gap-2">
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            {t('action.refresh')}
           </Button>
           <Button onClick={exportToCSV} className="gap-2">
             <Download className="h-4 w-4" />
-            Export CSV
+            {t('reports.exportCsv')}
           </Button>
         </div>
       </div>
@@ -148,7 +151,7 @@ const AuditLogs = () => {
         <Card>
           <CardContent className="pt-4">
             <p className="text-2xl font-bold text-foreground">{totalCount}</p>
-            <p className="text-xs text-muted-foreground">Total Log</p>
+            <p className="text-xs text-muted-foreground">{t('auditLogs.totalLogs')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -156,7 +159,7 @@ const AuditLogs = () => {
             <p className="text-2xl font-bold text-success">
               {filterOptions.eventTypes.filter(e => e === 'approved').length > 0 ? '✓' : '-'}
             </p>
-            <p className="text-xs text-muted-foreground">Event Types: {filterOptions.eventTypes.length}</p>
+            <p className="text-xs text-muted-foreground">{t('auditLogs.eventTypes')}: {filterOptions.eventTypes.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -164,7 +167,7 @@ const AuditLogs = () => {
             <p className="text-2xl font-bold text-primary">
               {filterOptions.entityTypes.length}
             </p>
-            <p className="text-xs text-muted-foreground">Entity Types</p>
+            <p className="text-xs text-muted-foreground">{t('auditLogs.entityTypes')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -172,7 +175,7 @@ const AuditLogs = () => {
             <p className="text-2xl font-bold text-accent-foreground">
               {filterOptions.users.length}
             </p>
-            <p className="text-xs text-muted-foreground">Users</p>
+            <p className="text-xs text-muted-foreground">{t('auditLogs.users')}</p>
           </CardContent>
         </Card>
       </div>
@@ -184,7 +187,7 @@ const AuditLogs = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Cari log..."
+              placeholder={t('auditLogs.searchLogs')}
               value={filters.search}
               onChange={(e) => updateFilters({ search: e.target.value })}
               className="pl-9"
@@ -198,10 +201,10 @@ const AuditLogs = () => {
           >
             <SelectTrigger className="w-full lg:w-40">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Event" />
+              <SelectValue placeholder={t('auditLogs.event')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Event</SelectItem>
+              <SelectItem value="all">{t('auditLogs.allEvents')}</SelectItem>
               {filterOptions.eventTypes.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
@@ -217,10 +220,10 @@ const AuditLogs = () => {
           >
             <SelectTrigger className="w-full lg:w-40">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Entity" />
+              <SelectValue placeholder={t('auditLogs.entity')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Entity</SelectItem>
+              <SelectItem value="all">{t('auditLogs.allEntities')}</SelectItem>
               {filterOptions.entityTypes.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
@@ -236,10 +239,10 @@ const AuditLogs = () => {
           >
             <SelectTrigger className="w-full lg:w-48">
               <User className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="User" />
+              <SelectValue placeholder={t('auditLogs.user')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua User</SelectItem>
+              <SelectItem value="all">{t('auditLogs.allUsers')}</SelectItem>
               {filterOptions.users.map((user) => (
                 <SelectItem key={user.id} value={user.id}>
                   {user.full_name}
@@ -263,9 +266,9 @@ const AuditLogs = () => {
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 {filters.startDate ? (
-                  format(filters.startDate, "dd MMM yyyy", { locale: localeId })
+                  format(filters.startDate, "dd MMM yyyy", { locale: dateLocale })
                 ) : (
-                  "Tanggal Mulai"
+                  t('auditLogs.startDate')
                 )}
               </Button>
             </PopoverTrigger>
@@ -294,9 +297,9 @@ const AuditLogs = () => {
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 {filters.endDate ? (
-                  format(filters.endDate, "dd MMM yyyy", { locale: localeId })
+                  format(filters.endDate, "dd MMM yyyy", { locale: dateLocale })
                 ) : (
-                  "Tanggal Akhir"
+                  t('auditLogs.endDate')
                 )}
               </Button>
             </PopoverTrigger>
@@ -315,7 +318,7 @@ const AuditLogs = () => {
           {hasActiveFilters && (
             <Button variant="ghost" onClick={resetFilters} className="gap-2">
               <X className="h-4 w-4" />
-              Reset Filter
+              {t('auditLogs.resetFilter')}
             </Button>
           )}
         </div>
@@ -326,11 +329,11 @@ const AuditLogs = () => {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-44">Waktu</TableHead>
-              <TableHead className="w-32">Event</TableHead>
-              <TableHead className="w-28">Entity</TableHead>
-              <TableHead>Deskripsi</TableHead>
-              <TableHead className="w-40">User</TableHead>
+              <TableHead className="w-44">{t('auditLogs.time')}</TableHead>
+              <TableHead className="w-32">{t('auditLogs.event')}</TableHead>
+              <TableHead className="w-28">{t('auditLogs.entity')}</TableHead>
+              <TableHead>{t('common.description')}</TableHead>
+              <TableHead className="w-40">{t('auditLogs.user')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -339,7 +342,7 @@ const AuditLogs = () => {
                 <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <FileSearch className="h-8 w-8 opacity-50" />
-                    <p>Tidak ada log ditemukan</p>
+                    <p>{t('auditLogs.noLogs')}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -351,7 +354,7 @@ const AuditLogs = () => {
                 return (
                   <TableRow key={log.id} className="hover:bg-muted/30">
                     <TableCell className="text-sm text-muted-foreground font-mono">
-                      {format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss', { locale: localeId })}
+                      {format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss', { locale: dateLocale })}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -378,7 +381,7 @@ const AuditLogs = () => {
                           <p className="text-xs text-muted-foreground">{log.user.email}</p>
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">System</span>
+                        <span className="text-muted-foreground">{t('auditLogs.system')}</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -393,7 +396,7 @@ const AuditLogs = () => {
       {totalCount > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {startIndex + 1}–{endIndex} dari {totalCount} log
+            {t('auditLogs.showingLogs')} {startIndex + 1}–{endIndex} {t('common.of')} {totalCount} {t('auditLogs.logsCount')}
           </p>
           <div className="flex items-center gap-2">
             <Select value={String(pageSize)} onValueChange={(v) => {
