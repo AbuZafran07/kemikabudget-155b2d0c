@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -48,6 +48,18 @@ const AppHeader = () => {
   });
   const [showEditProfile, setShowEditProfile] = useState(false);
 
+  // Helper function moved up to be used in useEffect
+  const getEventLabel = useCallback((eventType: string) => {
+    const labels: Record<string, { id: string; en: string }> = {
+      submitted: { id: 'Pengajuan Baru', en: 'New Submission' },
+      approved: { id: 'Pengajuan Disetujui', en: 'Request Approved' },
+      rejected: { id: 'Pengajuan Ditolak', en: 'Request Rejected' },
+      paid: { id: 'Pembayaran Selesai', en: 'Payment Completed' },
+      settled: { id: 'Transaksi Diselesaikan', en: 'Transaction Settled' },
+    };
+    return labels[eventType]?.[language] || eventType;
+  }, [language]);
+
   // Fetch real notifications from database
   const { data: notifications = [], refetch: refetchNotifications } = useQuery({
     queryKey: ['header-notifications', user?.id],
@@ -70,8 +82,42 @@ const AppHeader = () => {
       return data as NotificationLog[];
     },
     enabled: !!user?.id && (role === 'super_admin' || role === 'finance'),
-    refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Subscribe to real-time notification updates
+  useEffect(() => {
+    if (!user?.id || (role !== 'super_admin' && role !== 'finance')) return;
+
+    const channel = supabase
+      .channel('notification-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notification_logs'
+        },
+        (payload) => {
+          if (import.meta.env.DEV) {
+            console.log('New notification received:', payload);
+          }
+          // Refetch notifications when a new one is inserted
+          refetchNotifications();
+          
+          // Show toast for new notification
+          const newNotification = payload.new as NotificationLog;
+          toast({
+            title: getEventLabel(newNotification.event_type),
+            description: newNotification.subject,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, role, refetchNotifications, toast, getEventLabel]);
 
   // Calculate unread count
   const unreadCount = notifications.filter(n => {
@@ -142,16 +188,6 @@ const AppHeader = () => {
     }
   };
 
-  const getEventLabel = (eventType: string) => {
-    const labels: Record<string, { id: string; en: string }> = {
-      submitted: { id: 'Pengajuan Baru', en: 'New Submission' },
-      approved: { id: 'Pengajuan Disetujui', en: 'Request Approved' },
-      rejected: { id: 'Pengajuan Ditolak', en: 'Request Rejected' },
-      paid: { id: 'Pembayaran Selesai', en: 'Payment Completed' },
-      settled: { id: 'Transaksi Diselesaikan', en: 'Transaction Settled' },
-    };
-    return labels[eventType]?.[language] || eventType;
-  };
 
   const formatTimeAgo = (dateStr: string) => {
     return formatDistanceToNow(new Date(dateStr), { 
