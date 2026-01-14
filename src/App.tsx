@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -31,108 +32,109 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/requests" element={<Requests />} />
+      <LanguageProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Login />} />
               <Route
-                path="/approvals"
                 element={
-                  <ProtectedRoute requiredRole="super_admin">
-                    <Approvals />
+                  <ProtectedRoute>
+                    <AppLayout />
                   </ProtectedRoute>
                 }
-              />
-              <Route
-                path="/payment-queue"
-                element={
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/requests" element={<Requests />} />
+                <Route
+                  path="/approvals"
+                  element={
+                    <ProtectedRoute requiredRole="super_admin">
+                      <Approvals />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/payment-queue"
+                  element={
+                    <ProtectedRoute requiredRole="finance">
+                      <PaymentQueue />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/petty-cash" element={
                   <ProtectedRoute requiredRole="finance">
-                    <PaymentQueue />
+                    <PettyCash />
                   </ProtectedRoute>
-                }
-              />
-              <Route path="/petty-cash" element={
-                <ProtectedRoute requiredRole="finance">
-                  <PettyCash />
-                </ProtectedRoute>
-              } />
-              <Route path="/bank-payments" element={
-                <ProtectedRoute requiredRole="finance">
-                  <BankPayments />
-                </ProtectedRoute>
-              } />
-              <Route path="/budget-planning" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <BudgetPlanning />
-                </ProtectedRoute>
-              } />
-              <Route path="/budget-transfer" element={
-                <ProtectedRoute requiredRole="admin">
-                  <BudgetTransfer />
-                </ProtectedRoute>
-              } />
-              <Route path="/divisions" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <Divisions />
-                </ProtectedRoute>
-              } />
-              <Route path="/categories" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <Categories />
-                </ProtectedRoute>
-              } />
-              <Route path="/funding-sources" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <FundingSources />
-                </ProtectedRoute>
-              } />
-              <Route path="/users" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <Users />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <Settings />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={<Dashboard />} />
-              <Route path="/reports" element={
-                <ProtectedRoute requiredRole="finance">
-                  <Reports />
-                </ProtectedRoute>
-              } />
-              <Route path="/audit-logs" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <AuditLogs />
-                </ProtectedRoute>
-              } />
-              <Route path="/notification-history" element={
-                <ProtectedRoute requiredRole="finance">
-                  <NotificationHistory />
-                </ProtectedRoute>
-              } />
-              <Route path="/session-management" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <SessionManagement />
-                </ProtectedRoute>
-              } />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+                } />
+                <Route path="/bank-payments" element={
+                  <ProtectedRoute requiredRole="finance">
+                    <BankPayments />
+                  </ProtectedRoute>
+                } />
+                <Route path="/budget-planning" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <BudgetPlanning />
+                  </ProtectedRoute>
+                } />
+                <Route path="/budget-transfer" element={
+                  <ProtectedRoute requiredRole="admin">
+                    <BudgetTransfer />
+                  </ProtectedRoute>
+                } />
+                <Route path="/divisions" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <Divisions />
+                  </ProtectedRoute>
+                } />
+                <Route path="/categories" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <Categories />
+                  </ProtectedRoute>
+                } />
+                <Route path="/funding-sources" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <FundingSources />
+                  </ProtectedRoute>
+                } />
+                <Route path="/users" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <Users />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <Settings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/reports" element={
+                  <ProtectedRoute requiredRole="finance">
+                    <Reports />
+                  </ProtectedRoute>
+                } />
+                <Route path="/audit-logs" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <AuditLogs />
+                  </ProtectedRoute>
+                } />
+                <Route path="/notification-history" element={
+                  <ProtectedRoute requiredRole="finance">
+                    <NotificationHistory />
+                  </ProtectedRoute>
+                } />
+                <Route path="/session-management" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <SessionManagement />
+                  </ProtectedRoute>
+                } />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

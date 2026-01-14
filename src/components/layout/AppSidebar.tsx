@@ -32,11 +32,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import appIcon from "@/assets/app-icon.png";
 
 interface MenuItem {
-  title: string;
+  titleKey: string;
   icon: React.ElementType;
   href?: string;
   badge?: number;
@@ -45,70 +46,63 @@ interface MenuItem {
 }
 
 interface MenuSection {
-  title: string;
+  titleKey: string;
   items: MenuItem[];
   roles?: AppRole[];
 }
 
 const menuSections: MenuSection[] = [
   {
-    title: "RINGKASAN",
+    titleKey: "nav.summary",
     items: [
-      { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+      { titleKey: "nav.dashboard", icon: LayoutDashboard, href: "/dashboard" },
     ],
   },
   {
-    title: "TRANSAKSI",
+    titleKey: "nav.transactions",
     items: [
-      { title: "Pengajuan", icon: FileText, href: "/requests" },
-      { title: "Persetujuan", icon: CheckSquare, href: "/approvals", badge: 5, roles: ["super_admin"] },
+      { titleKey: "nav.requests", icon: FileText, href: "/requests" },
+      { titleKey: "nav.approvals", icon: CheckSquare, href: "/approvals", badge: 5, roles: ["super_admin"] },
     ],
   },
   {
-    title: "KEUANGAN",
+    titleKey: "nav.finance",
     items: [
-      { title: "Antrian Pembayaran", icon: CreditCard, href: "/payment-queue", badge: 3, roles: ["super_admin", "finance"] },
-      { title: "Kas Kecil", icon: Wallet, href: "/petty-cash", roles: ["super_admin", "finance"] },
-      { title: "Pembayaran Bank", icon: Building2, href: "/bank-payments", roles: ["super_admin", "finance"] },
+      { titleKey: "nav.paymentQueue", icon: CreditCard, href: "/payment-queue", badge: 3, roles: ["super_admin", "finance"] },
+      { titleKey: "nav.pettyCash", icon: Wallet, href: "/petty-cash", roles: ["super_admin", "finance"] },
+      { titleKey: "nav.bankPayments", icon: Building2, href: "/bank-payments", roles: ["super_admin", "finance"] },
     ],
     roles: ["super_admin", "finance"],
   },
   {
-    title: "PERENCANAAN",
+    titleKey: "nav.planning",
     items: [
-      { title: "Rencana Anggaran", icon: Calculator, href: "/budget-planning", roles: ["super_admin"] },
-      { title: "Transfer Anggaran", icon: ArrowRightLeft, href: "/budget-transfer" },
+      { titleKey: "nav.budgetPlanning", icon: Calculator, href: "/budget-planning", roles: ["super_admin"] },
+      { titleKey: "nav.budgetTransfer", icon: ArrowRightLeft, href: "/budget-transfer" },
     ],
   },
   {
-    title: "MASTER DATA",
+    titleKey: "nav.masterData",
     items: [
-      { title: "Divisi", icon: Building2, href: "/divisions", roles: ["super_admin"] },
-      { title: "Kategori Biaya", icon: Tags, href: "/categories", roles: ["super_admin"] },
-      { title: "Sumber Dana", icon: Landmark, href: "/funding-sources", roles: ["super_admin"] },
-      { title: "Pengguna", icon: Users, href: "/users", roles: ["super_admin"] },
-      { title: "Manajemen Sesi", icon: Shield, href: "/session-management", roles: ["super_admin"] },
-      { title: "Pengaturan", icon: Settings, href: "/settings", roles: ["super_admin"] },
+      { titleKey: "nav.divisions", icon: Building2, href: "/divisions", roles: ["super_admin"] },
+      { titleKey: "nav.categories", icon: Tags, href: "/categories", roles: ["super_admin"] },
+      { titleKey: "nav.fundingSources", icon: Landmark, href: "/funding-sources", roles: ["super_admin"] },
+      { titleKey: "nav.users", icon: Users, href: "/users", roles: ["super_admin"] },
+      { titleKey: "nav.sessionManagement", icon: Shield, href: "/session-management", roles: ["super_admin"] },
+      { titleKey: "nav.settings", icon: Settings, href: "/settings", roles: ["super_admin"] },
     ],
     roles: ["super_admin"],
   },
   {
-    title: "LAPORAN",
+    titleKey: "nav.reports",
     items: [
-      { title: "Laporan", icon: BarChart3, href: "/reports", roles: ["super_admin", "finance"] },
-      { title: "Audit Log", icon: FileSearch, href: "/audit-logs", roles: ["super_admin"] },
-      { title: "Notifikasi", icon: Mail, href: "/notification-history", roles: ["super_admin", "finance"] },
+      { titleKey: "nav.report", icon: BarChart3, href: "/reports", roles: ["super_admin", "finance"] },
+      { titleKey: "nav.auditLogs", icon: FileSearch, href: "/audit-logs", roles: ["super_admin"] },
+      { titleKey: "nav.notifications", icon: Mail, href: "/notification-history", roles: ["super_admin", "finance"] },
     ],
     roles: ["super_admin", "finance"],
   },
 ];
-
-const roleLabels: Record<string, string> = {
-  super_admin: "Super Admin",
-  finance: "Finance",
-  admin: "Admin",
-  user: "User",
-};
 
 interface AppSidebarProps {
   isCollapsed: boolean;
@@ -119,14 +113,15 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, role, signOut } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  const toggleMenu = (title: string) => {
+  const toggleMenu = (titleKey: string) => {
     setExpandedMenus((prev) =>
-      prev.includes(title)
-        ? prev.filter((t) => t !== title)
-        : [...prev, title]
+      prev.includes(titleKey)
+        ? prev.filter((tk) => tk !== titleKey)
+        : [...prev, titleKey]
     );
   };
 
@@ -144,8 +139,8 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
   const handleLogout = async () => {
     await signOut();
     toast({
-      title: "Logout Berhasil",
-      description: "Anda telah keluar dari sistem",
+      title: t('user.logoutSuccess'),
+      description: t('user.logoutMessage'),
     });
     navigate("/");
   };
@@ -159,25 +154,32 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
       .slice(0, 2);
   };
 
+  const getRoleLabel = (role: string | null) => {
+    if (!role) return t('role.user');
+    const roleKey = `role.${role === 'super_admin' ? 'superAdmin' : role}`;
+    return t(roleKey);
+  };
+
   const displayName = profile?.full_name || "User";
-  const displayRole = role ? roleLabels[role] : "User";
+  const displayRole = getRoleLabel(role);
   const initials = getInitials(displayName);
 
   const renderMenuItem = (item: MenuItem, depth = 0) => {
     if (!canAccessItem(item)) return null;
 
     const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expandedMenus.includes(item.title);
+    const isExpanded = expandedMenus.includes(item.titleKey);
     const active = isActive(item.href);
+    const title = t(item.titleKey);
 
     if (hasChildren) {
       const visibleChildren = item.children?.filter(canAccessItem) || [];
       if (visibleChildren.length === 0) return null;
 
       return (
-        <div key={item.title}>
+        <div key={item.titleKey}>
           <button
-            onClick={() => toggleMenu(item.title)}
+            onClick={() => toggleMenu(item.titleKey)}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
               "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -187,7 +189,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
             <item.icon className="h-5 w-5 flex-shrink-0" />
             {!isCollapsed && (
               <>
-                <span className="flex-1 text-left">{item.title}</span>
+                <span className="flex-1 text-left">{title}</span>
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
@@ -219,7 +221,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
         <item.icon className="h-5 w-5 flex-shrink-0" />
         {!isCollapsed && (
           <>
-            <span className="flex-1">{item.title}</span>
+            <span className="flex-1">{title}</span>
             {item.badge && item.badge > 0 && (
               <Badge
                 variant="secondary"
@@ -235,10 +237,10 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
 
     if (isCollapsed) {
       return (
-        <Tooltip key={item.title} delayDuration={0}>
+        <Tooltip key={item.titleKey} delayDuration={0}>
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
           <TooltipContent side="right" className="flex items-center gap-2">
-            {item.title}
+            {title}
             {item.badge && item.badge > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {item.badge}
@@ -249,7 +251,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
       );
     }
 
-    return <div key={item.title}>{linkContent}</div>;
+    return <div key={item.titleKey}>{linkContent}</div>;
   };
 
   const renderSection = (section: MenuSection) => {
@@ -259,10 +261,10 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
     if (visibleItems.length === 0) return null;
 
     return (
-      <div key={section.title}>
+      <div key={section.titleKey}>
         {!isCollapsed && (
           <h3 className="px-3 mb-2 text-xs font-semibold text-sidebar-muted uppercase tracking-wider">
-            {section.title}
+            {t(section.titleKey)}
           </h3>
         )}
         <div className="space-y-1">
@@ -323,7 +325,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
                 <PanelLeft className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">Expand Sidebar</TooltipContent>
+            <TooltipContent side="right">{t('common.expandSidebar')}</TooltipContent>
           </Tooltip>
         ) : (
           <div className="flex items-center gap-3 px-2">
@@ -347,7 +349,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
                   <LogOut className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Keluar</TooltipContent>
+              <TooltipContent side="right">{t('action.logout')}</TooltipContent>
             </Tooltip>
           </div>
         )}
