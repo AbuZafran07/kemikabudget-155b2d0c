@@ -14,6 +14,7 @@ import PaymentQueue from "./pages/PaymentQueue";
 import PettyCash from "./pages/PettyCash";
 import BankPayments from "./pages/BankPayments";
 import BudgetPlanning from "./pages/BudgetPlanning";
+import BudgetPeriods from "./pages/BudgetPeriods";
 import BudgetTransfer from "./pages/BudgetTransfer";
 import Divisions from "./pages/Divisions";
 import Categories from "./pages/Categories";
@@ -77,6 +78,11 @@ const App = () => (
                 <Route path="/budget-planning" element={
                   <ProtectedRoute requiredRole="super_admin">
                     <BudgetPlanning />
+                  </ProtectedRoute>
+                } />
+                <Route path="/budget-periods" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <BudgetPeriods />
                   </ProtectedRoute>
                 } />
                 <Route path="/budget-transfer" element={
