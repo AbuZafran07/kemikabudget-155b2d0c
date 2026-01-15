@@ -13,6 +13,8 @@ import {
   Building2,
   Trash2,
   KeyRound,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +51,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const Users = () => {
-  const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, deleteUser, createUser } = useUsers();
+  const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, deleteUser, createUser, refetch } = useUsers();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const { t, language } = useLanguage();
@@ -66,10 +68,13 @@ const Users = () => {
   // Create dialog state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createEmail, setCreateEmail] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [createFullName, setCreateFullName] = useState("");
   const [createDivisionId, setCreateDivisionId] = useState("");
   const [createPhone, setCreatePhone] = useState("");
   const [createRole, setCreateRole] = useState<AppRole>("user");
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   // Edit form state
   const [editFullName, setEditFullName] = useState("");
@@ -172,23 +177,69 @@ const Users = () => {
   };
 
   const handleCreateUser = async () => {
-    if (!createEmail || !createFullName || !createDivisionId) return;
+    if (!createEmail || !createFullName || !createDivisionId || !createPassword) return;
+    
+    // Validate password strength
+    if (createPassword.length < 8) {
+      toast({
+        title: language === 'id' ? 'Password Lemah' : 'Weak Password',
+        description: language === 'id' ? 'Password minimal 8 karakter' : 'Password must be at least 8 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    await createUser.mutateAsync({
-      email: createEmail,
-      fullName: createFullName,
-      divisionId: createDivisionId,
-      phone: createPhone || undefined,
-      role: createRole,
-    });
+    setIsCreatingUser(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
 
-    // Reset form
-    setCreateEmail("");
-    setCreateFullName("");
-    setCreateDivisionId("");
-    setCreatePhone("");
-    setCreateRole("user");
-    setIsCreateDialogOpen(false);
+      const response = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: createEmail,
+          password: createPassword,
+          fullName: createFullName,
+          divisionId: createDivisionId,
+          phone: createPhone || undefined,
+          role: createRole,
+        },
+      });
+
+      if (response.error) throw response.error;
+      
+      const result = response.data;
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create user');
+      }
+
+      toast({
+        title: language === 'id' ? 'Berhasil' : 'Success',
+        description: language === 'id' ? 'Pengguna berhasil dibuat' : 'User created successfully',
+      });
+
+      // Reset form
+      setCreateEmail("");
+      setCreatePassword("");
+      setCreateFullName("");
+      setCreateDivisionId("");
+      setCreatePhone("");
+      setCreateRole("user");
+      setIsCreateDialogOpen(false);
+      
+      // Refetch users list
+      refetch();
+      
+    } catch (error: any) {
+      toast({
+        title: language === 'id' ? 'Gagal' : 'Error',
+        description: error.message || 'Failed to create user',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingUser(false);
+    }
   };
 
   if (isLoading) {
@@ -409,6 +460,38 @@ const Users = () => {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="createPassword">Password *</Label>
+              <div className="relative">
+                <Input
+                  id="createPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={createPassword}
+                  onChange={(e) => setCreatePassword(e.target.value)}
+                  placeholder={language === 'id' ? 'Minimal 8 karakter' : 'Minimum 8 characters'}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+              {createPassword && createPassword.length < 8 && (
+                <p className="text-xs text-destructive">
+                  {language === 'id' ? 'Password minimal 8 karakter' : 'Password must be at least 8 characters'}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="createFullName">{t('users.fullName')} *</Label>
               <Input
                 id="createFullName"
@@ -470,9 +553,9 @@ const Users = () => {
             </Button>
             <Button
               onClick={handleCreateUser}
-              disabled={createUser.isPending || !createEmail || !createFullName || !createDivisionId}
+              disabled={isCreatingUser || !createEmail || !createFullName || !createDivisionId || !createPassword || createPassword.length < 8}
             >
-              {createUser.isPending ? t('common.loading') : t('action.save')}
+              {isCreatingUser ? t('common.loading') : t('action.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

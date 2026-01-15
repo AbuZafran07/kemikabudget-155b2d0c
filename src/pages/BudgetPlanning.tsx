@@ -4,18 +4,16 @@ import {
   Plus,
   Edit2,
   Trash2,
-  Eye,
-  TrendingUp,
-  TrendingDown,
-  Calculator,
-  Building2,
   Calendar,
-  X,
+  Building2,
+  Upload,
+  Download,
+  Filter,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -42,19 +40,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useBudgetPlanning, DivisionBudget } from "@/hooks/useBudgetPlanning";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { format } from "date-fns";
-import { id as idLocale, enUS } from "date-fns/locale";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -77,58 +75,68 @@ const BudgetPlanning = () => {
     updateBudget,
     deleteBudget,
     totalAllocated,
-    totalUsed,
-    totalRemaining,
   } = useBudgetPlanning();
 
   const { t, language } = useLanguage();
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
-  const [periodFilter, setPeriodFilter] = useState<string>("active");
+  const [yearFilter, setYearFilter] = useState<string>(activePeriod?.id || "active");
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<DivisionBudget | null>(null);
 
   // Form states
+  const [formPeriodId, setFormPeriodId] = useState(activePeriod?.id || "");
   const [formDivisionId, setFormDivisionId] = useState("");
   const [formCategoryId, setFormCategoryId] = useState("");
   const [formAmount, setFormAmount] = useState("");
+  const [formStatus, setFormStatus] = useState("draft");
+  const [formCarryOver, setFormCarryOver] = useState("hangus");
 
+  // Get unique years from periods
+  const years = [...new Set(periods?.map(p => p.year) || [])].sort((a, b) => b - a);
+
+  // Filter budgets
   const filteredBudgets = budgets?.filter((budget) => {
-    const matchesSearch =
-      budget.divisions?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      budget.cost_categories?.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDivision =
-      divisionFilter === "all" || budget.division_id === divisionFilter;
-    const matchesPeriod =
-      periodFilter === "active"
-        ? budget.period_id === activePeriod?.id
-        : budget.period_id === periodFilter;
-    return matchesSearch && matchesDivision && matchesPeriod;
+    const matchesDivision = divisionFilter === "all" || budget.division_id === divisionFilter;
+    const matchesPeriod = yearFilter === "active" 
+      ? budget.period_id === activePeriod?.id
+      : budget.period_id === yearFilter;
+    return matchesDivision && matchesPeriod;
   }) || [];
 
-  // Group by division
+  // Calculate stats
+  const totalBudgets = filteredBudgets.length;
+  const draftCount = 0; // These would be tracked if we add status column
+  const approvedCount = totalBudgets; // Currently all budgets are "approved" when created
+
+  // Group by division for "Per Divisi" tab
   const groupedBudgets = filteredBudgets.reduce((acc, budget) => {
     const divisionName = budget.divisions?.name || 'Unknown';
     if (!acc[divisionName]) {
-      acc[divisionName] = [];
+      acc[divisionName] = {
+        budgets: [],
+        total: 0,
+        used: 0,
+      };
     }
-    acc[divisionName].push(budget);
+    acc[divisionName].budgets.push(budget);
+    acc[divisionName].total += budget.allocated_amount;
+    acc[divisionName].used += budget.used_amount;
     return acc;
-  }, {} as Record<string, DivisionBudget[]>);
+  }, {} as Record<string, { budgets: DivisionBudget[]; total: number; used: number }>);
 
   const handleCreate = async () => {
-    if (!formDivisionId || !formCategoryId || !formAmount || !activePeriod) return;
+    const periodToUse = formPeriodId || activePeriod?.id;
+    if (!formDivisionId || !formCategoryId || !formAmount || !periodToUse) return;
 
     await createBudget.mutateAsync({
       divisionId: formDivisionId,
       categoryId: formCategoryId,
-      periodId: activePeriod.id,
+      periodId: periodToUse,
       allocatedAmount: parseFloat(formAmount),
     });
 
@@ -169,25 +177,26 @@ const BudgetPlanning = () => {
     setSelectedBudget(null);
   };
 
-  const handleViewDetail = (budget: DivisionBudget) => {
-    setSelectedBudget(budget);
-    setIsDetailSheetOpen(true);
-  };
-
   const resetForm = () => {
+    setFormPeriodId(activePeriod?.id || "");
     setFormDivisionId("");
     setFormCategoryId("");
     setFormAmount("");
+    setFormStatus("draft");
+    setFormCarryOver("hangus");
   };
 
-  const dateLocale = language === 'id' ? idLocale : enUS;
+  const openCreateDialog = () => {
+    resetForm();
+    setIsCreateDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>
@@ -196,79 +205,67 @@ const BudgetPlanning = () => {
     );
   }
 
+  const selectedYear = yearFilter === "active" 
+    ? activePeriod?.year 
+    : periods?.find(p => p.id === yearFilter)?.year;
+
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{t('budgetPlanning.title')}</h1>
-            {activePeriod && (
-              <Badge className="bg-primary text-primary-foreground gap-1">
-                <Calendar className="h-3 w-3" />
-                {activePeriod.name}
-              </Badge>
-            )}
-          </div>
+          <h1 className="text-2xl font-bold text-foreground">Budget Planning</h1>
           <p className="text-muted-foreground mt-1">
-            {t('budgetPlanning.description')}
+            {language === 'id' ? 'Kelola anggaran per divisi dan kategori' : 'Manage budget by division and category'}
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          {t('budgetPlanning.addAllocation')}
-        </Button>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card rounded-xl border border-border p-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Calculator className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm text-muted-foreground">{t('budgetPlanning.totalAllocation')}</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(totalAllocated)}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-destructive/10">
-              <TrendingDown className="h-5 w-5 text-destructive" />
-            </div>
-            <span className="text-sm text-muted-foreground">{t('budgetPlanning.used')}</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(totalUsed)}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-success/10">
-              <TrendingUp className="h-5 w-5 text-success" />
-            </div>
-            <span className="text-sm text-muted-foreground">{t('budgetPlanning.remaining')}</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(totalRemaining)}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="gap-2">
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+          <Button className="gap-2" onClick={openCreateDialog}>
+            <Plus className="h-4 w-4" />
+            {language === 'id' ? 'Buat Budget' : 'Create Budget'}
+          </Button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('budgetPlanning.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={divisionFilter} onValueChange={setDivisionFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder={t('users.division')} />
+      <div className="flex flex-wrap gap-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select 
+            value={yearFilter} 
+            onValueChange={(val) => setYearFilter(val)}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Tahun" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('budgetPlanning.allDivisions')}</SelectItem>
+              <SelectItem value="active">
+                {activePeriod?.year || (language === 'id' ? 'Aktif' : 'Active')}
+              </SelectItem>
+              {periods?.map((period) => (
+                <SelectItem key={period.id} value={period.id}>
+                  {period.year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder={language === 'id' ? 'Semua Divisi' : 'All Divisions'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{language === 'id' ? 'Semua Divisi' : 'All Divisions'}</SelectItem>
               {divisions?.map((div) => (
                 <SelectItem key={div.id} value={div.id}>
                   {div.name}
@@ -276,144 +273,260 @@ const BudgetPlanning = () => {
               ))}
             </SelectContent>
           </Select>
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder={language === 'id' ? 'Periode' : 'Period'} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">{t('budgetPlanning.activePeriod')}</SelectItem>
-              {periods?.map((period) => (
-                <SelectItem key={period.id} value={period.id}>
-                  {period.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
-      {/* Budget Cards by Division */}
-      <div className="space-y-6">
-        {Object.entries(groupedBudgets).map(([divisionName, divBudgets]) => {
-          const divTotal = divBudgets.reduce((sum, b) => sum + b.allocated_amount, 0);
-          const divUsed = divBudgets.reduce((sum, b) => sum + b.used_amount, 0);
-          const divPercent = divTotal > 0 ? (divUsed / divTotal) * 100 : 0;
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="pt-4">
+            <p className="text-sm text-primary font-medium">
+              Total Budget {selectedYear || activePeriod?.year || ''}
+            </p>
+            <p className="text-2xl font-bold text-primary mt-1">
+              {formatCurrency(totalAllocated)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">
+              {language === 'id' ? 'Jumlah Budget' : 'Budget Count'}
+            </p>
+            <p className="text-2xl font-bold text-foreground mt-1">{totalBudgets}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Draft</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{draftCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Approved</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{approvedCount}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-          return (
-            <div key={divisionName} className="bg-card rounded-xl border border-border overflow-hidden">
-              {/* Division Header */}
-              <div className="p-4 border-b border-border bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-foreground">{divisionName}</h3>
-                    <Badge variant="outline">{divBudgets.length} {t('budgetPlanning.categories')}</Badge>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">{formatCurrency(divTotal)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('budgetPlanning.used')} {formatCurrency(divUsed)} ({divPercent.toFixed(1)}%)
-                    </p>
+      {/* Tabs */}
+      <Tabs defaultValue="list" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="list">
+            {language === 'id' ? 'Daftar Budget' : 'Budget List'}
+          </TabsTrigger>
+          <TabsTrigger value="division" className="text-primary">
+            Per Divisi
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Table View */}
+        <TabsContent value="list">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{language === 'id' ? 'Divisi' : 'Division'}</TableHead>
+                  <TableHead>{language === 'id' ? 'Kategori' : 'Category'}</TableHead>
+                  <TableHead>Limit</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Carry Over</TableHead>
+                  <TableHead className="text-right">{language === 'id' ? 'Aksi' : 'Action'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredBudgets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {language === 'id' ? 'Belum ada data budget' : 'No budget data yet'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredBudgets.map((budget) => (
+                    <TableRow key={budget.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {budget.divisions?.code}
+                          </Badge>
+                          <span>{budget.divisions?.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{budget.cost_categories?.name}</TableCell>
+                      <TableCell className="text-muted-foreground">-</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(budget.allocated_amount)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary" className="text-xs">
+                          approved
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-primary text-sm cursor-pointer hover:underline">
+                          Rollover
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(budget)}
+                            title={language === 'id' ? 'Edit' : 'Edit'}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(budget)}
+                            title={language === 'id' ? 'Hapus' : 'Delete'}
+                            disabled={budget.used_amount > 0}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* Per Division View */}
+        <TabsContent value="division">
+          <div className="space-y-4">
+            {Object.entries(groupedBudgets).map(([divisionName, data]) => (
+              <div key={divisionName} className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-foreground">{divisionName}</h3>
+                      <Badge variant="outline">{data.budgets.length} {language === 'id' ? 'kategori' : 'categories'}</Badge>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'id' ? 'Terpakai' : 'Used'} {formatCurrency(data.used)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <Progress value={divPercent} className="mt-3 h-2" />
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{language === 'id' ? 'Kategori' : 'Category'}</TableHead>
+                      <TableHead className="text-right">{language === 'id' ? 'Alokasi' : 'Allocated'}</TableHead>
+                      <TableHead className="text-right">{language === 'id' ? 'Terpakai' : 'Used'}</TableHead>
+                      <TableHead className="text-right">{language === 'id' ? 'Sisa' : 'Remaining'}</TableHead>
+                      <TableHead className="text-right">{language === 'id' ? 'Aksi' : 'Action'}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.budgets.map((budget) => {
+                      const remaining = budget.allocated_amount - budget.used_amount;
+                      return (
+                        <TableRow key={budget.id}>
+                          <TableCell>{budget.cost_categories?.name}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(budget.allocated_amount)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(budget.used_amount)}</TableCell>
+                          <TableCell className={`text-right ${remaining < 0 ? 'text-destructive' : 'text-success'}`}>
+                            {formatCurrency(remaining)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(budget)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(budget)}
+                                disabled={budget.used_amount > 0}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
-
-              {/* Category Budgets */}
-              <div className="divide-y divide-border">
-                {divBudgets.map((budget) => {
-                  const usedPercent = budget.allocated_amount > 0
-                    ? (budget.used_amount / budget.allocated_amount) * 100
-                    : 0;
-                  const remaining = budget.allocated_amount - budget.used_amount;
-
-                  return (
-                    <div key={budget.id} className="p-4 flex items-center justify-between hover:bg-muted/20 transition-colors">
-                      <div className="flex-1">
-                        <p className="font-medium">{budget.cost_categories?.name}</p>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                          <span>{language === 'id' ? 'Alokasi' : 'Allocated'}: {formatCurrency(budget.allocated_amount)}</span>
-                          <span>{t('budgetPlanning.used')}: {formatCurrency(budget.used_amount)}</span>
-                          <span className={remaining < 0 ? 'text-destructive' : 'text-success'}>
-                            {t('budgetPlanning.remaining')}: {formatCurrency(remaining)}
-                          </span>
-                        </div>
-                        <Progress value={usedPercent} className="mt-2 h-1.5 w-48" />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewDetail(budget)}
-                          title={language === 'id' ? 'Lihat Detail' : 'View Detail'}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(budget)}
-                          title={language === 'id' ? 'Edit' : 'Edit'}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(budget)}
-                          title={language === 'id' ? 'Hapus' : 'Delete'}
-                          disabled={budget.used_amount > 0}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+            ))}
+            {Object.keys(groupedBudgets).length === 0 && (
+              <div className="bg-card rounded-xl border border-border p-12 text-center">
+                <Calculator className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {language === 'id' ? 'Belum Ada Data Budget' : 'No Budget Data Yet'}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {language === 'id' 
+                    ? 'Mulai dengan menambahkan alokasi anggaran.'
+                    : 'Start by adding budget allocations.'
+                  }
+                </p>
+                <Button onClick={openCreateDialog} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  {language === 'id' ? 'Buat Budget' : 'Create Budget'}
+                </Button>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {filteredBudgets.length === 0 && (
-        <div className="bg-card rounded-xl border border-border p-12 text-center">
-          <Calculator className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            {language === 'id' ? 'Belum Ada Alokasi Anggaran' : 'No Budget Allocations Yet'}
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            {language === 'id' 
-              ? 'Mulai dengan menambahkan alokasi anggaran untuk divisi dan kategori.'
-              : 'Start by adding budget allocations for divisions and categories.'
-            }
-          </p>
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            {t('budgetPlanning.addAllocation')}
-          </Button>
-        </div>
-      )}
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{t('budgetPlanning.addAllocation')}</DialogTitle>
+            <DialogTitle>
+              {language === 'id' ? 'Buat Budget Baru' : 'Create New Budget'}
+            </DialogTitle>
             <DialogDescription>
               {language === 'id' 
-                ? `Buat alokasi anggaran baru untuk periode ${activePeriod?.name}`
-                : `Create new budget allocation for period ${activePeriod?.name}`
+                ? 'Atur anggaran untuk divisi dan kategori'
+                : 'Set budget for division and category'
               }
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>{t('users.division')}</Label>
+              <Label>{language === 'id' ? 'Tahun' : 'Year'}</Label>
+              <Select 
+                value={formPeriodId || activePeriod?.id || ""} 
+                onValueChange={setFormPeriodId}
+              >
+                <SelectTrigger className="border-primary">
+                  <SelectValue placeholder={language === 'id' ? 'Pilih tahun' : 'Select year'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods?.map((period) => (
+                    <SelectItem key={period.id} value={period.id}>
+                      {period.year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{language === 'id' ? 'Divisi' : 'Division'}</Label>
               <Select value={formDivisionId} onValueChange={setFormDivisionId}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t('users.selectDivision')} />
+                  <SelectValue placeholder={language === 'id' ? 'Pilih divisi' : 'Select division'} />
                 </SelectTrigger>
                 <SelectContent>
                   {divisions?.map((div) => (
@@ -426,7 +539,7 @@ const BudgetPlanning = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>{t('requests.category')}</Label>
+              <Label>{language === 'id' ? 'Kategori' : 'Category'}</Label>
               <Select value={formCategoryId} onValueChange={setFormCategoryId}>
                 <SelectTrigger>
                   <SelectValue placeholder={language === 'id' ? 'Pilih kategori' : 'Select category'} />
@@ -442,25 +555,52 @@ const BudgetPlanning = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>{language === 'id' ? 'Jumlah Alokasi (IDR)' : 'Allocation Amount (IDR)'}</Label>
+              <Label>Total Budget (Rp)</Label>
               <Input
                 type="number"
-                placeholder="100000000"
+                placeholder="0"
                 value={formAmount}
                 onChange={(e) => setFormAmount(e.target.value)}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={formStatus} onValueChange={setFormStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Carry Over</Label>
+                <Select value={formCarryOver} onValueChange={setFormCarryOver}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hangus">Hangus</SelectItem>
+                    <SelectItem value="rollover">Rollover</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              {t('action.cancel')}
+              {language === 'id' ? 'Batal' : 'Cancel'}
             </Button>
             <Button
               onClick={handleCreate}
               disabled={createBudget.isPending || !formDivisionId || !formCategoryId || !formAmount}
             >
-              {t('action.save')}
+              {language === 'id' ? 'Simpan' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -540,152 +680,6 @@ const BudgetPlanning = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Detail Sheet */}
-      <Sheet open={isDetailSheetOpen} onOpenChange={setIsDetailSheetOpen}>
-        <SheetContent className="sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-primary" />
-              {language === 'id' ? 'Detail Alokasi Anggaran' : 'Budget Allocation Detail'}
-            </SheetTitle>
-            <SheetDescription>
-              {selectedBudget && (
-                <>
-                  {selectedBudget.divisions?.name} - {selectedBudget.cost_categories?.name}
-                </>
-              )}
-            </SheetDescription>
-          </SheetHeader>
-
-          {selectedBudget && (
-            <div className="mt-6 space-y-6">
-              {/* Division & Category Info */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <Building2 className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">{t('users.division')}</p>
-                    <p className="font-medium">{selectedBudget.divisions?.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedBudget.divisions?.code}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <Calculator className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">{t('requests.category')}</p>
-                    <p className="font-medium">{selectedBudget.cost_categories?.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedBudget.cost_categories?.code}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">{language === 'id' ? 'Periode' : 'Period'}</p>
-                    <p className="font-medium">{selectedBudget.budget_periods?.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedBudget.budget_periods?.year}</p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Budget Summary */}
-              <div className="space-y-4">
-                <h4 className="font-semibold">{language === 'id' ? 'Ringkasan Anggaran' : 'Budget Summary'}</h4>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-primary/10 rounded-lg">
-                    <p className="text-sm text-muted-foreground">{language === 'id' ? 'Alokasi' : 'Allocated'}</p>
-                    <p className="text-xl font-bold text-primary">{formatCurrency(selectedBudget.allocated_amount)}</p>
-                  </div>
-                  <div className="p-4 bg-destructive/10 rounded-lg">
-                    <p className="text-sm text-muted-foreground">{t('budgetPlanning.used')}</p>
-                    <p className="text-xl font-bold text-destructive">{formatCurrency(selectedBudget.used_amount)}</p>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-success/10 rounded-lg">
-                  <p className="text-sm text-muted-foreground">{t('budgetPlanning.remaining')}</p>
-                  <p className="text-2xl font-bold text-success">
-                    {formatCurrency(selectedBudget.allocated_amount - selectedBudget.used_amount)}
-                  </p>
-                </div>
-
-                {/* Progress Bar */}
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">{language === 'id' ? 'Penggunaan' : 'Usage'}</span>
-                    <span className="font-medium">
-                      {selectedBudget.allocated_amount > 0 
-                        ? ((selectedBudget.used_amount / selectedBudget.allocated_amount) * 100).toFixed(1) 
-                        : 0}%
-                    </span>
-                  </div>
-                  <Progress 
-                    value={selectedBudget.allocated_amount > 0 
-                      ? (selectedBudget.used_amount / selectedBudget.allocated_amount) * 100 
-                      : 0
-                    } 
-                    className="h-3" 
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Metadata */}
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{language === 'id' ? 'Dibuat' : 'Created'}</span>
-                  <span>{format(new Date(selectedBudget.created_at), 'dd MMM yyyy HH:mm', { locale: dateLocale })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{language === 'id' ? 'Terakhir Diubah' : 'Last Updated'}</span>
-                  <span>{format(new Date(selectedBudget.updated_at), 'dd MMM yyyy HH:mm', { locale: dateLocale })}</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => {
-                    setIsDetailSheetOpen(false);
-                    handleEdit(selectedBudget);
-                  }}
-                >
-                  <Edit2 className="h-4 w-4 mr-2" />
-                  {language === 'id' ? 'Edit' : 'Edit'}
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  className="flex-1"
-                  onClick={() => {
-                    setIsDetailSheetOpen(false);
-                    handleDeleteClick(selectedBudget);
-                  }}
-                  disabled={selectedBudget.used_amount > 0}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {language === 'id' ? 'Hapus' : 'Delete'}
-                </Button>
-              </div>
-              {selectedBudget.used_amount > 0 && (
-                <p className="text-xs text-muted-foreground text-center">
-                  {language === 'id' 
-                    ? 'Tidak dapat dihapus karena sudah ada penggunaan anggaran.'
-                    : 'Cannot be deleted because budget has been used.'
-                  }
-                </p>
-              )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 };
