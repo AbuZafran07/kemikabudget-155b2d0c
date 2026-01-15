@@ -21,14 +21,24 @@ export function useUsers() {
   const queryClient = useQueryClient();
 
   // Fetch all users with their roles
+  // SECURITY: Explicitly select only required columns to minimize data exposure
+  // This hook is used by Users management (super_admin only) but we still follow
+  // least-privilege by selecting only what the UI actually needs
   const { data: users, isLoading, refetch } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      // Get profiles
+      // Get profiles with explicit column selection (no wildcard)
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select(`
-          *,
+          id,
+          email,
+          full_name,
+          phone,
+          division_id,
+          is_active,
+          requires_otp,
+          created_at,
           divisions (code, name)
         `)
         .order('full_name');
