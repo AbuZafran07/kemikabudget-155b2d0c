@@ -37,7 +37,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatusBadge from '@/components/common/StatusBadge';
 import { useRequests, Request } from '@/hooks/useRequests';
@@ -119,9 +118,8 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
         <div className="flex gap-4">
           <Skeleton className="h-10 flex-1" />
           <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-32" />
         </div>
-        <div className="border rounded-lg">
+        <div className="border rounded-lg bg-card">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="flex gap-4 p-4 border-b last:border-0">
               <Skeleton className="h-4 w-32" />
@@ -145,92 +143,75 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
             placeholder={t('requests.searchPlaceholder')}
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-background"
           />
         </div>
-        <Select value={statusFilter} onValueChange={handleFilterChange}>
-          <SelectTrigger className="w-full sm:w-40">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder={t('common.status')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('status.all')}</SelectItem>
-            <SelectItem value="draft">{t('status.draft')}</SelectItem>
-            <SelectItem value="submitted">{t('status.submitted')}</SelectItem>
-            <SelectItem value="under_review">{t('status.underReview')}</SelectItem>
-            <SelectItem value="approved">{t('status.approved')}</SelectItem>
-            <SelectItem value="rejected">{t('status.rejected')}</SelectItem>
-            <SelectItem value="paid">{t('status.paid')}</SelectItem>
-            <SelectItem value="settled">{t('status.settled')}</SelectItem>
-            <SelectItem value="cancelled">{t('status.cancelled')}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button onClick={onCreateNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('requests.new')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={statusFilter} onValueChange={handleFilterChange}>
+            <SelectTrigger className="w-full sm:w-40 bg-background">
+              <SelectValue placeholder={t('status.all')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('status.all')}</SelectItem>
+              <SelectItem value="draft">{t('status.draft')}</SelectItem>
+              <SelectItem value="submitted">{t('status.submitted')}</SelectItem>
+              <SelectItem value="under_review">{t('status.underReview')}</SelectItem>
+              <SelectItem value="approved">{t('status.approved')}</SelectItem>
+              <SelectItem value="rejected">{t('status.rejected')}</SelectItem>
+              <SelectItem value="paid">{t('status.paid')}</SelectItem>
+              <SelectItem value="settled">{t('status.settled')}</SelectItem>
+              <SelectItem value="cancelled">{t('status.cancelled')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="border border-border rounded-lg overflow-hidden">
+      <div className="border border-border rounded-lg overflow-hidden bg-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-40">{t('requests.requestNumber')}</TableHead>
-              <TableHead>{t('common.description')}</TableHead>
-              <TableHead className="w-32">{t('requests.category')}</TableHead>
-              <TableHead className="w-32 text-right">{t('requests.amount')}</TableHead>
-              <TableHead className="w-28">{t('requests.date')}</TableHead>
-              <TableHead className="w-28">{t('common.status')}</TableHead>
-              <TableHead className="w-16"></TableHead>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="font-semibold text-foreground">No. Request</TableHead>
+              <TableHead className="font-semibold text-foreground">Deskripsi</TableHead>
+              <TableHead className="font-semibold text-foreground">Divisi</TableHead>
+              <TableHead className="font-semibold text-foreground text-right">Nominal</TableHead>
+              <TableHead className="font-semibold text-foreground">Status</TableHead>
+              <TableHead className="font-semibold text-foreground">Tanggal</TableHead>
+              <TableHead className="font-semibold text-foreground text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedRequests.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <p>{t('requests.noData')}</p>
-                    <Button variant="outline" size="sm" onClick={onCreateNew}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      {t('requests.createNew')}
-                    </Button>
-                  </div>
+                  <p className="text-muted-foreground">{t('requests.noData')}</p>
                 </TableCell>
               </TableRow>
             ) : (
               paginatedRequests.map((request) => (
-                <TableRow key={request.id} className="hover:bg-muted/30">
+                <TableRow key={request.id} className="hover:bg-muted/20">
                   <TableCell className="font-mono text-sm">
                     {request.request_number}
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <p className="font-medium truncate max-w-xs">
-                        {request.description}
-                      </p>
-                      {request.vendor && (
-                        <p className="text-xs text-muted-foreground">
-                          {request.vendor}
-                        </p>
-                      )}
-                    </div>
+                    <p className="font-medium truncate max-w-xs">
+                      {request.description}
+                    </p>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {request.cost_categories?.name || '-'}
-                    </Badge>
+                  <TableCell className="text-sm">
+                    {request.divisions?.name || '-'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(request.amount)}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(request.created_at), 'dd MMM yyyy', { locale: language === 'id' ? idLocale : enUS })}
-                  </TableCell>
                   <TableCell>
                     <StatusBadge status={request.status} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(request.created_at), 'dd MMM yyyy', { locale: language === 'id' ? idLocale : enUS })}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">

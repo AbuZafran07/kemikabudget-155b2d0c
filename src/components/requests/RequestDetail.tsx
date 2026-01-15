@@ -21,6 +21,7 @@ import {
   Paperclip,
   Printer,
   Receipt,
+  ArrowLeft,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ import { generatePaymentReceiptPDF } from '@/lib/generateReceiptPDF';
 
 interface RequestDetailProps {
   requestId: string;
+  onBack?: () => void;
 }
 
 interface RequestEvent {
@@ -84,7 +86,7 @@ const attachmentTypeLabels: Record<string, string> = {
   other: 'Dokumen Lain',
 };
 
-export function RequestDetail({ requestId }: RequestDetailProps) {
+export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
   // Fetch request details
   const { data: request, isLoading: isLoadingRequest } = useQuery({
     queryKey: ['request-detail', requestId],
@@ -203,6 +205,14 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      {onBack && (
+        <Button variant="ghost" onClick={onBack} className="gap-2 mb-2">
+          <ArrowLeft className="h-4 w-4" />
+          Kembali ke Daftar
+        </Button>
+      )}
+      
       {/* Header */}
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
