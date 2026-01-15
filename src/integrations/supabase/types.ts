@@ -273,13 +273,6 @@ export type Database = {
             foreignKeyName: "cash_reconciliations_funding_source_id_fkey"
             columns: ["funding_source_id"]
             isOneToOne: false
-            referencedRelation: "funding_source_options"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cash_reconciliations_funding_source_id_fkey"
-            columns: ["funding_source_id"]
-            isOneToOne: false
             referencedRelation: "funding_sources"
             referencedColumns: ["id"]
           },
@@ -648,13 +641,6 @@ export type Database = {
             foreignKeyName: "petty_cash_transactions_funding_source_id_fkey"
             columns: ["funding_source_id"]
             isOneToOne: false
-            referencedRelation: "funding_source_options"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "petty_cash_transactions_funding_source_id_fkey"
-            columns: ["funding_source_id"]
-            isOneToOne: false
             referencedRelation: "funding_sources"
             referencedColumns: ["id"]
           },
@@ -924,13 +910,6 @@ export type Database = {
             foreignKeyName: "requests_funding_source_id_fkey"
             columns: ["funding_source_id"]
             isOneToOne: false
-            referencedRelation: "funding_source_options"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "requests_funding_source_id_fkey"
-            columns: ["funding_source_id"]
-            isOneToOne: false
             referencedRelation: "funding_sources"
             referencedColumns: ["id"]
           },
@@ -996,30 +975,6 @@ export type Database = {
       }
     }
     Views: {
-      funding_source_options: {
-        Row: {
-          code: string | null
-          id: string | null
-          is_active: boolean | null
-          name: string | null
-          type: string | null
-        }
-        Insert: {
-          code?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          type?: string | null
-        }
-        Update: {
-          code?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          type?: string | null
-        }
-        Relationships: []
-      }
       profiles_secure: {
         Row: {
           avatar_url: string | null
