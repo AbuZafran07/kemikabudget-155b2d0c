@@ -17,13 +17,16 @@ const getAllowedOrigins = (): string[] => {
     return [appOrigin, ...defaultOrigins];
   }
   
-  // In development, also allow Lovable preview domains
-  return [
-    ...defaultOrigins,
-    'https://*.lovable.app',
-    'https://*.lovableproject.com',
-  ];
+  return defaultOrigins;
 };
+
+// Check if origin is from Lovable domains
+function isLovableOrigin(origin: string): boolean {
+  return origin.endsWith('.lovable.app') || 
+         origin.endsWith('.lovableproject.com') ||
+         origin.includes('lovable.app') ||
+         origin.includes('lovableproject.com');
+}
 
 export function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
   const allowedOrigins = getAllowedOrigins();
@@ -32,18 +35,15 @@ export function getCorsHeaders(requestOrigin: string | null): Record<string, str
   let origin = allowedOrigins[0]; // Default to first allowed origin
   
   if (requestOrigin) {
-    // Check for exact match or wildcard match
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (allowed.includes('*')) {
-        // Handle wildcard patterns like https://*.lovable.app
-        const regex = new RegExp('^' + allowed.replace(/\*/g, '.*') + '$');
-        return regex.test(requestOrigin);
-      }
-      return allowed === requestOrigin;
-    });
-    
-    if (isAllowed) {
+    // Check for Lovable domains first (development/preview)
+    if (isLovableOrigin(requestOrigin)) {
       origin = requestOrigin;
+    } else {
+      // Check for exact match in configured origins
+      const isAllowed = allowedOrigins.includes(requestOrigin);
+      if (isAllowed) {
+        origin = requestOrigin;
+      }
     }
   }
   
