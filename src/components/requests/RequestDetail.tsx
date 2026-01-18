@@ -87,25 +87,48 @@ const attachmentTypeLabels: Record<string, string> = {
 };
 
 export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
-  // Fetch request details
+  // Fetch request details - avoid foreign key hints since there's no explicit FK to profiles
   const { data: request, isLoading: isLoadingRequest } = useQuery({
     queryKey: ['request-detail', requestId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First fetch the request with its direct relationships
+      const { data: requestData, error: requestError } = await supabase
         .from('requests')
         .select(`
           *,
           divisions (code, name),
           cost_categories (code, name),
-          funding_sources (code, name, type, bank_name),
-          requester:profiles!requests_requester_id_fkey (full_name, email),
-          approver:profiles!requests_approved_by_fkey (full_name)
+          funding_source_options (code, name, type)
         `)
         .eq('id', requestId)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (requestError) throw requestError;
+
+      // Fetch requester profile separately
+      const { data: requesterProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', requestData.requester_id)
+        .single();
+
+      // Fetch approver profile if exists
+      let approverProfile = null;
+      if (requestData.approved_by) {
+        const { data: approver } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', requestData.approved_by)
+          .single();
+        approverProfile = approver;
+      }
+
+      return {
+        ...requestData,
+        requester: requesterProfile,
+        approver: approverProfile,
+        funding_sources: requestData.funding_source_options,
+      };
     },
     enabled: !!requestId,
   });
