@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useQuery } from '@tanstack/react-query';
 
 const requestSchema = z.object({
   category_id: z.string().min(1, 'Kategori harus dipilih'),
@@ -99,13 +100,49 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
     },
   });
 
-  const { watch, setValue, handleSubmit, formState: { errors, isDirty } } = form;
+  const { watch, setValue, handleSubmit, formState: { errors, isDirty }, reset } = form;
   const watchedFundingSource = watch('funding_source_id');
   const watchedAmount = watch('amount');
 
-  // Load draft or initial data on mount
+  // Fetch existing request data when editing
+  const { data: existingRequest, isLoading: isLoadingRequest } = useQuery({
+    queryKey: ['request-for-edit', requestId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!requestId,
+  });
+
+  // Load existing request data when editing
   useEffect(() => {
-    if (!requestId) {
+    if (requestId && existingRequest) {
+      reset({
+        category_id: existingRequest.category_id || '',
+        description: existingRequest.description || '',
+        vendor: existingRequest.vendor || '',
+        amount: Number(existingRequest.amount) || 0,
+        needed_date: existingRequest.needed_date || '',
+        funding_source_id: existingRequest.funding_source_id || '',
+        payment_method: existingRequest.payment_method || '',
+        beneficiary_name: existingRequest.beneficiary_name || '',
+        beneficiary_bank: existingRequest.beneficiary_bank || '',
+        beneficiary_account: existingRequest.beneficiary_account || '',
+        beneficiary_email: existingRequest.beneficiary_email || '',
+        notes: existingRequest.notes || '',
+      });
+    }
+  }, [requestId, existingRequest, reset]);
+
+  // Load draft or initial data on mount (only for new requests)
+  useEffect(() => {
+    if (!requestId && !existingRequest) {
       if (initialData) {
         Object.entries(initialData).forEach(([key, value]) => {
           if (value !== undefined && value !== null && value !== '') {
@@ -131,7 +168,7 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
         }
       }
     }
-  }, [requestId, initialData, loadDraft, setValue, toast]);
+  }, [requestId, existingRequest, initialData, loadDraft, setValue, toast]);
 
   // Update selected funding source
   useEffect(() => {
@@ -278,9 +315,18 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
 
   const onSaveDraft = async (data: RequestFormData) => {
     try {
-      const result = await createRequest.mutateAsync(data);
-      if (attachments.length > 0) {
-        await uploadAttachments(result.id);
+      if (requestId) {
+        // Update existing request
+        await updateRequest.mutateAsync({ id: requestId, ...data });
+        if (attachments.length > 0) {
+          await uploadAttachments(requestId);
+        }
+      } else {
+        // Create new request
+        const result = await createRequest.mutateAsync(data);
+        if (attachments.length > 0) {
+          await uploadAttachments(result.id);
+        }
       }
       onSuccess?.();
     } catch (error) {
@@ -290,11 +336,21 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
 
   const onSubmitRequest = async (data: RequestFormData) => {
     try {
-      const result = await createRequest.mutateAsync(data);
-      if (attachments.length > 0) {
-        await uploadAttachments(result.id);
+      if (requestId) {
+        // Update and submit existing request
+        await updateRequest.mutateAsync({ id: requestId, ...data });
+        if (attachments.length > 0) {
+          await uploadAttachments(requestId);
+        }
+        await submitRequest.mutateAsync(requestId);
+      } else {
+        // Create and submit new request
+        const result = await createRequest.mutateAsync(data);
+        if (attachments.length > 0) {
+          await uploadAttachments(result.id);
+        }
+        await submitRequest.mutateAsync(result.id);
       }
-      await submitRequest.mutateAsync(result.id);
       onSuccess?.();
     } catch (error) {
       // Error handled by mutation
@@ -308,11 +364,23 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   };
 
   const isBank = selectedFundingSource?.type === 'bank';
+  const isEditing = !!requestId;
+  const isPending = createRequest.isPending || updateRequest.isPending;
+
+  // Show loading state when fetching existing request
+  if (isEditing && isLoadingRequest) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("space-y-6", isSheet && "pb-6")}>
       {/* Autosave indicator */}
-      {lastSaved && (
+      {lastSaved && !isEditing && (
         <Badge variant="secondary" className="text-xs">
           Autosaved {format(lastSaved, 'HH:mm:ss')}
         </Badge>
@@ -518,19 +586,19 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
             type="button"
             variant="secondary"
             onClick={handleSubmit(onSaveDraft)}
-            disabled={createRequest.isPending || isUploading}
+            disabled={isPending || isUploading}
           >
-            {createRequest.isPending ? (
+            {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Simpan Draft
+            {isEditing ? 'Simpan Perubahan' : 'Simpan Draft'}
           </Button>
           <Button
             type="button"
             onClick={handleSubmit(onSubmitRequest)}
-            disabled={createRequest.isPending || submitRequest.isPending || isUploading}
+            disabled={isPending || submitRequest.isPending || isUploading}
           >
             {submitRequest.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
