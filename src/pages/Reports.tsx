@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import TransactionDetailDialog from '@/components/dashboard/TransactionDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -70,6 +71,19 @@ const Reports = () => {
   // Pagination state for detail expense
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Drill-down state for chart
+  const [drillDown, setDrillDown] = useState<{
+    open: boolean;
+    type: 'month' | null;
+    value: string;
+    dataType: 'budget' | 'actual' | 'commitment';
+  }>({
+    open: false,
+    type: null,
+    value: '',
+    dataType: 'actual',
+  });
 
   const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
   const dateLocale = language === 'id' ? localeId : enUS;
@@ -263,6 +277,75 @@ const Reports = () => {
     enabled: budgetReport.length > 0,
   });
 
+  // Month name to index mapping
+  const monthMap: Record<string, number> = {
+    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5,
+    'Jul': 6, 'Agu': 7, 'Sep': 8, 'Okt': 9, 'Nov': 10, 'Des': 11,
+  };
+
+  // Drill-down query for chart click
+  const { data: drillDownTransactions = [], isLoading: isDrillDownLoading } = useQuery({
+    queryKey: ['reports-drilldown', drillDown.type, drillDown.value, drillDown.dataType, selectedDivision, selectedYear],
+    queryFn: async () => {
+      if (!drillDown.type || !drillDown.value) return [];
+
+      const monthIndex = monthMap[drillDown.value];
+      const startOfMonth = new Date(Number(selectedYear), monthIndex, 1);
+      const endOfMonth = new Date(Number(selectedYear), monthIndex + 1, 0, 23, 59, 59);
+
+      let query = supabase
+        .from('requests')
+        .select(`
+          id,
+          request_number,
+          description,
+          amount,
+          status,
+          created_at,
+          division:divisions(name),
+          category:cost_categories(name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (selectedDivision !== 'all' && isSuperAdminOrFinance) {
+        query = query.eq('division_id', selectedDivision);
+      } else if (!isSuperAdminOrFinance && profile?.division_id) {
+        query = query.eq('division_id', profile.division_id);
+      }
+
+      // Filter by data type
+      if (drillDown.dataType === 'actual') {
+        query = query
+          .in('status', ['paid', 'settled'])
+          .gte('paid_at', startOfMonth.toISOString())
+          .lte('paid_at', endOfMonth.toISOString());
+      } else if (drillDown.dataType === 'commitment') {
+        query = query
+          .eq('status', 'approved')
+          .gte('approved_at', startOfMonth.toISOString())
+          .lte('approved_at', endOfMonth.toISOString());
+      } else {
+        // 'budget' shows all requests created in this month
+        query = query
+          .gte('created_at', startOfMonth.toISOString())
+          .lte('created_at', endOfMonth.toISOString());
+      }
+
+      const { data } = await query;
+      return (data || []).map(r => ({
+        id: r.id,
+        request_number: r.request_number,
+        description: r.description,
+        amount: Number(r.amount),
+        status: r.status,
+        division_name: (r.division as any)?.name,
+        category_name: (r.category as any)?.name,
+        created_at: r.created_at,
+      }));
+    },
+    enabled: drillDown.open && drillDown.type === 'month',
+  });
+
   // Budget utilization by division
   const divisionUtilization = divisions.map((div: any) => {
     const divBudgets = budgetReport.filter((b: any) => b.division?.id === div.id);
@@ -295,6 +378,35 @@ const Reports = () => {
   const handlePageSizeChange = (newSize: string) => {
     setPageSize(Number(newSize));
     setCurrentPage(1);
+  };
+
+  // Handle bar click for drill-down
+  const handleBarClick = (data: any, dataKey: string) => {
+    if (data?.name) {
+      setDrillDown({
+        open: true,
+        type: 'month',
+        value: data.name,
+        dataType: dataKey.toLowerCase() as 'budget' | 'actual' | 'commitment',
+      });
+    }
+  };
+
+  // Get drill-down title
+  const getDrillDownTitle = () => {
+    const typeLabel = drillDown.dataType === 'actual' 
+      ? 'Actual' 
+      : drillDown.dataType === 'commitment' 
+        ? 'Commitment' 
+        : 'Budget';
+    return `${typeLabel} - ${drillDown.value} ${selectedYear}`;
+  };
+
+  // Get drill-down subtitle
+  const getDrillDownSubtitle = () => {
+    return language === 'id' 
+      ? `Transaksi berdasarkan bulan ${drillDown.value}`
+      : `Transactions for ${drillDown.value}`;
   };
 
   const formatCurrency = (amount: number) => {
@@ -611,8 +723,11 @@ const Reports = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Bar Chart */}
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg font-semibold">Budget vs Actual vs Commitment</CardTitle>
+                  <span className="text-xs text-muted-foreground">
+                    {language === 'id' ? 'Klik untuk melihat detail' : 'Click to view details'}
+                  </span>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
@@ -623,9 +738,27 @@ const Reports = () => {
                         <YAxis tickFormatter={formatYAxis} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend />
-                        <Bar dataKey="Budget" fill="hsl(var(--primary) / 0.3)" radius={[2, 2, 0, 0]} />
-                        <Bar dataKey="Actual" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
-                        <Bar dataKey="Commitment" fill="hsl(var(--success))" radius={[2, 2, 0, 0]} />
+                        <Bar 
+                          dataKey="Budget" 
+                          fill="hsl(var(--primary) / 0.3)" 
+                          radius={[2, 2, 0, 0]} 
+                          cursor="pointer"
+                          onClick={(data) => handleBarClick(data, 'Budget')}
+                        />
+                        <Bar 
+                          dataKey="Actual" 
+                          fill="hsl(var(--primary))" 
+                          radius={[2, 2, 0, 0]} 
+                          cursor="pointer"
+                          onClick={(data) => handleBarClick(data, 'Actual')}
+                        />
+                        <Bar 
+                          dataKey="Commitment" 
+                          fill="hsl(var(--success))" 
+                          radius={[2, 2, 0, 0]} 
+                          cursor="pointer"
+                          onClick={(data) => handleBarClick(data, 'Commitment')}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -915,6 +1048,18 @@ const Reports = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Drill-down Transaction Detail Dialog */}
+      <TransactionDetailDialog
+        open={drillDown.open}
+        onOpenChange={(open) => setDrillDown(prev => ({ ...prev, open }))}
+        title={getDrillDownTitle()}
+        subtitle={getDrillDownSubtitle()}
+        transactions={drillDownTransactions}
+        isLoading={isDrillDownLoading}
+        filterType="month"
+        filterValue={drillDown.value}
+      />
     </div>
   );
 };
