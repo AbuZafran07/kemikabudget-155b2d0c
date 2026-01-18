@@ -88,9 +88,10 @@ const FundingSources = () => {
   const { data: sources = [], isLoading } = useQuery({
     queryKey: ['funding-sources-management'],
     queryFn: async () => {
+      // Explicit column selection for super_admin - includes all fields
       const { data, error } = await supabase
         .from('funding_sources')
-        .select('*')
+        .select('id, code, name, type, is_active, account_number, account_holder, bank_name, balance, created_at')
         .order('name');
       if (error) throw error;
       return data as FundingSource[];
