@@ -662,7 +662,6 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
-          otp_secret: string | null
           phone: string | null
           requires_otp: boolean
           updated_at: string
@@ -675,7 +674,6 @@ export type Database = {
           full_name: string
           id: string
           is_active?: boolean
-          otp_secret?: string | null
           phone?: string | null
           requires_otp?: boolean
           updated_at?: string
@@ -688,7 +686,6 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
-          otp_secret?: string | null
           phone?: string | null
           requires_otp?: boolean
           updated_at?: string

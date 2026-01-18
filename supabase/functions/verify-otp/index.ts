@@ -168,25 +168,14 @@ function getProgressiveDelay(attemptCount: number): number {
 
 // Get user's OTP secret from database
 async function getUserOtpSecret(userId: string, supabase: SupabaseClient): Promise<string | null> {
-  // Try otp_secrets table first
+  // Get secret from secure otp_secrets table only
   const { data: secretData } = await supabase
     .from('otp_secrets')
     .select('secret')
     .eq('user_id', userId)
     .single();
   
-  if (secretData?.secret) {
-    return secretData.secret;
-  }
-  
-  // Fall back to profiles table during migration
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('otp_secret')
-    .eq('id', userId)
-    .single();
-  
-  return profileData?.otp_secret || null;
+  return secretData?.secret || null;
 }
 
 Deno.serve(async (req: Request) => {
