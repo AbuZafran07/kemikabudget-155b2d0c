@@ -103,9 +103,10 @@ export function usePaymentQueue() {
   const { data: fundingSources } = useQuery({
     queryKey: ['funding_sources'],
     queryFn: async () => {
+      // Explicit column selection for finance/super_admin - includes sensitive fields
       const { data, error } = await supabase
         .from('funding_sources')
-        .select('*')
+        .select('id, code, name, type, is_active, account_number, account_holder, bank_name, balance')
         .eq('is_active', true)
         .order('name');
 
