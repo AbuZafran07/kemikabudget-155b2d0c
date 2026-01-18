@@ -75,9 +75,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
+    // Explicitly select only needed columns - never expose otp_secret
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(`
+        id,
+        division_id,
+        full_name,
+        email,
+        phone,
+        avatar_url,
+        is_active,
+        requires_otp
+      `)
       .eq('id', userId)
       .single();
 
