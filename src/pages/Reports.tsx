@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfYear, endOfYear, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfYear } from 'date-fns';
 import { id as localeId, enUS } from 'date-fns/locale';
 import {
   Download,
@@ -11,6 +11,8 @@ import {
   TrendingUp,
   PieChart,
   CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,18 +48,28 @@ import {
   Legend,
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import {
+  generateBudgetReportPDF,
+  generateExpenseReportPDF,
+  generateOverBudgetReportPDF,
+  generateCategoryAnalysisPDF,
+} from '@/lib/generateReportPDF';
 
 type ReportType = 'budget-vs-actual' | 'detail-expense' | 'over-budget' | 'category-analysis';
 
 const Reports = () => {
   const { role, profile } = useAuth();
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [reportType, setReportType] = useState<ReportType>('budget-vs-actual');
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [dateFrom, setDateFrom] = useState<Date | undefined>(startOfYear(new Date()));
   const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
+
+  // Pagination state for detail expense
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
   const dateLocale = language === 'id' ? localeId : enUS;
@@ -184,29 +196,19 @@ const Reports = () => {
   });
 
   // Fetch over budget items
-  const { data: overBudgetReport = [], isLoading: isLoadingOverBudget } = useQuery({
-    queryKey: ['report-over-budget', selectedDivision, selectedYear],
-    queryFn: async () => {
-      const budgetData = budgetReport.filter((b: any) => 
-        Number(b.used_amount) > Number(b.allocated_amount) && Number(b.allocated_amount) > 0
-      );
-      return budgetData;
-    },
-    enabled: reportType === 'over-budget' && budgetReport.length > 0,
-  });
+  const overBudgetReport = budgetReport.filter((b: any) => 
+    Number(b.used_amount) > Number(b.allocated_amount) && Number(b.allocated_amount) > 0
+  );
 
   // Monthly data for chart
   const { data: monthlyData = [] } = useQuery({
     queryKey: ['monthly-budget-data', selectedDivision, selectedYear],
     queryFn: async () => {
-      // Generate monthly data from budget and requests
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
       
-      // Calculate total budget and distribute evenly for now
       const totalBudget = budgetReport.reduce((sum: number, b: any) => sum + Number(b.allocated_amount), 0);
       const monthlyBudget = totalBudget / 12;
 
-      // Fetch actual spending per month
       let query = supabase
         .from('requests')
         .select('amount, paid_at')
@@ -220,7 +222,6 @@ const Reports = () => {
 
       const { data: requests } = await query;
 
-      // Group by month
       const monthlyActual = months.map((_, index) => {
         const monthRequests = requests?.filter(r => {
           if (!r.paid_at) return false;
@@ -230,7 +231,6 @@ const Reports = () => {
         return monthRequests.reduce((sum, r) => sum + Number(r.amount), 0);
       });
 
-      // Commitment (approved but not paid)
       let commitmentQuery = supabase
         .from('requests')
         .select('amount, approved_at')
@@ -280,6 +280,22 @@ const Reports = () => {
       utilization,
     };
   }).filter(d => d.allocated > 0);
+
+  // Pagination logic for expense report
+  const totalExpenseItems = expenseReport.length;
+  const totalPages = Math.ceil(totalExpenseItems / pageSize);
+  const paginatedExpenseReport = expenseReport.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+  const startItem = totalExpenseItems > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endItem = Math.min(currentPage * pageSize, totalExpenseItems);
+
+  // Reset to page 1 when filters change
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(Number(newSize));
+    setCurrentPage(1);
+  };
 
   const formatCurrency = (amount: number) => {
     if (amount >= 1000000000) {
@@ -342,13 +358,94 @@ const Reports = () => {
         paid_at: row.paid_at ? format(new Date(row.paid_at), 'yyyy-MM-dd') : '',
       }));
       exportToCSV(exportData, 'detail_expense', ['request_number', 'division', 'category', 'description', 'amount', 'status', 'requester', 'created_at', 'paid_at']);
+    } else if (reportType === 'over-budget') {
+      const exportData = overBudgetReport.map((row: any) => ({
+        division: row.division?.name || '',
+        category: row.category?.name || '',
+        allocated: row.allocated_amount,
+        used: row.used_amount,
+        over: Number(row.used_amount) - Number(row.allocated_amount),
+        percentage: ((Number(row.used_amount) / Number(row.allocated_amount)) * 100).toFixed(0) + '%',
+      }));
+      exportToCSV(exportData, 'over_budget', ['division', 'category', 'allocated', 'used', 'over', 'percentage']);
+    } else if (reportType === 'category-analysis') {
+      const categoryData = categories.map((cat: any) => {
+        const catBudgets = budgetReport.filter((b: any) => b.category?.id === cat.id);
+        const totalAllocated = catBudgets.reduce((sum: number, b: any) => sum + Number(b.allocated_amount), 0);
+        const totalUsed = catBudgets.reduce((sum: number, b: any) => sum + Number(b.used_amount), 0);
+        return {
+          code: cat.code,
+          name: cat.name,
+          allocated: totalAllocated,
+          used: totalUsed,
+          remaining: totalAllocated - totalUsed,
+          utilization: totalAllocated > 0 ? ((totalUsed / totalAllocated) * 100).toFixed(1) + '%' : '0%',
+        };
+      }).filter((c: any) => c.allocated > 0);
+      exportToCSV(categoryData, 'category_analysis', ['code', 'name', 'allocated', 'used', 'remaining', 'utilization']);
     }
   };
 
   const handleExportPDF = () => {
-    // PDF export would require a library like jsPDF
-    // For now, just export CSV
-    handleExportExcel();
+    const divisionName = selectedDivision !== 'all' 
+      ? divisions.find((d: any) => d.id === selectedDivision)?.name 
+      : undefined;
+
+    if (reportType === 'budget-vs-actual') {
+      const pdfData = budgetReport.map((row: any) => ({
+        division: row.division?.name || '',
+        category: row.category?.name || '',
+        allocated: Number(row.allocated_amount),
+        used: Number(row.used_amount),
+        remaining: Number(row.allocated_amount) - Number(row.used_amount),
+        utilization: row.allocated_amount > 0
+          ? ((Number(row.used_amount) / Number(row.allocated_amount)) * 100).toFixed(1) + '%'
+          : '0%',
+      }));
+      generateBudgetReportPDF(pdfData, { year: selectedYear, division: divisionName });
+    } else if (reportType === 'detail-expense') {
+      const pdfData = expenseReport.map((row: any) => ({
+        request_number: row.request_number,
+        division: row.division?.name || '',
+        category: row.category?.name || '',
+        description: row.description,
+        amount: Number(row.amount),
+        status: row.status,
+        requester: row.requester?.full_name || '',
+        date: format(new Date(row.created_at), 'dd/MM/yyyy'),
+      }));
+      generateExpenseReportPDF(pdfData, {
+        dateFrom: dateFrom ? format(dateFrom, 'dd/MM/yyyy') : undefined,
+        dateTo: dateTo ? format(dateTo, 'dd/MM/yyyy') : undefined,
+        division: divisionName,
+      });
+    } else if (reportType === 'over-budget') {
+      const pdfData = overBudgetReport.map((row: any) => ({
+        division: row.division?.name || '',
+        category: row.category?.name || '',
+        allocated: Number(row.allocated_amount),
+        used: Number(row.used_amount),
+        over: Number(row.used_amount) - Number(row.allocated_amount),
+        percentage: ((Number(row.used_amount) / Number(row.allocated_amount)) * 100).toFixed(0) + '%',
+      }));
+      generateOverBudgetReportPDF(pdfData, { year: selectedYear, division: divisionName });
+    } else if (reportType === 'category-analysis') {
+      const categoryData = categories.map((cat: any) => {
+        const catBudgets = budgetReport.filter((b: any) => b.category?.id === cat.id);
+        const totalAllocated = catBudgets.reduce((sum: number, b: any) => sum + Number(b.allocated_amount), 0);
+        const totalUsed = catBudgets.reduce((sum: number, b: any) => sum + Number(b.used_amount), 0);
+        const utilization = totalAllocated > 0 ? (totalUsed / totalAllocated) * 100 : 0;
+        return {
+          name: cat.name,
+          code: cat.code,
+          allocated: totalAllocated,
+          used: totalUsed,
+          remaining: totalAllocated - totalUsed,
+          utilization,
+        };
+      }).filter((c: any) => c.allocated > 0);
+      generateCategoryAnalysisPDF(categoryData, { year: selectedYear, division: divisionName });
+    }
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -410,7 +507,7 @@ const Reports = () => {
             <Calendar
               mode="single"
               selected={dateFrom}
-              onSelect={setDateFrom}
+              onSelect={(date) => { setDateFrom(date); setCurrentPage(1); }}
               initialFocus
               className="pointer-events-auto"
             />
@@ -429,7 +526,7 @@ const Reports = () => {
             <Calendar
               mode="single"
               selected={dateTo}
-              onSelect={setDateTo}
+              onSelect={(date) => { setDateTo(date); setCurrentPage(1); }}
               initialFocus
               className="pointer-events-auto"
             />
@@ -437,7 +534,7 @@ const Reports = () => {
         </Popover>
 
         {/* Year */}
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
+        <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); setCurrentPage(1); }}>
           <SelectTrigger className="w-24">
             <SelectValue />
           </SelectTrigger>
@@ -452,7 +549,7 @@ const Reports = () => {
 
         {/* Division */}
         {isSuperAdminOrFinance && (
-          <Select value={selectedDivision} onValueChange={setSelectedDivision}>
+          <Select value={selectedDivision} onValueChange={(v) => { setSelectedDivision(v); setCurrentPage(1); }}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Semua Divisi" />
             </SelectTrigger>
@@ -468,7 +565,7 @@ const Reports = () => {
         )}
 
         {/* Category */}
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+        <Select value={selectedCategory} onValueChange={(v) => { setSelectedCategory(v); setCurrentPage(1); }}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Semua Kategori" />
           </SelectTrigger>
@@ -484,7 +581,7 @@ const Reports = () => {
       </div>
 
       {/* Report Type Tabs */}
-      <Tabs value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
+      <Tabs value={reportType} onValueChange={(v) => { setReportType(v as ReportType); setCurrentPage(1); }}>
         <TabsList className="inline-flex h-10 p-1 bg-muted/50">
           <TabsTrigger value="budget-vs-actual" className="gap-2 px-4">
             <BarChart3 className="h-4 w-4" />
@@ -603,25 +700,100 @@ const Reports = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expenseReport.map((row: any) => (
-                        <TableRow key={row.id}>
-                          <TableCell className="font-mono text-sm">
-                            {row.request_number}
-                          </TableCell>
-                          <TableCell>{row.division?.name}</TableCell>
-                          <TableCell>{row.category?.name}</TableCell>
-                          <TableCell className="max-w-48 truncate">{row.description}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatFullCurrency(Number(row.amount))}
-                          </TableCell>
-                          <TableCell className="capitalize">{row.status}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {format(new Date(row.created_at), 'dd MMM yyyy', { locale: dateLocale })}
+                      {paginatedExpenseReport.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            Tidak ada data
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        paginatedExpenseReport.map((row: any) => (
+                          <TableRow key={row.id}>
+                            <TableCell className="font-mono text-sm">
+                              {row.request_number}
+                            </TableCell>
+                            <TableCell>{row.division?.name}</TableCell>
+                            <TableCell>{row.category?.name}</TableCell>
+                            <TableCell className="max-w-48 truncate">{row.description}</TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatFullCurrency(Number(row.amount))}
+                            </TableCell>
+                            <TableCell className="capitalize">{row.status}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {format(new Date(row.created_at), 'dd MMM yyyy', { locale: dateLocale })}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
+
+                  {/* Pagination Controls */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-border">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Menampilkan {startItem}-{endItem} dari {totalExpenseItems} data</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Baris per halaman:</span>
+                        <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                          <SelectTrigger className="w-16 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="flex items-center gap-1 px-2">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum: number;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentPage - 2 + i;
+                            }
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={currentPage === pageNum ? "default" : "ghost"}
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setCurrentPage(pageNum)}
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages || totalPages === 0}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
             </CardContent>
