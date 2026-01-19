@@ -493,13 +493,63 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           </div>
         </div>
 
-        {/* Project Number - Full Width */}
-        <div className="space-y-2">
-          <Label>Nomor Project</Label>
-          <Input
-            placeholder="Nomor project"
-          />
+        {/* Funding Source & Needed Date */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Sumber Dana *</Label>
+            <Select
+              value={watch('funding_source_id')}
+              onValueChange={(value) => setValue('funding_source_id', value)}
+            >
+              <SelectTrigger className={cn(!watch('funding_source_id') && 'text-muted-foreground')}>
+                <SelectValue placeholder="Pilih sumber dana" />
+              </SelectTrigger>
+              <SelectContent>
+                {fundingSources?.map((source: any) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name} ({source.type === 'petty_cash' ? 'Kas Kecil' : 'Bank'})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tanggal Kebutuhan</Label>
+            <Input
+              type="date"
+              {...form.register('needed_date')}
+            />
+          </div>
         </div>
+
+        {/* Bank Details - Show only for bank funding source */}
+        {isBank && (
+          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="space-y-2">
+              <Label>Nama Bank</Label>
+              <Input
+                placeholder="Nama bank penerima"
+                {...form.register('beneficiary_bank')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>No. Rekening</Label>
+              <Input
+                placeholder="Nomor rekening"
+                {...form.register('beneficiary_account')}
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label>Email Penerima</Label>
+              <Input
+                type="email"
+                placeholder="Email untuk notifikasi"
+                {...form.register('beneficiary_email')}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Attachments */}
         <div className="space-y-3">
