@@ -176,6 +176,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
               <TableHead className="font-semibold text-foreground">Deskripsi</TableHead>
               <TableHead className="font-semibold text-foreground">Divisi</TableHead>
               <TableHead className="font-semibold text-foreground text-right">Nominal</TableHead>
+              <TableHead className="font-semibold text-foreground text-right">{language === 'id' ? 'Disetujui' : 'Approved'}</TableHead>
               <TableHead className="font-semibold text-foreground">Status</TableHead>
               <TableHead className="font-semibold text-foreground">Tanggal</TableHead>
               <TableHead className="font-semibold text-foreground text-right">Aksi</TableHead>
@@ -184,12 +185,14 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
           <TableBody>
             {paginatedRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center">
+                <TableCell colSpan={8} className="h-32 text-center">
                   <p className="text-muted-foreground">{t('requests.noData')}</p>
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedRequests.map((request) => (
+              paginatedRequests.map((request) => {
+                const hasCorrection = request.approved_amount !== null && request.approved_amount !== request.amount;
+                return (
                 <TableRow key={request.id} className="hover:bg-muted/20">
                   <TableCell className="font-mono text-sm">
                     {request.request_number}
@@ -204,6 +207,22 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(request.amount)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {request.approved_amount !== null ? (
+                      <div className="flex flex-col items-end">
+                        <span className={`font-medium ${hasCorrection ? 'text-warning' : 'text-foreground'}`}>
+                          {formatCurrency(request.approved_amount)}
+                        </span>
+                        {hasCorrection && (
+                          <span className="text-xs text-muted-foreground">
+                            ({language === 'id' ? 'koreksi' : 'adjusted'})
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={request.status} />
@@ -249,7 +268,8 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+              );
+              })
             )}
           </TableBody>
         </Table>
