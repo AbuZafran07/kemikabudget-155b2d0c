@@ -99,15 +99,14 @@ export function usePaymentQueue() {
     },
   });
 
-  // Fetch funding sources
+  // Fetch funding sources - use secure view for role-based access
   const { data: fundingSources } = useQuery({
-    queryKey: ['funding_sources'],
+    queryKey: ['funding_sources_secure'],
     queryFn: async () => {
-      // Explicit column selection for finance/super_admin - includes sensitive fields
+      // Use secure view - bank details visible based on role (super_admin only)
       const { data, error } = await supabase
-        .from('funding_sources')
+        .from('funding_sources_secure')
         .select('id, code, name, type, is_active, account_number, account_holder, bank_name, balance')
-        .eq('is_active', true)
         .order('name');
 
       if (error) throw error;

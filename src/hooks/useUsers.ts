@@ -27,9 +27,10 @@ export function useUsers() {
   const { data: users, isLoading, refetch } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      // Get profiles with explicit column selection (no wildcard)
+      // Use profiles_secure view - email/phone visible only to owner and super_admin
+      // This hook is only used by super_admin (user management) so they'll see all fields
       const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select(`
           id,
           email,
@@ -38,12 +39,16 @@ export function useUsers() {
           division_id,
           is_active,
           requires_otp,
-          created_at,
-          divisions (code, name)
+          created_at
         `)
         .order('full_name');
 
       if (profileError) throw profileError;
+
+      // Get divisions separately to avoid issues with view joins
+      const { data: divisions } = await supabase
+        .from('divisions')
+        .select('id, code, name');
 
       // Get roles for each user
       const { data: roles, error: roleError } = await supabase
@@ -52,10 +57,10 @@ export function useUsers() {
 
       if (roleError) throw roleError;
 
-      // Merge profiles with roles
+      // Merge profiles with divisions and roles
       const usersWithRoles = profiles?.map(profile => ({
         ...profile,
-        division: profile.divisions,
+        division: divisions?.find(d => d.id === profile.division_id) || null,
         role: roles?.find(r => r.user_id === profile.id)?.role as AppRole | undefined,
       })) || [];
 
