@@ -283,6 +283,13 @@ export type Database = {
             referencedRelation: "funding_sources"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cash_reconciliations_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources_secure"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cost_categories: {
@@ -659,6 +666,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "petty_cash_transactions_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources_secure"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "petty_cash_transactions_request_id_fkey"
             columns: ["request_id"]
             isOneToOne: false
@@ -932,6 +946,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "requests_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources_secure"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "requests_period_id_fkey"
             columns: ["period_id"]
             isOneToOne: false
@@ -1017,6 +1038,48 @@ export type Database = {
         }
         Relationships: []
       }
+      funding_sources_secure: {
+        Row: {
+          account_holder: string | null
+          account_number: string | null
+          balance: number | null
+          bank_name: string | null
+          code: string | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_holder?: never
+          account_number?: never
+          balance?: never
+          bank_name?: never
+          code?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_holder?: never
+          account_number?: never
+          balance?: never
+          bank_name?: never
+          code?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles_secure: {
         Row: {
           avatar_url: string | null
@@ -1034,11 +1097,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           division_id?: string | null
-          email?: string | null
+          email?: never
           full_name?: string | null
           id?: string | null
           is_active?: boolean | null
-          phone?: string | null
+          phone?: never
           requires_otp?: boolean | null
           updated_at?: string | null
         }
@@ -1046,11 +1109,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           division_id?: string | null
-          email?: string | null
+          email?: never
           full_name?: string | null
           id?: string | null
           is_active?: boolean | null
-          phone?: string | null
+          phone?: never
           requires_otp?: boolean | null
           updated_at?: string | null
         }
