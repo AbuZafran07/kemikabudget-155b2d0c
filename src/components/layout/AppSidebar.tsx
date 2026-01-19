@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -20,7 +20,6 @@ import {
   Mail,
   ChevronDown,
   ChevronRight,
-  LogOut,
   PanelLeftClose,
   PanelLeft,
   Shield,
@@ -34,7 +33,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import appIcon from "@/assets/app-icon.png";
@@ -115,10 +113,8 @@ interface AppSidebarProps {
 
 const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { profile, role, signOut, user } = useAuth();
+  const { role, user } = useAuth();
   const { t } = useLanguage();
-  const { toast } = useToast();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
   // Fetch real pending counts from database
@@ -197,33 +193,6 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
     return badgeCounts[badgeKey as keyof typeof badgeCounts] || 0;
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    toast({
-      title: t('user.logoutSuccess'),
-      description: t('user.logoutMessage'),
-    });
-    navigate("/");
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getRoleLabel = (role: string | null) => {
-    if (!role) return t('role.user');
-    const roleKey = `role.${role === 'super_admin' ? 'superAdmin' : role}`;
-    return t(roleKey);
-  };
-
-  const displayName = profile?.full_name || "User";
-  const displayRole = getRoleLabel(role);
-  const initials = getInitials(displayName);
 
   const renderMenuItem = (item: MenuItem, depth = 0) => {
     if (!canAccessItem(item)) return null;
@@ -382,7 +351,7 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
         {menuSections.map(renderSection)}
       </nav>
 
-      {/* User Section */}
+      {/* Footer Section */}
       <div className="p-3 border-t border-sidebar-border">
         {isCollapsed ? (
           <Tooltip delayDuration={0}>
@@ -399,29 +368,10 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
             <TooltipContent side="right">{t('common.expandSidebar')}</TooltipContent>
           </Tooltip>
         ) : (
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
-              <span className="text-sm font-semibold text-sidebar-accent-foreground">{initials}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {displayName}
-              </p>
-              <p className="text-xs text-sidebar-muted truncate">{displayRole}</p>
-            </div>
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{t('action.logout')}</TooltipContent>
-            </Tooltip>
+          <div className="text-center">
+            <p className="text-xs text-sidebar-muted">
+              © 2026 PT. Kemika Karya Pratama
+            </p>
           </div>
         )}
       </div>
