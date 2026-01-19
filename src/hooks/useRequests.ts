@@ -15,6 +15,7 @@ export interface Request {
   description: string;
   vendor: string | null;
   amount: number;
+  approved_amount: number | null;
   needed_date: string;
   funding_source_id: string | null;
   payment_method: string | null;

@@ -522,10 +522,18 @@ const PaymentQueue = () => {
                   </div>
                 </div>
 
-                <div className="text-right lg:min-w-[150px]">
+                <div className="text-right lg:min-w-[180px]">
                   <p className="text-2xl font-bold text-foreground">
                     {formatCurrency(item.amount)}
                   </p>
+                  {item.approved_amount !== null && item.approved_amount !== item.amount && (
+                    <div className="mt-0.5">
+                      <span className="text-xs text-muted-foreground">{t('approvals.approvedAmount') || 'Disetujui'}: </span>
+                      <span className="text-sm font-semibold text-warning">
+                        {formatCurrency(item.approved_amount)}
+                      </span>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {item.vendor || t('requests.noVendor')}
                   </p>

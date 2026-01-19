@@ -254,9 +254,19 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
             </p>
           </div>
           <div className="text-right space-y-2">
-            <p className="text-3xl font-bold text-primary">
-              {formatCurrency(Number(request.amount))}
-            </p>
+            <div>
+              <p className="text-3xl font-bold text-primary">
+                {formatCurrency(Number(request.amount))}
+              </p>
+              {request.approved_amount !== null && request.approved_amount !== Number(request.amount) && (
+                <div className="mt-1">
+                  <span className="text-sm text-muted-foreground">Disetujui: </span>
+                  <span className="text-lg font-semibold text-warning">
+                    {formatCurrency(Number(request.approved_amount))}
+                  </span>
+                </div>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               Dibuat {format(new Date(request.created_at), 'dd MMM yyyy', { locale: localeId })}
             </p>
@@ -470,6 +480,8 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                   {events.map((event, index) => {
                     const Icon = eventIcons[event.event_type] || eventIcons.default;
                     const colorClass = eventColors[event.event_type] || 'bg-muted text-muted-foreground';
+                    const metadata = event.metadata as Record<string, any> | null;
+                    const showAmountCorrection = event.event_type === 'approved' && metadata?.original_amount && metadata?.approved_amount && metadata.original_amount !== metadata.approved_amount;
 
                     return (
                       <div key={event.id} className="relative flex gap-3">
@@ -482,6 +494,16 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                           <p className="font-medium text-foreground text-sm">
                             {event.description}
                           </p>
+                          {showAmountCorrection && (
+                            <div className="mt-1 p-2 bg-warning/10 rounded-md border border-warning/20">
+                              <p className="text-xs font-medium text-warning">Koreksi Nilai</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                <span className="line-through">{formatCurrency(metadata.original_amount)}</span>
+                                <span>→</span>
+                                <span className="font-semibold text-warning">{formatCurrency(metadata.approved_amount)}</span>
+                              </div>
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             <span>{event.performer?.full_name || 'System'}</span>
                             <span>•</span>
