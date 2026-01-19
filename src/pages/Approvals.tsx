@@ -61,6 +61,7 @@ const Approvals = () => {
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [approvalNote, setApprovalNote] = useState("");
+  const [approvedAmount, setApprovedAmount] = useState<string>("");
   const [rejectionReason, setRejectionReason] = useState("");
 
   const filteredApprovals = approvals?.filter((item) => {
@@ -78,6 +79,7 @@ const Approvals = () => {
   const handleApprove = (request: ApprovalRequest) => {
     setSelectedRequest(request);
     setApprovalNote("");
+    setApprovedAmount(request.amount.toString());
     setIsApproveDialogOpen(true);
   };
 
@@ -90,14 +92,20 @@ const Approvals = () => {
   const confirmApprove = async () => {
     if (!selectedRequest) return;
     
+    const parsedAmount = parseFloat(approvedAmount.replace(/[^0-9]/g, ''));
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return; // Invalid amount
+    }
+
     // Check if amount > 50M requires note
-    if (selectedRequest.amount > 50000000 && !approvalNote.trim()) {
+    if (parsedAmount > 50000000 && !approvalNote.trim()) {
       return; // Will show error in the UI
     }
 
     await approveRequest.mutateAsync({
       requestId: selectedRequest.id,
       note: approvalNote || undefined,
+      approvedAmount: parsedAmount,
     });
 
     setIsApproveDialogOpen(false);
@@ -303,10 +311,44 @@ const Approvals = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Approved Amount Field */}
+            <div className="space-y-2">
+              <Label htmlFor="approvedAmount">
+                {language === 'id' ? 'Nilai yang Disetujui' : 'Approved Amount'}
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                  Rp
+                </span>
+                <Input
+                  id="approvedAmount"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={new Intl.NumberFormat('id-ID').format(parseFloat(approvedAmount.replace(/[^0-9]/g, '')) || 0)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setApprovedAmount(value);
+                  }}
+                  className="pl-10 text-lg font-semibold"
+                />
+              </div>
+              {selectedRequest && approvedAmount && parseFloat(approvedAmount) !== selectedRequest.amount && (
+                <p className="text-xs text-warning">
+                  {language === 'id' 
+                    ? `Nilai awal: ${formatCurrency(selectedRequest.amount)} → Koreksi: ${formatCurrency(parseFloat(approvedAmount) || 0)}`
+                    : `Original: ${formatCurrency(selectedRequest.amount)} → Adjusted: ${formatCurrency(parseFloat(approvedAmount) || 0)}`
+                  }
+                </p>
+              )}
+            </div>
+
+            {/* Approval Note Field */}
             <div className="space-y-2">
               <Label htmlFor="approvalNote">
                 {t('approvals.approvalNote')}
-                {selectedRequest && selectedRequest.amount > 50000000 && (
+                {selectedRequest && (parseFloat(approvedAmount) > 50000000 || parseFloat(approvedAmount) !== selectedRequest?.amount) && (
                   <span className="text-destructive ml-1">*</span>
                 )}
               </Label>
@@ -317,9 +359,17 @@ const Approvals = () => {
                 onChange={(e) => setApprovalNote(e.target.value)}
                 rows={3}
               />
-              {selectedRequest && selectedRequest.amount > 50000000 && !approvalNote.trim() && (
+              {selectedRequest && parseFloat(approvedAmount) > 50000000 && !approvalNote.trim() && (
                 <p className="text-xs text-destructive">
                   {t('approvals.noteRequiredOver50M')}
+                </p>
+              )}
+              {selectedRequest && parseFloat(approvedAmount) !== selectedRequest.amount && !approvalNote.trim() && (
+                <p className="text-xs text-destructive">
+                  {language === 'id' 
+                    ? 'Catatan wajib diisi jika nilai dikoreksi'
+                    : 'Note is required when amount is adjusted'
+                  }
                 </p>
               )}
             </div>
@@ -333,7 +383,10 @@ const Approvals = () => {
               onClick={confirmApprove}
               disabled={
                 approveRequest.isPending ||
-                (selectedRequest && selectedRequest.amount > 50000000 && !approvalNote.trim())
+                !approvedAmount ||
+                parseFloat(approvedAmount) <= 0 ||
+                (parseFloat(approvedAmount) > 50000000 && !approvalNote.trim()) ||
+                (selectedRequest && parseFloat(approvedAmount) !== selectedRequest.amount && !approvalNote.trim())
               }
               className="gap-2"
             >
