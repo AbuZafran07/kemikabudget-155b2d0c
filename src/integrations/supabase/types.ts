@@ -813,6 +813,7 @@ export type Database = {
       requests: {
         Row: {
           amount: number
+          approved_amount: number | null
           approved_at: string | null
           approved_by: string | null
           beneficiary_account: string | null
@@ -848,6 +849,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          approved_amount?: number | null
           approved_at?: string | null
           approved_by?: string | null
           beneficiary_account?: string | null
@@ -883,6 +885,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          approved_amount?: number | null
           approved_at?: string | null
           approved_by?: string | null
           beneficiary_account?: string | null
@@ -1144,10 +1147,19 @@ export type Database = {
         Args: { p_transfer_id: string }
         Returns: Json
       }
-      approve_request: {
-        Args: { p_approval_note?: string; p_request_id: string }
-        Returns: Json
-      }
+      approve_request:
+        | {
+            Args: { p_approval_note?: string; p_request_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_approval_note?: string
+              p_approved_amount?: number
+              p_request_id: string
+            }
+            Returns: Json
+          }
       can_access_division: {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean

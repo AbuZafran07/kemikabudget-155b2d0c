@@ -78,7 +78,7 @@ export function useApprovals() {
 
   // Approve request mutation
   const approveRequest = useMutation({
-    mutationFn: async ({ requestId, note }: { requestId: string; note?: string }) => {
+    mutationFn: async ({ requestId, note, approvedAmount }: { requestId: string; note?: string; approvedAmount?: number }) => {
       // Get request details first
       const { data: requestData } = await supabase
         .from('requests')
@@ -89,18 +89,19 @@ export function useApprovals() {
       const { data, error } = await supabase.rpc('approve_request', {
         p_request_id: requestId,
         p_approval_note: note || null,
+        p_approved_amount: approvedAmount || null,
       });
 
       if (error) throw error;
       
-      const result = data as { success: boolean; error?: string; message?: string };
+      const result = data as { success: boolean; error?: string; message?: string; approved_amount?: number };
       if (!result.success) {
         throw new Error(result.error || 'Failed to approve request');
       }
 
-      return { result, requestData };
+      return { result, requestData, approvedAmount: result.approved_amount || approvedAmount };
     },
-    onSuccess: ({ result, requestData }) => {
+    onSuccess: ({ result, requestData, approvedAmount }) => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['division_budgets'] });
@@ -114,12 +115,12 @@ export function useApprovals() {
       if (requestData) {
         logRequestEvent('approved', requestData.id, requestData.request_number);
         
-        // Send email notification to requester
+        // Send email notification to requester with approved amount
         notifyApproved({
           id: requestData.id,
           request_number: requestData.request_number,
           requester_id: requestData.requester_id,
-          amount: requestData.amount,
+          amount: approvedAmount || requestData.amount,
           description: requestData.description,
         });
       }
