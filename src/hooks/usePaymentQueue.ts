@@ -53,29 +53,35 @@ export function usePaymentQueue() {
           *,
           divisions (code, name),
           cost_categories (code, name),
-          funding_sources (code, name, type)
+          funding_source_options (code, name, type)
         `)
         .eq('status', 'approved')
         .order('approved_at', { ascending: true });
 
       if (error) throw error;
+      
+      // Map funding_source_options back to funding_sources key for compatibility
+      const mappedData = (data || []).map(req => ({
+        ...req,
+        funding_sources: req.funding_source_options,
+      }));
 
       // Get requester profiles
-      const requesterIds = data?.map(r => r.requester_id) || [];
+      const requesterIds = mappedData?.map(r => r.requester_id) || [];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email')
         .in('id', requesterIds);
 
       // Get attachments to check for invoice/quotation
-      const requestIds = data?.map(r => r.id) || [];
+      const requestIds = mappedData?.map(r => r.id) || [];
       const { data: attachments } = await supabase
         .from('request_attachments')
         .select('request_id, attachment_type')
         .in('request_id', requestIds);
 
       // Merge and enrich data
-      const enrichedData = data?.map(request => {
+      const enrichedData = mappedData?.map(request => {
         const approvedDate = request.approved_at ? new Date(request.approved_at) : new Date();
         const daysSinceApproval = differenceInDays(new Date(), approvedDate);
         const isOverdue = daysSinceApproval > PAYMENT_SLA_DAYS;

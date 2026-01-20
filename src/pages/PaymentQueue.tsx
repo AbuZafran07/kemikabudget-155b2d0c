@@ -245,7 +245,7 @@ const PaymentQueue = () => {
         *,
         division:divisions(name, code),
         category:cost_categories(name, code),
-        funding_source:funding_sources(name, type)
+        funding_source:funding_source_options(name, type)
       `)
       .eq('id', payment.id)
       .single();
