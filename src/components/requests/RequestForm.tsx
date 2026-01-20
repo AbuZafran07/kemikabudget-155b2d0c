@@ -458,12 +458,12 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Vendor/Penerima</Label>
-            <Input placeholder="Nama vendor" {...form.register("vendor")} />
+            <Input placeholder="Nama vendor/Penerima/Customer" {...form.register("vendor")} />
           </div>
 
           <div className="space-y-2">
-            <Label>Nama Penerima Dana</Label>
-            <Input placeholder="Nama penerima transfer" {...form.register("beneficiary_name")} />
+            <Label>Nama Bank</Label>
+            <Input placeholder="BCA/Mandiri/BRI" {...form.register("beneficiary_name")} />
           </div>
         </div>
 
@@ -475,8 +475,8 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           </div>
 
           <div className="space-y-2">
-            <Label>No. Rekening</Label>
-            <Input placeholder="Nomor Rekening" />
+            <Label>No. Project</Label>
+            <Input placeholder="Nomor Project" />
           </div>
         </div>
 
