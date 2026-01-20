@@ -530,23 +530,11 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
                   Tidak ada budget untuk divisi ini
                 </div>
               ) : (
-                filteredCategories.map((cat: any) => {
-                  // Find budget info for this category
-                  const budgetInfo = divisionBudgets?.find((db: any) => db.category_id === cat.id);
-                  const remaining = budgetInfo ? budgetInfo.allocated_amount - budgetInfo.used_amount : 0;
-                  return (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex flex-col">
-                        <span>{cat.name}</span>
-                        {budgetInfo && (
-                          <span className="text-xs text-muted-foreground">
-                            Sisa: Rp {remaining.toLocaleString('id-ID')}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  );
-                })
+                filteredCategories.map((cat: any) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))
               )}
             </SelectContent>
           </Select>
