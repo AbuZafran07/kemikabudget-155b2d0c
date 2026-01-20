@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -75,6 +75,70 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   const [isUploading, setIsUploading] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [selectedFundingSource, setSelectedFundingSource] = useState<any>(null);
+  const [selectedBudgetDivisionId, setSelectedBudgetDivisionId] = useState<string>("");
+
+  // Fetch all active divisions
+  const { data: divisions } = useQuery({
+    queryKey: ['divisions-for-request'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('divisions')
+        .select('id, code, name')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch active budget period
+  const { data: activePeriod } = useQuery({
+    queryKey: ['active-budget-period'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budget_periods')
+        .select('id, name, year')
+        .eq('is_active', true)
+        .eq('is_closed', false)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+  });
+
+  // Fetch division_budgets for the selected division (with active period)
+  const { data: divisionBudgets } = useQuery({
+    queryKey: ['division-budgets-for-request', selectedBudgetDivisionId, activePeriod?.id],
+    queryFn: async () => {
+      if (!selectedBudgetDivisionId || !activePeriod?.id) return [];
+      const { data, error } = await supabase
+        .from('division_budgets')
+        .select(`
+          id,
+          category_id,
+          allocated_amount,
+          used_amount,
+          cost_categories (id, code, name)
+        `)
+        .eq('division_id', selectedBudgetDivisionId)
+        .eq('period_id', activePeriod.id)
+        .gt('allocated_amount', 0);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedBudgetDivisionId && !!activePeriod?.id,
+  });
+
+  // Filter categories based on the division's budget allocations
+  const filteredCategories = useMemo(() => {
+    if (!selectedBudgetDivisionId || !divisionBudgets || divisionBudgets.length === 0) {
+      // If no division selected, show all categories (fallback)
+      return categories || [];
+    }
+    // Only show categories that have budget allocated for this division
+    const budgetCategoryIds = new Set(divisionBudgets.map((db: any) => db.category_id));
+    return (categories || []).filter((cat: any) => budgetCategoryIds.has(cat.id));
+  }, [selectedBudgetDivisionId, divisionBudgets, categories]);
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
@@ -119,6 +183,10 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   // Load existing request data when editing
   useEffect(() => {
     if (requestId && existingRequest) {
+      // Set the budget division from the existing request
+      if (existingRequest.division_id) {
+        setSelectedBudgetDivisionId(existingRequest.division_id);
+      }
       reset({
         category_id: existingRequest.category_id || "",
         description: existingRequest.description || "",
@@ -325,6 +393,15 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
 
   const onSaveDraft = async (data: RequestFormData) => {
     try {
+      if (!selectedBudgetDivisionId) {
+        toast({
+          title: "Error",
+          description: "Pilih divisi budget terlebih dahulu",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (requestId) {
         // Update existing request
         await updateRequest.mutateAsync({ id: requestId, ...data });
@@ -332,8 +409,11 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           await uploadAttachments(requestId);
         }
       } else {
-        // Create new request
-        const result = await createRequest.mutateAsync(data);
+        // Create new request with selected division
+        const result = await createRequest.mutateAsync({ 
+          ...data, 
+          division_id: selectedBudgetDivisionId 
+        });
         if (attachments.length > 0) {
           await uploadAttachments(result.id);
         }
@@ -346,6 +426,15 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
 
   const onSubmitRequest = async (data: RequestFormData) => {
     try {
+      if (!selectedBudgetDivisionId) {
+        toast({
+          title: "Error",
+          description: "Pilih divisi budget terlebih dahulu",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (requestId) {
         // Update and submit existing request
         await updateRequest.mutateAsync({ id: requestId, ...data });
@@ -354,8 +443,11 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
         }
         await submitRequest.mutateAsync(requestId);
       } else {
-        // Create and submit new request
-        const result = await createRequest.mutateAsync(data);
+        // Create and submit new request with selected division
+        const result = await createRequest.mutateAsync({ 
+          ...data, 
+          division_id: selectedBudgetDivisionId 
+        });
         if (attachments.length > 0) {
           await uploadAttachments(result.id);
         }
@@ -397,19 +489,65 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
       )}
 
       <form className="space-y-5">
-        {/* Category */}
+        {/* Budget Division */}
         <div className="space-y-2">
-          <Label>Kategori Biaya *</Label>
-          <Select value={watch("category_id")} onValueChange={(value) => setValue("category_id", value)}>
-            <SelectTrigger className={cn(errors.category_id && "border-destructive")}>
-              <SelectValue placeholder="Pilih kategori" />
+          <Label>Budget Division *</Label>
+          <Select 
+            value={selectedBudgetDivisionId} 
+            onValueChange={(value) => {
+              setSelectedBudgetDivisionId(value);
+              // Reset category when division changes
+              setValue("category_id", "");
+            }}
+          >
+            <SelectTrigger className={cn(!selectedBudgetDivisionId && "text-muted-foreground")}>
+              <SelectValue placeholder="Pilih divisi budget" />
             </SelectTrigger>
             <SelectContent>
-              {categories?.map((cat: any) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
+              {divisions?.map((div: any) => (
+                <SelectItem key={div.id} value={div.id}>
+                  {div.name} ({div.code})
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Category - filtered by division budget */}
+        <div className="space-y-2">
+          <Label>Kategori Biaya *</Label>
+          <Select 
+            value={watch("category_id")} 
+            onValueChange={(value) => setValue("category_id", value)}
+            disabled={!selectedBudgetDivisionId}
+          >
+            <SelectTrigger className={cn(errors.category_id && "border-destructive", !selectedBudgetDivisionId && "opacity-50")}>
+              <SelectValue placeholder={selectedBudgetDivisionId ? "Pilih kategori" : "Pilih divisi terlebih dahulu"} />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredCategories.length === 0 ? (
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  Tidak ada budget untuk divisi ini
+                </div>
+              ) : (
+                filteredCategories.map((cat: any) => {
+                  // Find budget info for this category
+                  const budgetInfo = divisionBudgets?.find((db: any) => db.category_id === cat.id);
+                  const remaining = budgetInfo ? budgetInfo.allocated_amount - budgetInfo.used_amount : 0;
+                  return (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex flex-col">
+                        <span>{cat.name}</span>
+                        {budgetInfo && (
+                          <span className="text-xs text-muted-foreground">
+                            Sisa: Rp {remaining.toLocaleString('id-ID')}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })
+              )}
             </SelectContent>
           </Select>
           {errors.category_id && <p className="text-sm text-destructive">{errors.category_id.message}</p>}
