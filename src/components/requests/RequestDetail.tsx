@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -22,13 +23,14 @@ import {
   Printer,
   Receipt,
   ArrowLeft,
+  Eye,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import StatusBadge from '@/components/common/StatusBadge';
-import { generateRequestPDF } from '@/lib/generatePDF';
-import { generatePaymentReceiptPDF } from '@/lib/generateReceiptPDF';
+import { PDFPreviewDialog } from '@/components/payments/PDFPreviewDialog';
+import { PengajuanDanaData } from '@/lib/generatePengajuanDanaPDF';
 
 interface RequestDetailProps {
   requestId: string;
@@ -87,6 +89,8 @@ const attachmentTypeLabels: Record<string, string> = {
 };
 
 export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
+  const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
+  const [pdfPreviewData, setPdfPreviewData] = useState<PengajuanDanaData | null>(null);
   // Fetch request details - avoid foreign key hints since there's no explicit FK to profiles
   const { data: request, isLoading: isLoadingRequest } = useQuery({
     queryKey: ['request-detail', requestId],
@@ -274,16 +278,29 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
               variant="outline"
               size="sm"
               className="gap-2"
-              onClick={() => generateRequestPDF({
-                ...request,
-                division: request.divisions as any,
-                category: request.cost_categories as any,
-                requester: request.requester as any,
-                approver: request.approver as any,
-                funding_source: request.funding_sources as any,
-              })}
+              onClick={() => {
+                setPdfPreviewData({
+                  request_number: request.request_number,
+                  description: request.description,
+                  amount: request.amount,
+                  approved_amount: request.approved_amount,
+                  vendor: request.vendor,
+                  payment_method: request.payment_method,
+                  beneficiary_name: request.beneficiary_name,
+                  beneficiary_bank: request.beneficiary_bank,
+                  beneficiary_account: request.beneficiary_account,
+                  needed_date: request.needed_date,
+                  created_at: request.created_at,
+                  approved_at: request.approved_at,
+                  division: request.divisions as any,
+                  category: request.cost_categories as any,
+                  requester: request.requester as any,
+                  funding_source: request.funding_sources as any,
+                });
+                setIsPDFPreviewOpen(true);
+              }}
             >
-              <Printer className="h-4 w-4" />
+              <Eye className="h-4 w-4" />
               Cetak PDF
             </Button>
           </div>
@@ -549,14 +566,27 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                 variant="outline"
                 size="sm"
                 className="gap-2 w-full"
-                onClick={() => generatePaymentReceiptPDF({
-                  ...request,
-                  division: request.divisions as any,
-                  category: request.cost_categories as any,
-                  requester: request.requester as any,
-                  funding_source: request.funding_sources as any,
-                  paid_at: request.paid_at!,
-                })}
+                onClick={() => {
+                  setPdfPreviewData({
+                    request_number: request.request_number,
+                    description: request.description,
+                    amount: request.amount,
+                    approved_amount: request.approved_amount,
+                    vendor: request.vendor,
+                    payment_method: request.payment_method,
+                    beneficiary_name: request.beneficiary_name,
+                    beneficiary_bank: request.beneficiary_bank,
+                    beneficiary_account: request.beneficiary_account,
+                    needed_date: request.needed_date,
+                    created_at: request.created_at,
+                    approved_at: request.approved_at,
+                    division: request.divisions as any,
+                    category: request.cost_categories as any,
+                    requester: request.requester as any,
+                    funding_source: request.funding_sources as any,
+                  });
+                  setIsPDFPreviewOpen(true);
+                }}
               >
                 <Receipt className="h-4 w-4" />
                 Cetak Kwitansi
@@ -565,6 +595,13 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
           )}
         </div>
       </div>
+
+      {/* PDF Preview Dialog */}
+      <PDFPreviewDialog
+        open={isPDFPreviewOpen}
+        onOpenChange={setIsPDFPreviewOpen}
+        data={pdfPreviewData}
+      />
     </div>
   );
 }
