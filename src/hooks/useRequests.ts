@@ -96,16 +96,13 @@ export function useRequests() {
     },
   });
 
-  // Fetch funding sources - uses secure view for non-privileged users
-  // Finance and super_admin get full details, others get limited info via RLS
+  // Fetch funding sources - uses secure function for non-privileged users
+  // Only returns non-sensitive metadata (id, code, name, type) for dropdown population
   const { data: fundingSources } = useQuery({
-    queryKey: ['funding_sources'],
+    queryKey: ['funding_source_options'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('funding_sources')
-        .select('id, code, name, type, is_active')
-        .eq('is_active', true)
-        .order('name');
+      // Use the secure RPC function that bypasses RLS to provide limited data
+      const { data, error } = await supabase.rpc('get_funding_source_options');
 
       if (error) throw error;
       return data;
