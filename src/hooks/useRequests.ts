@@ -50,6 +50,7 @@ export interface RequestFormData {
   beneficiary_account: string;
   beneficiary_email: string;
   notes: string;
+  division_id?: string; // Optional: if provided, uses this division instead of user's division
 }
 
 const AUTOSAVE_INTERVAL = 15000; // 15 seconds
@@ -132,16 +133,19 @@ export function useRequests() {
   // Create request mutation
   const createRequest = useMutation({
     mutationFn: async (formData: RequestFormData) => {
-      if (!profile?.division_id) {
-        throw new Error('User must be assigned to a division');
+      // Use division_id from form if provided, otherwise use user's division
+      const divisionId = formData.division_id || profile?.division_id;
+      
+      if (!divisionId) {
+        throw new Error('User must be assigned to a division or select a budget division');
       }
 
       const { data, error } = await supabase
         .from('requests')
         .insert([{
-          division_id: profile.division_id,
+          division_id: divisionId,
           category_id: formData.category_id,
-          requester_id: profile.id,
+          requester_id: profile?.id,
           period_id: activePeriod?.id || null,
           description: formData.description,
           vendor: formData.vendor || null,
