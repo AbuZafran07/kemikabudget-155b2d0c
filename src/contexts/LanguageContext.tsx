@@ -203,6 +203,8 @@ const translations: Translations = {
   'requests.rejectionReason': { id: 'Alasan Penolakan', en: 'Rejection Reason' },
   'requests.notFound': { id: 'Pengajuan tidak ditemukan', en: 'Request not found' },
   'requests.confirmCancel': { id: 'Apakah Anda yakin ingin membatalkan pengajuan ini?', en: 'Are you sure you want to cancel this request?' },
+  'requests.active': { id: 'Aktif', en: 'Active' },
+  'requests.archived': { id: 'Riwayat', en: 'Archived' },
   
   // Approvals
   'approvals.title': { id: 'Persetujuan', en: 'Approvals' },

@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Copy,
   XCircle,
+  ListFilter,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/common/StatusBadge';
 import { useRequests, Request } from '@/hooks/useRequests';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -51,16 +54,32 @@ interface RequestListProps {
 
 const PAGE_SIZES = [10, 25, 50];
 
+// Active statuses: draft, submitted, under_review
+const ACTIVE_STATUSES = ['draft', 'submitted', 'under_review'];
+// Archived statuses: approved, rejected, paid, settled, cancelled
+const ARCHIVED_STATUSES = ['approved', 'rejected', 'paid', 'settled', 'cancelled'];
+
+type TabType = 'active' | 'archived';
+
 export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: RequestListProps) {
   const { requests, isLoading, cancelRequest } = useRequests();
   const { t, language } = useLanguage();
+  const [activeTab, setActiveTab] = useState<TabType>('active');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Filter requests
+  // Get available statuses based on active tab
+  const availableStatuses = activeTab === 'active' ? ACTIVE_STATUSES : ARCHIVED_STATUSES;
+
+  // Filter requests based on tab and filters
   const filteredRequests = requests?.filter((req) => {
+    // First filter by tab
+    const matchesTab = activeTab === 'active' 
+      ? ACTIVE_STATUSES.includes(req.status)
+      : ARCHIVED_STATUSES.includes(req.status);
+
     const matchesSearch =
       search === '' ||
       req.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -69,7 +88,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
 
     const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    return matchesTab && matchesSearch && matchesStatus;
   }) || [];
 
   // Pagination
@@ -78,6 +97,12 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalItems);
   const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as TabType);
+    setStatusFilter('all');
+    setCurrentPage(1);
+  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -112,6 +137,21 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
     }
   };
 
+  // Get status label based on status value
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'draft': return t('status.draft');
+      case 'submitted': return t('status.submitted');
+      case 'under_review': return t('status.underReview');
+      case 'approved': return t('status.approved');
+      case 'rejected': return t('status.rejected');
+      case 'paid': return t('status.paid');
+      case 'settled': return t('status.settled');
+      case 'cancelled': return t('status.cancelled');
+      default: return status;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -135,6 +175,20 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
 
   return (
     <div className="space-y-4">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <TabsList className="grid w-fit grid-cols-2 bg-muted/50">
+          <TabsTrigger value="active" className="flex items-center gap-2 px-6">
+            <ListFilter className="h-4 w-4" />
+            {t('requests.active')}
+          </TabsTrigger>
+          <TabsTrigger value="archived" className="flex items-center gap-2 px-6">
+            <Archive className="h-4 w-4" />
+            {t('requests.archived')}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -154,14 +208,11 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('status.all')}</SelectItem>
-              <SelectItem value="draft">{t('status.draft')}</SelectItem>
-              <SelectItem value="submitted">{t('status.submitted')}</SelectItem>
-              <SelectItem value="under_review">{t('status.underReview')}</SelectItem>
-              <SelectItem value="approved">{t('status.approved')}</SelectItem>
-              <SelectItem value="rejected">{t('status.rejected')}</SelectItem>
-              <SelectItem value="paid">{t('status.paid')}</SelectItem>
-              <SelectItem value="settled">{t('status.settled')}</SelectItem>
-              <SelectItem value="cancelled">{t('status.cancelled')}</SelectItem>
+              {availableStatuses.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {getStatusLabel(status)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
