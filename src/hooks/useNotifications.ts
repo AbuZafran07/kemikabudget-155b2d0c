@@ -46,7 +46,7 @@ export function useNotifications() {
       const adminIds = adminRoles.map(r => r.user_id);
       
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('email')
         .in('id', adminIds)
         .eq('is_active', true);
@@ -69,7 +69,7 @@ export function useNotifications() {
   }) => {
     // Get requester info
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('profiles_secure')
       .select('email, full_name')
       .eq('id', request.requester_id)
       .single();
@@ -99,7 +99,7 @@ export function useNotifications() {
     description: string;
   }) => {
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('profiles_secure')
       .select('email, full_name')
       .eq('id', request.requester_id)
       .single();
@@ -126,7 +126,7 @@ export function useNotifications() {
     rejection_reason: string;
   }) => {
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('profiles_secure')
       .select('email, full_name')
       .eq('id', request.requester_id)
       .single();
@@ -153,7 +153,7 @@ export function useNotifications() {
     description: string;
   }) => {
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('profiles_secure')
       .select('email, full_name')
       .eq('id', request.requester_id)
       .single();

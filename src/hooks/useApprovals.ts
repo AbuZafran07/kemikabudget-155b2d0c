@@ -54,7 +54,7 @@ export function useApprovals() {
       // Get requester profiles separately
       const requesterIds = data?.map(r => r.requester_id) || [];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('id, full_name, email')
         .in('id', requesterIds);
 
