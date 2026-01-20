@@ -448,7 +448,6 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
               <SelectContent>
                 <SelectItem value="cash">Tunai</SelectItem>
                 <SelectItem value="transfer">Transfer Bank</SelectItem>
-                <SelectItem value="check">Cek/Giro</SelectItem>
               </SelectContent>
             </Select>
           </div>
