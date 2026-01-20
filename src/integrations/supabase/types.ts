@@ -1174,6 +1174,16 @@ export type Database = {
         }
         Returns: Json
       }
+      get_funding_source_options: {
+        Args: never
+        Returns: {
+          code: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+        }[]
+      }
       get_user_division_id: { Args: { _user_id: string }; Returns: string }
       get_user_otp_secret: { Args: { p_user_id: string }; Returns: string }
       get_user_role: {
