@@ -474,8 +474,8 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           </div>
 
           <div className="space-y-2">
-            <Label>No. Project</Label>
-            <Input placeholder="Nomor Project" />
+            <Label>No. Rekening</Label>
+            <Input placeholder="Nomor Rekening" />
           </div>
         </div>
 
