@@ -93,7 +93,7 @@ export function useAuditLogs(options: UseAuditLogsOptions = {}) {
       
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
-          .from('profiles')
+          .from('profiles_secure')
           .select('id, full_name, email')
           .in('id', userIds as string[]);
         
@@ -158,7 +158,7 @@ export function useAuditLogs(options: UseAuditLogsOptions = {}) {
       let users: { id: string; full_name: string; email: string }[] = [];
       if (uniqueUserIds.length > 0) {
         const { data: profilesData } = await supabase
-          .from('profiles')
+          .from('profiles_secure')
           .select('id, full_name, email')
           .in('id', uniqueUserIds as string[]);
         users = profilesData || [];
@@ -209,7 +209,7 @@ export function useAuditLogs(options: UseAuditLogsOptions = {}) {
       
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
-          .from('profiles')
+          .from('profiles_secure')
           .select('id, full_name, email')
           .in('id', userIds as string[]);
         
