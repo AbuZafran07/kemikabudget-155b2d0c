@@ -13,6 +13,8 @@ import {
   FileText,
   Loader2,
   Package,
+  Eye,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,8 +48,10 @@ import {
   generateBatchPaymentFilename,
   PaymentExportRow,
 } from "@/lib/exportUtils";
-import { generatePaymentReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { PaymentFundingSourceSelector } from "@/components/payments/PaymentFundingSourceSelector";
+import { PDFPreviewDialog } from "@/components/payments/PDFPreviewDialog";
+import { PengajuanDanaData } from "@/lib/generatePengajuanDanaPDF";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -61,6 +65,7 @@ const formatCurrency = (value: number) => {
 const PaymentQueue = () => {
   const {
     payments,
+    fundingSources,
     isLoading,
     payRequest,
     overdueCount,
@@ -90,6 +95,14 @@ const PaymentQueue = () => {
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [batchResults, setBatchResults] = useState<{ id: string; success: boolean; error?: string }[]>([]);
   const [lastPaidPayment, setLastPaidPayment] = useState<PaymentRequest | null>(null);
+  
+  // Funding source selection for payments without funding_source_id
+  const [selectedFundingSourceId, setSelectedFundingSourceId] = useState<string | null>(null);
+  const [isUpdatingFundingSource, setIsUpdatingFundingSource] = useState(false);
+
+  // PDF Preview state
+  const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
+  const [pdfPreviewData, setPdfPreviewData] = useState<PengajuanDanaData | null>(null);
 
   const filteredPayments = payments?.filter((item) => {
     const matchesSearch =
@@ -124,11 +137,46 @@ const PaymentQueue = () => {
   const handlePay = (payment: PaymentRequest) => {
     setSelectedPayment(payment);
     setPaymentNote("");
+    // Pre-fill with existing funding source if available
+    setSelectedFundingSourceId(payment.funding_source_id);
     setIsPayDialogOpen(true);
   };
 
   const confirmPay = async () => {
     if (!selectedPayment) return;
+
+    // Check if funding source is selected
+    const fundingSourceToUse = selectedFundingSourceId || selectedPayment.funding_source_id;
+    if (!fundingSourceToUse) {
+      toast({
+        title: language === 'id' ? 'Sumber Dana Diperlukan' : 'Funding Source Required',
+        description: language === 'id' 
+          ? 'Pilih sumber dana sebelum memproses pembayaran' 
+          : 'Select a funding source before processing payment',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // If funding source was newly selected, update the request first
+    if (!selectedPayment.funding_source_id && selectedFundingSourceId) {
+      setIsUpdatingFundingSource(true);
+      const { error: updateError } = await supabase
+        .from('requests')
+        .update({ funding_source_id: selectedFundingSourceId })
+        .eq('id', selectedPayment.id);
+      
+      if (updateError) {
+        setIsUpdatingFundingSource(false);
+        toast({
+          title: language === 'id' ? 'Gagal Update Sumber Dana' : 'Failed to Update Funding Source',
+          description: updateError.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+      setIsUpdatingFundingSource(false);
+    }
 
     await payRequest.mutateAsync({
       requestId: selectedPayment.id,
@@ -138,6 +186,7 @@ const PaymentQueue = () => {
     setLastPaidPayment(selectedPayment);
     setIsPayDialogOpen(false);
     setSelectedPayment(null);
+    setSelectedFundingSourceId(null);
     setSelectedItems(prev => prev.filter(id => id !== selectedPayment.id));
   };
 
@@ -188,8 +237,8 @@ const PaymentQueue = () => {
     }
   };
 
-  // Generate receipt PDF for a payment
-  const handleGenerateReceipt = async (payment: PaymentRequest) => {
+  // Generate PDF preview for a payment
+  const handlePreviewPDF = async (payment: PaymentRequest) => {
     const { data, error } = await supabase
       .from('requests')
       .select(`
@@ -204,26 +253,53 @@ const PaymentQueue = () => {
     if (error || !data) {
       toast({
         title: t('common.error'),
-        description: language === 'id' ? 'Gagal mengambil data untuk kwitansi' : 'Failed to fetch receipt data',
+        description: language === 'id' ? 'Gagal mengambil data untuk dokumen' : 'Failed to fetch document data',
         variant: 'destructive',
       });
       return;
     }
 
+    // Get requester profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, email')
       .eq('id', data.requester_id)
       .single();
 
-    generatePaymentReceiptPDF({
-      ...data,
-      requester: profile || undefined,
+    // Get attachments
+    const { data: attachments } = await supabase
+      .from('request_attachments')
+      .select('attachment_type, file_name')
+      .eq('request_id', payment.id);
+
+    const pdfData: PengajuanDanaData = {
+      request_number: data.request_number,
+      description: data.description,
+      amount: data.amount,
+      approved_amount: data.approved_amount,
+      vendor: data.vendor,
+      payment_method: data.payment_method,
+      beneficiary_name: data.beneficiary_name,
+      beneficiary_bank: data.beneficiary_bank,
+      beneficiary_account: data.beneficiary_account,
+      needed_date: data.needed_date,
+      created_at: data.created_at,
+      approved_at: data.approved_at,
       division: data.division as any,
       category: data.category as any,
+      requester: profile || undefined,
       funding_source: data.funding_source as any,
-      paid_at: data.paid_at || new Date().toISOString(),
-    });
+      attachments: attachments || [],
+    };
+
+    setPdfPreviewData(pdfData);
+    setIsPDFPreviewOpen(true);
+  };
+
+  // Generate receipt PDF for a paid payment
+  const handleGenerateReceipt = async (payment: PaymentRequest) => {
+    // Use the same preview flow
+    await handlePreviewPDF(payment);
   };
 
   const handleExportSelected = () => {
@@ -319,6 +395,10 @@ const PaymentQueue = () => {
       setIsExporting(false);
     }
   };
+
+  // Check if selected payment needs funding source
+  const needsFundingSource = selectedPayment && !selectedPayment.funding_source_id;
+  const canProcessPayment = selectedPayment && (selectedPayment.funding_source_id || selectedFundingSourceId);
 
   if (isLoading) {
     return (
@@ -436,6 +516,7 @@ const PaymentQueue = () => {
           const sourceType = item.funding_sources?.type || 'bank';
           const sourceConfig = fundingSourceConfig[sourceType] || fundingSourceConfig.bank;
           const SourceIcon = sourceConfig.icon;
+          const hasFundingSource = !!item.funding_source_id;
 
           return (
             <div
@@ -463,12 +544,19 @@ const PaymentQueue = () => {
                     <Badge variant="outline" className="text-xs">
                       {item.divisions?.code || 'N/A'}
                     </Badge>
-                    <div className={`flex items-center gap-1 ${sourceConfig.color}`}>
-                      <SourceIcon className="h-3.5 w-3.5" />
-                      <span className="text-xs font-medium">
-                        {item.funding_sources?.name || sourceConfig.label}
-                      </span>
-                    </div>
+                    {hasFundingSource ? (
+                      <div className={`flex items-center gap-1 ${sourceConfig.color}`}>
+                        <SourceIcon className="h-3.5 w-3.5" />
+                        <span className="text-xs font-medium">
+                          {item.funding_sources?.name || sourceConfig.label}
+                        </span>
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="text-xs text-warning border-warning">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        {language === 'id' ? 'Belum ada sumber dana' : 'No funding source'}
+                      </Badge>
+                    )}
                     {item.isOverdue && (
                       <Badge variant="destructive" className="text-xs gap-1">
                         <AlertTriangle className="h-3 w-3" />
@@ -541,6 +629,17 @@ const PaymentQueue = () => {
 
                 <div className="flex items-center gap-2 lg:border-l lg:border-border lg:pl-4">
                   <Button 
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreviewPDF(item);
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button 
                     className="gap-2"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -572,15 +671,15 @@ const PaymentQueue = () => {
 
       {/* Pay Dialog */}
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{t('paymentQueue.confirmPay')}</DialogTitle>
             <DialogDescription>
               {selectedPayment && (
                 <>
                   {language === 'id' 
-                    ? `Anda akan memproses pembayaran untuk ${selectedPayment.request_number} sebesar ${formatCurrency(selectedPayment.amount)}.`
-                    : `You will process payment for ${selectedPayment.request_number} of ${formatCurrency(selectedPayment.amount)}.`
+                    ? `Anda akan memproses pembayaran untuk ${selectedPayment.request_number} sebesar ${formatCurrency(selectedPayment.approved_amount || selectedPayment.amount)}.`
+                    : `You will process payment for ${selectedPayment.request_number} of ${formatCurrency(selectedPayment.approved_amount || selectedPayment.amount)}.`
                   }
                   <br />
                   <span className="text-warning">
@@ -592,6 +691,31 @@ const PaymentQueue = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Funding Source Selector - show if no funding source */}
+            {needsFundingSource && (
+              <PaymentFundingSourceSelector
+                fundingSources={fundingSources}
+                selectedFundingSourceId={selectedFundingSourceId}
+                onSelect={setSelectedFundingSourceId}
+                paymentAmount={selectedPayment?.approved_amount || selectedPayment?.amount || 0}
+              />
+            )}
+
+            {/* Show existing funding source info */}
+            {selectedPayment?.funding_source_id && selectedPayment.funding_sources && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium flex items-center gap-2">
+                  {selectedPayment.funding_sources.type === 'petty_cash' ? (
+                    <Wallet className="h-4 w-4" />
+                  ) : (
+                    <Building2 className="h-4 w-4" />
+                  )}
+                  {language === 'id' ? 'Sumber Dana' : 'Funding Source'}
+                </h4>
+                <p className="text-sm">{selectedPayment.funding_sources.name}</p>
+              </div>
+            )}
+
             {selectedPayment?.beneficiary_name && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <h4 className="font-medium flex items-center gap-2">
@@ -649,10 +773,14 @@ const PaymentQueue = () => {
             </Button>
             <Button
               onClick={confirmPay}
-              disabled={payRequest.isPending}
+              disabled={payRequest.isPending || isUpdatingFundingSource || !canProcessPayment}
               className="gap-2"
             >
-              <CreditCard className="h-4 w-4" />
+              {(payRequest.isPending || isUpdatingFundingSource) ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CreditCard className="h-4 w-4" />
+              )}
               {language === 'id' ? 'Proses Pembayaran' : 'Process Payment'}
             </Button>
           </DialogFooter>
@@ -758,8 +886,8 @@ const PaymentQueue = () => {
             <div className="py-4">
               <p className="text-muted-foreground">
                 {language === 'id' 
-                  ? 'Apakah Anda ingin mencetak kwitansi pembayaran?'
-                  : 'Would you like to print the payment receipt?'
+                  ? 'Apakah Anda ingin melihat dokumen pengajuan dana?'
+                  : 'Would you like to view the fund request document?'
                 }
               </p>
             </div>
@@ -774,13 +902,20 @@ const PaymentQueue = () => {
                 }}
                 className="gap-2"
               >
-                <FileText className="h-4 w-4" />
-                {t('paymentQueue.generateReceipt')}
+                <Eye className="h-4 w-4" />
+                {language === 'id' ? 'Lihat Dokumen' : 'View Document'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
+
+      {/* PDF Preview Dialog */}
+      <PDFPreviewDialog
+        open={isPDFPreviewOpen}
+        onOpenChange={setIsPDFPreviewOpen}
+        data={pdfPreviewData}
+      />
     </div>
   );
 };
