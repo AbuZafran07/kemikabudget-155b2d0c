@@ -71,12 +71,16 @@ export function useRequests() {
           *,
           divisions (code, name),
           cost_categories (code, name),
-          funding_sources (code, name, type)
+          funding_source_options (code, name, type)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as unknown as Request[];
+      // Map funding_source_options back to funding_sources key for compatibility
+      return (data || []).map(req => ({
+        ...req,
+        funding_sources: req.funding_source_options,
+      })) as unknown as Request[];
     },
     enabled: !!profile,
   });

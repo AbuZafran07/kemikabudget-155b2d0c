@@ -44,22 +44,28 @@ export function useApprovals() {
           *,
           divisions (code, name),
           cost_categories (code, name),
-          funding_sources (code, name, type)
+          funding_source_options (code, name, type)
         `)
         .in('status', ['submitted', 'under_review'])
         .order('submitted_at', { ascending: true });
 
       if (error) throw error;
+      
+      // Map funding_source_options to funding_sources for compatibility
+      const mappedData = (data || []).map(req => ({
+        ...req,
+        funding_sources: req.funding_source_options,
+      }));
 
       // Get requester profiles separately
-      const requesterIds = data?.map(r => r.requester_id) || [];
+      const requesterIds = mappedData?.map(r => r.requester_id) || [];
       const { data: profiles } = await supabase
         .from('profiles_secure')
         .select('id, full_name, email')
         .in('id', requesterIds);
 
       // Merge and calculate pending days
-      const enrichedData = data?.map(request => {
+      const enrichedData = mappedData?.map(request => {
         const submittedDate = request.submitted_at ? new Date(request.submitted_at) : new Date(request.created_at);
         const daysPending = differenceInDays(new Date(), submittedDate);
         const isOverdue = daysPending > APPROVAL_SLA_DAYS;
