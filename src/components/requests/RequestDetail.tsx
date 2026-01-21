@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import {
@@ -89,8 +90,17 @@ const attachmentTypeLabels: Record<string, string> = {
 };
 
 export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
+  const { role } = useAuth();
   const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
   const [pdfPreviewData, setPdfPreviewData] = useState<PengajuanDanaData | null>(null);
+
+  // Mask account number for non-finance/non-super_admin users
+  const maskAccountNumber = (account: string | null): string => {
+    if (!account) return '-';
+    if (role === 'super_admin' || role === 'finance') return account;
+    if (account.length < 8) return '****';
+    return account.slice(0, 4) + '****' + account.slice(-4);
+  };
   // Fetch request details - avoid foreign key hints since there's no explicit FK to profiles
   const { data: request, isLoading: isLoadingRequest } = useQuery({
     queryKey: ['request-detail', requestId],
@@ -399,7 +409,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">No. Rekening</p>
-                    <p className="font-medium text-foreground font-mono">{request.beneficiary_account || '-'}</p>
+                    <p className="font-medium text-foreground font-mono">{maskAccountNumber(request.beneficiary_account)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Email</p>
