@@ -92,7 +92,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (!error && data) {
-      setProfile(data as Profile);
+      // Generate signed URL for avatar if it exists (bucket is now private)
+      let signedAvatarUrl = data.avatar_url;
+      if (data.avatar_url && data.avatar_url.includes('avatars/')) {
+        // Extract the path from the full URL or use as-is if it's just a path
+        const avatarPath = data.avatar_url.includes('avatars/')
+          ? data.avatar_url.split('avatars/').pop()
+          : data.avatar_url;
+        
+        if (avatarPath) {
+          const { data: signedUrlData } = await supabase.storage
+            .from('avatars')
+            .createSignedUrl(avatarPath, 3600); // 1 hour expiry
+          
+          if (signedUrlData?.signedUrl) {
+            signedAvatarUrl = signedUrlData.signedUrl;
+          }
+        }
+      }
+      
+      setProfile({ ...data, avatar_url: signedAvatarUrl } as Profile);
     }
   };
 
