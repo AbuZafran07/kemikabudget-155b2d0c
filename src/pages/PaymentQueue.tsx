@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   CreditCard,
@@ -52,6 +52,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { PaymentFundingSourceSelector } from "@/components/payments/PaymentFundingSourceSelector";
 import { PDFPreviewDialog } from "@/components/payments/PDFPreviewDialog";
 import { PengajuanDanaData } from "@/lib/generatePengajuanDanaPDF";
+import { TablePagination } from "@/components/common/TablePagination";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -85,6 +86,8 @@ const PaymentQueue = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Dialog state
   const [selectedPayment, setSelectedPayment] = useState<PaymentRequest | null>(null);
@@ -104,17 +107,30 @@ const PaymentQueue = () => {
   const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
   const [pdfPreviewData, setPdfPreviewData] = useState<PengajuanDanaData | null>(null);
 
-  const filteredPayments = payments?.filter((item) => {
-    const matchesSearch =
-      item.request_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesSource = sourceFilter === "all" || 
-      (sourceFilter === "petty_cash" && item.funding_sources?.type === "petty_cash") ||
-      (sourceFilter === "bank" && item.funding_sources?.type === "bank");
-    
-    return matchesSearch && matchesSource;
-  }) || [];
+  const filteredPayments = useMemo(() => {
+    return payments?.filter((item) => {
+      const matchesSearch =
+        item.request_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesSource = sourceFilter === "all" || 
+        (sourceFilter === "petty_cash" && item.funding_sources?.type === "petty_cash") ||
+        (sourceFilter === "bank" && item.funding_sources?.type === "bank");
+      
+      return matchesSearch && matchesSource;
+    }) || [];
+  }, [payments, searchQuery, sourceFilter]);
+
+  // Reset to page 1 when filter changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sourceFilter]);
+
+  // Paginated payments
+  const paginatedPayments = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredPayments.slice(start, start + pageSize);
+  }, [filteredPayments, currentPage, pageSize]);
 
   const toggleSelection = (id: string) => {
     setSelectedItems((prev) =>
@@ -499,20 +515,25 @@ const PaymentQueue = () => {
 
       {/* Payment Cards */}
       <div className="space-y-4">
-        {filteredPayments.length > 0 && (
+        {paginatedPayments.length > 0 && (
           <div className="flex items-center gap-3 px-2">
             <Checkbox
               checked={
-                selectedItems.length === filteredPayments.length &&
-                filteredPayments.length > 0
+                selectedItems.length === paginatedPayments.length &&
+                paginatedPayments.length > 0
               }
-              onCheckedChange={selectAll}
+              onCheckedChange={() => {
+                if (selectedItems.length === paginatedPayments.length) {
+                  setSelectedItems([]);
+                } else {
+                  setSelectedItems(paginatedPayments.map(p => p.id));
+                }
+              }}
             />
             <span className="text-sm text-muted-foreground">{t('paymentQueue.selectAll')}</span>
           </div>
         )}
-
-        {filteredPayments.map((item) => {
+        {paginatedPayments.map((item) => {
           const sourceType = item.funding_sources?.type || 'bank';
           const sourceConfig = fundingSourceConfig[sourceType] || fundingSourceConfig.bank;
           const SourceIcon = sourceConfig.icon;
@@ -656,6 +677,19 @@ const PaymentQueue = () => {
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {filteredPayments.length > 0 && (
+        <div className="bg-card rounded-xl border border-border">
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={filteredPayments.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      )}
 
       {filteredPayments.length === 0 && (
         <div className="bg-card rounded-xl border border-border p-12 text-center">

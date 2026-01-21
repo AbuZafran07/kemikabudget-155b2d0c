@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -51,6 +51,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TablePagination } from '@/components/common/TablePagination';
 
 interface FundingSource {
   id: string;
@@ -74,6 +75,8 @@ const FundingSources = () => {
   const [editingSource, setEditingSource] = useState<FundingSource | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sourceToDelete, setSourceToDelete] = useState<FundingSource | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -223,11 +226,25 @@ const FundingSources = () => {
     }).format(amount);
   };
 
-  const filteredSources = sources.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredSources = useMemo(() => {
+    const filtered = sources.filter(
+      (s) =>
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.code.toLowerCase().includes(search.toLowerCase())
+    );
+    return filtered;
+  }, [sources, search]);
+
+  // Reset to page 1 when search changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Paginated data
+  const paginatedSources = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredSources.slice(start, start + pageSize);
+  }, [filteredSources, currentPage, pageSize]);
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -272,7 +289,7 @@ const FundingSources = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                 </TableCell>
               </TableRow>
-            ) : filteredSources.length === 0 ? (
+            ) : paginatedSources.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12">
                   <Wallet className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
@@ -280,7 +297,7 @@ const FundingSources = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredSources.map((source) => (
+              paginatedSources.map((source) => (
                 <TableRow key={source.id}>
                   <TableCell className="font-mono font-medium">{source.code}</TableCell>
                   <TableCell className="font-medium">{source.name}</TableCell>
@@ -329,6 +346,13 @@ const FundingSources = () => {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredSources.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -43,6 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TablePagination } from '@/components/common/TablePagination';
 
 interface Category {
   id: string;
@@ -62,6 +63,8 @@ const Categories = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -164,11 +167,25 @@ const Categories = () => {
     }
   };
 
-  const filteredCategories = categories.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCategories = useMemo(() => {
+    const filtered = categories.filter(
+      (c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.code.toLowerCase().includes(search.toLowerCase())
+    );
+    return filtered;
+  }, [categories, search]);
+
+  // Reset to page 1 when search changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Paginated data
+  const paginatedCategories = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCategories.slice(start, start + pageSize);
+  }, [filteredCategories, currentPage, pageSize]);
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -211,7 +228,7 @@ const Categories = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                 </TableCell>
               </TableRow>
-            ) : filteredCategories.length === 0 ? (
+            ) : paginatedCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-12">
                   <Tag className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
@@ -219,7 +236,7 @@ const Categories = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredCategories.map((category) => (
+              paginatedCategories.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell className="font-mono font-medium">{category.code}</TableCell>
                   <TableCell className="font-medium">{category.name}</TableCell>
@@ -251,6 +268,13 @@ const Categories = () => {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredCategories.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

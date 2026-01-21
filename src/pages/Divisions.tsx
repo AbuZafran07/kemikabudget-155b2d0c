@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -43,6 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TablePagination } from '@/components/common/TablePagination';
 
 interface Division {
   id: string;
@@ -62,6 +63,8 @@ const Divisions = () => {
   const [editingDivision, setEditingDivision] = useState<Division | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [divisionToDelete, setDivisionToDelete] = useState<Division | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -164,11 +167,25 @@ const Divisions = () => {
     }
   };
 
-  const filteredDivisions = divisions.filter(
-    (d) =>
-      d.name.toLowerCase().includes(search.toLowerCase()) ||
-      d.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredDivisions = useMemo(() => {
+    const filtered = divisions.filter(
+      (d) =>
+        d.name.toLowerCase().includes(search.toLowerCase()) ||
+        d.code.toLowerCase().includes(search.toLowerCase())
+    );
+    return filtered;
+  }, [divisions, search]);
+
+  // Reset to page 1 when search changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Paginated data
+  const paginatedDivisions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredDivisions.slice(start, start + pageSize);
+  }, [filteredDivisions, currentPage, pageSize]);
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -211,7 +228,7 @@ const Divisions = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                 </TableCell>
               </TableRow>
-            ) : filteredDivisions.length === 0 ? (
+            ) : paginatedDivisions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-12">
                   <Building className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
@@ -219,7 +236,7 @@ const Divisions = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredDivisions.map((division) => (
+              paginatedDivisions.map((division) => (
                 <TableRow key={division.id}>
                   <TableCell className="font-mono font-medium">{division.code}</TableCell>
                   <TableCell className="font-medium">{division.name}</TableCell>
@@ -251,6 +268,13 @@ const Divisions = () => {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredDivisions.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
