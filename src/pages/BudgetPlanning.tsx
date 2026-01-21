@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   Plus,
@@ -53,6 +53,7 @@ import { Label } from "@/components/ui/label";
 import { useBudgetPlanning, DivisionBudget } from "@/hooks/useBudgetPlanning";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { TablePagination } from "@/components/common/TablePagination";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -81,6 +82,8 @@ const BudgetPlanning = () => {
 
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>(activePeriod?.id || "active");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -100,13 +103,26 @@ const BudgetPlanning = () => {
   const years = [...new Set(periods?.map(p => p.year) || [])].sort((a, b) => b - a);
 
   // Filter budgets
-  const filteredBudgets = budgets?.filter((budget) => {
-    const matchesDivision = divisionFilter === "all" || budget.division_id === divisionFilter;
-    const matchesPeriod = yearFilter === "active" 
-      ? budget.period_id === activePeriod?.id
-      : budget.period_id === yearFilter;
-    return matchesDivision && matchesPeriod;
-  }) || [];
+  const filteredBudgets = useMemo(() => {
+    return budgets?.filter((budget) => {
+      const matchesDivision = divisionFilter === "all" || budget.division_id === divisionFilter;
+      const matchesPeriod = yearFilter === "active" 
+        ? budget.period_id === activePeriod?.id
+        : budget.period_id === yearFilter;
+      return matchesDivision && matchesPeriod;
+    }) || [];
+  }, [budgets, divisionFilter, yearFilter, activePeriod?.id]);
+
+  // Reset to page 1 when filter changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [divisionFilter, yearFilter]);
+
+  // Paginated budgets
+  const paginatedBudgets = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredBudgets.slice(start, start + pageSize);
+  }, [filteredBudgets, currentPage, pageSize]);
 
   // Calculate stats
   const totalBudgets = filteredBudgets.length;
@@ -337,14 +353,14 @@ const BudgetPlanning = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBudgets.length === 0 ? (
+                {paginatedBudgets.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {language === 'id' ? 'Belum ada data budget' : 'No budget data yet'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredBudgets.map((budget) => (
+                  paginatedBudgets.map((budget) => (
                     <TableRow key={budget.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -395,6 +411,13 @@ const BudgetPlanning = () => {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredBudgets.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         </TabsContent>
 

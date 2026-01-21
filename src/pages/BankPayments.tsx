@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { TablePagination } from '@/components/common/TablePagination';
 
 interface BankPayment {
   id: string;
@@ -57,6 +58,8 @@ const BankPayments = () => {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const dateLocale = language === 'id' ? localeId : enUS;
 
@@ -93,12 +96,26 @@ const BankPayments = () => {
     },
   });
 
-  const filteredPayments = payments.filter(
-    (p) =>
-      p.request_number?.toLowerCase().includes(search.toLowerCase()) ||
-      p.description?.toLowerCase().includes(search.toLowerCase()) ||
-      p.beneficiary_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredPayments = useMemo(() => {
+    const filtered = payments.filter(
+      (p) =>
+        p.request_number?.toLowerCase().includes(search.toLowerCase()) ||
+        p.description?.toLowerCase().includes(search.toLowerCase()) ||
+        p.beneficiary_name?.toLowerCase().includes(search.toLowerCase())
+    );
+    return filtered;
+  }, [payments, search]);
+
+  // Reset to page 1 when search changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Paginated data
+  const paginatedPayments = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredPayments.slice(start, start + pageSize);
+  }, [filteredPayments, currentPage, pageSize]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -313,7 +330,7 @@ const BankPayments = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                 </TableCell>
               </TableRow>
-            ) : filteredPayments.length === 0 ? (
+            ) : paginatedPayments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12">
                   <Building className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
@@ -321,7 +338,7 @@ const BankPayments = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredPayments.map((payment) => (
+              paginatedPayments.map((payment) => (
                 <TableRow
                   key={payment.id}
                   className={selectedPayments.includes(payment.id) ? 'bg-primary/5' : ''}
@@ -369,6 +386,13 @@ const BankPayments = () => {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredPayments.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* Batch Payment Dialog */}
