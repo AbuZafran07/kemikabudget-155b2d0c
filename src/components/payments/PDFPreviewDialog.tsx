@@ -14,6 +14,7 @@ import {
   previewPengajuanDanaPDF,
   type PengajuanDanaData 
 } from "@/lib/generatePengajuanDanaPDF";
+import logoKemika from "@/assets/logo-kemika.png";
 
 interface PDFPreviewDialogProps {
   open: boolean;
@@ -26,14 +27,36 @@ export function PDFPreviewDialog({
   open, 
   onOpenChange, 
   data,
-  logoBase64 
+  logoBase64: externalLogo 
 }: PDFPreviewDialogProps) {
   const { language } = useLanguage();
   const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [logoBase64, setLogoBase64] = useState<string>("");
+
+  // Load logo as base64 on mount
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const response = await fetch(logoKemika);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setLogoBase64(reader.result);
+          }
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error('Failed to load logo:', error);
+      }
+    };
+    loadLogo();
+  }, []);
 
   useEffect(() => {
     if (data && open) {
-      const html = generatePengajuanDanaHTML(data, logoBase64);
+      const logo = externalLogo || logoBase64;
+      const html = generatePengajuanDanaHTML(data, logo);
       // Remove preview actions for embedded preview
       const cleanHtml = html.replace(
         /<div class="preview-actions no-print">[\s\S]*?<\/div>/,
@@ -41,11 +64,12 @@ export function PDFPreviewDialog({
       );
       setPreviewHtml(cleanHtml);
     }
-  }, [data, open, logoBase64]);
+  }, [data, open, logoBase64, externalLogo]);
 
   const handlePrint = () => {
     if (data) {
-      previewPengajuanDanaPDF(data, logoBase64);
+      const logo = externalLogo || logoBase64;
+      previewPengajuanDanaPDF(data, logo);
     }
   };
 
