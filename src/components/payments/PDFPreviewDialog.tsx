@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,8 @@ export function PDFPreviewDialog({
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [logoBase64, setLogoBase64] = useState<string>("");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Load logo as base64 on mount
   useEffect(() => {
@@ -65,6 +67,7 @@ export function PDFPreviewDialog({
         ''
       );
       setPreviewHtml(cleanHtml);
+      setIsPreviewReady(false);
     }
   }, [data, open, logoBase64, externalLogo]);
 
@@ -80,31 +83,32 @@ export function PDFPreviewDialog({
     
     setIsDownloading(true);
     try {
-      const logo = externalLogo || logoBase64;
-      const html = generatePengajuanDanaHTML(data, logo);
-      // Remove preview actions from download
-      const cleanHtml = html.replace(
-        /<div class="preview-actions no-print">[\s\S]*?<\/div>/,
-        ''
-      );
-      
-      // Create a temporary container
-      const container = document.createElement('div');
-      container.innerHTML = cleanHtml;
-      
-      // Extract just the body content
-      const bodyContent = container.querySelector('.container');
-      if (!bodyContent) {
-        throw new Error('Could not find container element');
+      // Use the already-generated preview HTML (keeps content consistent)
+      const htmlForExport = previewHtml;
+      if (!htmlForExport) {
+        throw new Error('Preview HTML is empty');
       }
-      
-      // Create wrapper with styles
+
+      // Parse full HTML document then export only the styled body content.
+      // This avoids blank PDFs caused by injecting <html>/<head> fragments into a <div>.
+      const doc = new DOMParser().parseFromString(htmlForExport, 'text/html');
+      const styleEl = doc.querySelector('style');
+      const containerEl = doc.querySelector('.container');
+      if (!containerEl) {
+        throw new Error('Could not find .container element in PDF HTML');
+      }
+
       const wrapper = document.createElement('div');
-      wrapper.innerHTML = cleanHtml;
-      document.body.appendChild(wrapper);
-      wrapper.style.position = 'absolute';
-      wrapper.style.left = '-9999px';
+      // Keep it offscreen (not opacity:0) so html2canvas can still render it
+      wrapper.style.position = 'fixed';
+      wrapper.style.left = '-10000px';
       wrapper.style.top = '0';
+      wrapper.style.pointerEvents = 'none';
+      wrapper.style.zIndex = '-1';
+
+      if (styleEl) wrapper.appendChild(styleEl.cloneNode(true));
+      wrapper.appendChild(containerEl.cloneNode(true));
+      document.body.appendChild(wrapper);
       
       const fileName = `Pengajuan_Budget_${data.request_number.replace(/\//g, '_')}.pdf`;
       
@@ -124,6 +128,9 @@ export function PDFPreviewDialog({
           orientation: 'portrait' 
         }
       };
+
+      // Give the browser a tick to layout the hidden content before rendering.
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
       
       await html2pdf().set(opt).from(wrapper).save();
       
@@ -150,9 +157,11 @@ export function PDFPreviewDialog({
 
         <div className="flex-1 overflow-auto border rounded-lg bg-white">
           <iframe
+            ref={iframeRef}
             srcDoc={previewHtml}
             className="w-full h-[600px] border-0"
             title="PDF Preview"
+            onLoad={() => setIsPreviewReady(true)}
           />
         </div>
 
@@ -165,7 +174,7 @@ export function PDFPreviewDialog({
             variant="outline" 
             onClick={handleDownload} 
             className="gap-2"
-            disabled={isDownloading}
+            disabled={isDownloading || !isPreviewReady || !previewHtml}
           >
             {isDownloading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

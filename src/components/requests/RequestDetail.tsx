@@ -129,8 +129,9 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
       // Fetch approver profile if exists
       let approverProfile = null;
       if (requestData.approved_by) {
+        // Use profiles_secure to avoid RLS blocking approver name for non-privileged roles
         const { data: approver } = await supabase
-          .from('profiles')
+          .from('profiles_secure')
           .select('full_name')
           .eq('id', requestData.approved_by)
           .single();
@@ -305,6 +306,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                   division: request.divisions as any,
                   category: request.cost_categories as any,
                   requester: request.requester as any,
+                  approver: (request as any).approver || null,
                   funding_source: request.funding_sources as any,
                 });
                 setIsPDFPreviewOpen(true);
