@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Loader2,
   Paperclip,
-  Printer,
   Receipt,
   ArrowLeft,
   Eye,
@@ -237,7 +236,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const handleDownload = async (filePath: string, fileName: string) => {
+  const handleDownload = async (filePath: string, _fileName: string) => {
     const { data } = await supabase.storage
       .from('request-attachments')
       .createSignedUrl(filePath, 60);
@@ -588,7 +587,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                 <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-border" />
 
                 <div className="space-y-4">
-                  {events.map((event, index) => {
+                  {events.map((event) => {
                     const Icon = eventIcons[event.event_type] || eventIcons.default;
                     const colorClass = eventColors[event.event_type] || 'bg-muted text-muted-foreground';
                     const metadata = event.metadata as Record<string, any> | null;
