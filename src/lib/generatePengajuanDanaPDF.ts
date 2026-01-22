@@ -274,11 +274,10 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       min-height: 80px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-end;
     }
     .signature-name {
       font-weight: bold;
-      margin-top: 10px;
       min-height: 20px;
     }
     .signature-line {
@@ -289,7 +288,36 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     }
     .signature-date {
       font-size: 8pt;
-      margin-top: auto;
+    }
+    
+    /* Approved signature box - full width single box */
+    .approved-signature-section {
+      border: 1px solid #333;
+      margin-bottom: 15px;
+    }
+    .approved-signature-header {
+      background: #c4a000;
+      color: white;
+      padding: 6px;
+      font-weight: bold;
+      text-align: center;
+      border-bottom: 1px solid #333;
+    }
+    .approved-signature-content {
+      padding: 15px;
+      min-height: 80px;
+    }
+    .approved-check {
+      color: #1a5f2a;
+      font-weight: bold;
+      font-size: 11pt;
+      margin-bottom: 8px;
+    }
+    .approved-by {
+      margin-bottom: 5px;
+    }
+    .approved-at {
+      margin-bottom: 10px;
     }
     
     .footer {
@@ -324,6 +352,10 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       background: #1a5f2a;
       color: white;
     }
+    .btn-download {
+      background: #0066cc;
+      color: white;
+    }
     .btn-close {
       background: #666;
       color: white;
@@ -342,7 +374,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         ${logoImg}
       </div>
       <div class="doc-info">
-        <div class="doc-title">PENGAJUAN DANA</div>
+        <div class="doc-title">PENGAJUAN BUDGET</div>
         <div class="doc-info-box">
           <table>
             <tr>
@@ -454,10 +486,23 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       </div>
     </div>
 
+    ${safeApproverName ? `
+    <!-- Approved: Single wide box -->
+    <div class="approved-signature-section">
+      <div class="approved-signature-header">Menyetujui</div>
+      <div class="approved-signature-content">
+        <div class="approved-check">✓ APPROVED</div>
+        <div class="approved-by"><strong>Approved by:</strong> ${safeApproverName}</div>
+        <div class="approved-at"><strong>Approved at:</strong> ${approvedDate}</div>
+      </div>
+    </div>
+    ` : `
+    <!-- Not approved: Three boxes -->
     <div class="signature-section">
       <div class="signature-box">
         <div class="signature-header">Pemohon</div>
         <div class="signature-content">
+          <div class="signature-line"></div>
           <div class="signature-name">&nbsp;</div>
           <div class="signature-date">Date: ___________</div>
         </div>
@@ -465,6 +510,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       <div class="signature-box">
         <div class="signature-header">Mengetahui</div>
         <div class="signature-content">
+          <div class="signature-line"></div>
           <div class="signature-name">&nbsp;</div>
           <div class="signature-date">Date: ___________</div>
         </div>
@@ -472,19 +518,13 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       <div class="signature-box">
         <div class="signature-header">Menyetujui</div>
         <div class="signature-content">
-          ${safeApproverName ? `
-            <div class="signature-name" style="margin-top: 30px;">
-              <div class="signature-line"></div>
-              ${safeApproverName}
-            </div>
-            <div class="signature-date">Date: ${approvedDate || '___________'}</div>
-          ` : `
-            <div class="signature-name">&nbsp;</div>
-            <div class="signature-date">Date: ___________</div>
-          `}
+          <div class="signature-line"></div>
+          <div class="signature-name">&nbsp;</div>
+          <div class="signature-date">Date: ___________</div>
         </div>
       </div>
     </div>
+    `}
 
     <div class="footer">
       Dokumen ini dicetak pada ${printDate} | PT. Kemika Karya Pratama - Expense Budget & Approval System
