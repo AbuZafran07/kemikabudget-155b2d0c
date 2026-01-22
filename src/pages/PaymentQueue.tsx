@@ -275,9 +275,9 @@ const PaymentQueue = () => {
       return;
     }
 
-    // Get requester profile
+    // Get requester profile - use profiles_secure view for data masking
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('profiles_secure')
       .select('full_name, email')
       .eq('id', data.requester_id)
       .single();

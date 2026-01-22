@@ -190,11 +190,11 @@ const Reports = () => {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Fetch requester names separately
+      // Fetch requester names separately - use profiles_secure view for data masking
       if (data && data.length > 0) {
         const requesterIds = [...new Set(data.map(d => d.requester_id))];
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('profiles_secure')
           .select('id, full_name')
           .in('id', requesterIds);
 

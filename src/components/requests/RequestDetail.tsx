@@ -140,9 +140,9 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
 
       if (requestError) throw requestError;
 
-      // Fetch requester profile separately
+      // Fetch requester profile separately - use profiles_secure view for data masking
       const { data: requesterProfile } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('full_name, email')
         .eq('id', requestData.requester_id)
         .single();
@@ -181,10 +181,10 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
 
       if (error) throw error;
 
-      // Get performer names
+      // Get performer names - use profiles_secure view for data masking
       const performerIds = data?.map(e => e.performed_by) || [];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('id, full_name')
         .in('id', performerIds);
 
@@ -208,9 +208,10 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
 
       if (error) throw error;
 
+      // Use profiles_secure view for data masking
       const uploaderIds = data?.map(a => a.uploaded_by) || [];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('id, full_name')
         .in('id', uploaderIds);
 

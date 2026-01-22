@@ -66,10 +66,10 @@ export function usePaymentQueue() {
         funding_sources: req.funding_source_options,
       }));
 
-      // Get requester profiles
+      // Get requester profiles - use profiles_secure view for data masking
       const requesterIds = mappedData?.map(r => r.requester_id) || [];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('id, full_name, email')
         .in('id', requesterIds);
 
