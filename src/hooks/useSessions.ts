@@ -35,10 +35,10 @@ export function useSessions() {
 
       if (error) throw error;
 
-      // Fetch user profiles
+      // Fetch user profiles - use profiles_secure view for data masking
       const userIds = [...new Set(data?.map(s => s.user_id) || [])];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('id, full_name, email')
         .in('id', userIds);
 

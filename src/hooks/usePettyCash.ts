@@ -79,10 +79,10 @@ export function usePettyCash() {
 
       if (error) throw error;
 
-      // Get performer profiles
+      // Get performer profiles - use profiles_secure view for data masking
       const performerIds = [...new Set(data?.map(t => t.performed_by) || [])];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('id, full_name')
         .in('id', performerIds);
 
@@ -108,10 +108,10 @@ export function usePettyCash() {
 
       if (error) throw error;
 
-      // Get reconciled_by profiles
+      // Get reconciled_by profiles - use profiles_secure view for data masking
       const reconciledByIds = [...new Set(data?.map(r => r.reconciled_by) || [])];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_secure')
         .select('id, full_name')
         .in('id', reconciledByIds);
 
