@@ -18,6 +18,7 @@ export interface PengajuanDanaData {
   division?: { name: string; code: string };
   category?: { name: string; code: string };
   requester?: { full_name: string; email: string };
+  approver?: { full_name: string } | null;
   funding_source?: { name: string; type: string };
   attachments?: { attachment_type: string; file_name: string }[];
 }
@@ -43,15 +44,17 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
   const safeBeneficiaryBank = escapeHtml(data.beneficiary_bank) || '-';
   const safeBeneficiaryAccount = escapeHtml(data.beneficiary_account) || '-';
   const safeDivisionName = escapeHtml(data.division?.name) || '-';
-  const safeDivisionCode = escapeHtml(data.division?.code) || '-';
+  const safeDivisionCode = escapeHtml(data.division?.code) || '';
   const safeCategoryName = escapeHtml(data.category?.name) || '-';
   const safeRequesterName = escapeHtml(data.requester?.full_name) || '-';
+  const safeApproverName = escapeHtml(data.approver?.full_name) || '';
   const safeFundingSourceName = escapeHtml(data.funding_source?.name) || '-';
 
   const docNumber = generateDocNumber(data.request_number, new Date(data.created_at));
   const neededDate = format(new Date(data.needed_date), 'dd MMM yyyy', { locale: localeId });
   const createdDate = format(new Date(data.created_at), 'dd MMM yyyy', { locale: localeId });
   const printDate = format(new Date(), 'dd MMMM yyyy HH:mm', { locale: localeId });
+  const approvedDate = data.approved_at ? format(new Date(data.approved_at), 'dd MMM yyyy', { locale: localeId }) : '';
 
   const nilaiPengajuan = data.amount;
   const nilaiApproved = data.approved_amount ?? data.amount;
@@ -66,10 +69,14 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
   const receiptReff = data.attachments?.find(a => a.attachment_type === 'receipt')?.file_name || '';
   const reffNo = invoiceReff || quotationReff || receiptReff || '-';
 
+  // Division display - code on same line
+  const divisionDisplay = safeDivisionCode 
+    ? `${safeDivisionName} (${safeDivisionCode})`
+    : safeDivisionName;
+
   const logoImg = logoBase64 
-    ? `<img src="${logoBase64}" alt="Kemika" style="height: 50px;" />`
-    : `<div style="font-size: 24px; font-weight: bold; color: #1a5f2a; font-style: italic;">Kemika</div>
-       <div style="font-size: 10px; color: #333; font-style: italic;">SPREADING SOLUTIONS</div>`;
+    ? `<img src="${logoBase64}" alt="Kemika" style="height: 60px;" />`
+    : `<img src="/lovable-uploads/cb7d852a-00a6-461a-ad8f-806dbf150cf5.png" alt="Kemika" style="height: 60px;" onerror="this.outerHTML='<div style=\\'font-size: 24px; font-weight: bold; color: #1a5f2a; font-style: italic;\\'>Kemika</div><div style=\\'font-size: 10px; color: #333; font-style: italic;\\'>SPREADING SOLUTIONS</div>'" />`;
 
   return `
 <!DOCTYPE html>
@@ -107,45 +114,66 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       color: #1a5f2a;
       margin-bottom: 5px;
     }
-    .doc-info-table {
+    .doc-info-box {
+      border: 1px solid #333;
+      display: inline-block;
+      text-align: left;
+    }
+    .doc-info-box table {
       font-size: 9pt;
     }
-    .doc-info-table td {
-      padding: 2px 0;
+    .doc-info-box td {
+      padding: 4px 10px;
     }
-    .doc-info-table .label {
-      text-align: right;
-      padding-right: 10px;
+    .doc-info-box .label {
       font-weight: bold;
+      text-align: left;
+    }
+    .doc-info-box .value {
+      text-align: left;
     }
     
-    .info-section {
-      display: flex;
-      margin-bottom: 8px;
+    .category-section {
+      margin-bottom: 10px;
     }
-    .info-left, .info-right {
-      width: 50%;
-    }
-    .info-item {
+    .category-row {
       display: flex;
       margin-bottom: 3px;
     }
+    .category-label {
+      width: 120px;
+      font-weight: bold;
+    }
+    .category-colon {
+      width: 15px;
+    }
+    .category-value { flex: 1; }
+
+    .info-section {
+      display: flex;
+      border: 1px solid #666;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+    .info-left, .info-right {
+      width: 50%;
+      padding: 8px 10px;
+    }
+    .info-right {
+      border-left: 1px solid #666;
+    }
+    .info-item {
+      display: flex;
+      margin-bottom: 4px;
+    }
     .info-label {
-      width: 130px;
+      width: 140px;
       font-weight: bold;
     }
     .info-colon {
       width: 15px;
     }
     .info-value { flex: 1; }
-
-    .green-section {
-      background: #1a5f2a;
-      color: white;
-      padding: 6px 10px;
-      margin-bottom: 0;
-    }
-    .green-section .info-label { color: white; }
     
     table.main-table {
       width: 100%;
@@ -155,28 +183,29 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     table.main-table th {
       background: #1a5f2a;
       color: white;
-      padding: 6px 8px;
+      padding: 8px 10px;
       text-align: center;
       font-weight: bold;
-      border: 1px solid #1a5f2a;
+      border: 1px solid #333;
     }
     table.main-table td {
-      padding: 8px;
-      border: 1px solid #1a5f2a;
+      padding: 10px;
+      border: 1px solid #333;
       vertical-align: top;
     }
-    table.main-table .num { text-align: center; width: 30px; }
-    table.main-table .amount { text-align: right; width: 100px; }
+    table.main-table .num { text-align: center; width: 40px; }
+    table.main-table .amount { text-align: right; white-space: nowrap; min-width: 130px; }
+    table.main-table .description { word-wrap: break-word; }
     
     .payment-section {
       display: flex;
       margin-bottom: 10px;
     }
     .transfer-box, .tunai-box {
-      border: 1px solid #1a5f2a;
+      border: 1px solid #333;
     }
     .transfer-box { width: 70%; }
-    .tunai-box { width: 30%; }
+    .tunai-box { width: 30%; border-left: none; }
     
     .section-header {
       background: #1a5f2a;
@@ -184,14 +213,15 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       padding: 5px 8px;
       font-weight: bold;
       text-align: center;
+      border-bottom: 1px solid #333;
     }
     .section-content {
       display: flex;
     }
     .section-content > div {
       flex: 1;
-      padding: 6px;
-      border-right: 1px solid #1a5f2a;
+      padding: 8px;
+      border-right: 1px solid #333;
       text-align: center;
     }
     .section-content > div:last-child {
@@ -200,7 +230,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     .section-content .sub-label {
       font-size: 8pt;
       font-weight: bold;
-      margin-bottom: 3px;
+      margin-bottom: 5px;
     }
     .section-content .sub-value {
       min-height: 20px;
@@ -208,13 +238,13 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     }
     
     .tunai-content {
-      padding: 6px;
+      padding: 8px;
       text-align: center;
     }
     .tunai-content .sub-label {
       font-size: 8pt;
       font-weight: bold;
-      margin-bottom: 3px;
+      margin-bottom: 5px;
     }
     .tunai-content .sub-value {
       min-height: 20px;
@@ -223,29 +253,43 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     
     .signature-section {
       display: flex;
-      border: 1px solid #1a5f2a;
+      border: 1px solid #333;
       margin-bottom: 15px;
     }
     .signature-box {
       flex: 1;
       text-align: center;
-      padding: 8px;
-      border-right: 1px solid #1a5f2a;
+      border-right: 1px solid #333;
     }
     .signature-box:last-child { border-right: none; }
     .signature-header {
       background: #c4a000;
       color: white;
-      padding: 5px;
+      padding: 6px;
       font-weight: bold;
-      margin: -8px -8px 0 -8px;
+      border-bottom: 1px solid #333;
     }
-    .signature-space {
-      height: 50px;
+    .signature-content {
+      padding: 10px;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .signature-name {
+      font-weight: bold;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+    .signature-line {
+      border-bottom: 1px solid #333;
+      width: 80%;
+      margin: 0 auto;
+      margin-bottom: 5px;
     }
     .signature-date {
       font-size: 8pt;
-      margin-top: 5px;
+      margin-top: auto;
     }
     
     .footer {
@@ -299,69 +343,67 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       </div>
       <div class="doc-info">
         <div class="doc-title">PENGAJUAN DANA</div>
-        <table class="doc-info-table">
-          <tr>
-            <td class="label">No.</td>
-            <td>: ${escapeHtml(docNumber)}</td>
-          </tr>
-          <tr>
-            <td class="label">Date</td>
-            <td>: ${createdDate}</td>
-          </tr>
-        </table>
+        <div class="doc-info-box">
+          <table>
+            <tr>
+              <td class="label">No.</td>
+              <td class="value">: ${escapeHtml(docNumber)}</td>
+            </tr>
+            <tr>
+              <td class="label">Date</td>
+              <td class="value">: ${createdDate}</td>
+            </tr>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div class="info-section" style="margin-bottom: 5px;">
+    <div class="category-section">
+      <div class="category-row">
+        <span class="category-label">Kategori Biaya</span>
+        <span class="category-colon">:</span>
+        <span class="category-value">${safeCategoryName}</span>
+      </div>
+      <div class="category-row">
+        <span class="category-label">Budget Division</span>
+        <span class="category-colon">:</span>
+        <span class="category-value">${divisionDisplay}</span>
+      </div>
+    </div>
+
+    <div class="info-section">
       <div class="info-left">
         <div class="info-item">
-          <span class="info-label">Kategori Biaya</span>
+          <span class="info-label">Pemohon</span>
           <span class="info-colon">:</span>
-          <span class="info-value">${safeCategoryName}</span>
+          <span class="info-value">${safeRequesterName}</span>
         </div>
         <div class="info-item">
-          <span class="info-label">Budget Division</span>
+          <span class="info-label">Vendor/Penerima</span>
           <span class="info-colon">:</span>
-          <span class="info-value">${safeDivisionName} (${safeDivisionCode})</span>
+          <span class="info-value">${safeVendor}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Reff No (INV/Nota/Resi)</span>
+          <span class="info-colon">:</span>
+          <span class="info-value">${escapeHtml(reffNo)}</span>
         </div>
       </div>
-    </div>
-
-    <div class="green-section">
-      <div class="info-section" style="margin: 0;">
-        <div class="info-left">
-          <div class="info-item">
-            <span class="info-label">Pemohon</span>
-            <span class="info-colon">:</span>
-            <span class="info-value">${safeRequesterName}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Vendor/Penerima</span>
-            <span class="info-colon">:</span>
-            <span class="info-value">${safeVendor}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Reff No (INV/Nota/Resi)</span>
-            <span class="info-colon">:</span>
-            <span class="info-value">${escapeHtml(reffNo)}</span>
-          </div>
+      <div class="info-right">
+        <div class="info-item">
+          <span class="info-label">Payment Due Date</span>
+          <span class="info-colon">:</span>
+          <span class="info-value">${neededDate}</span>
         </div>
-        <div class="info-right">
-          <div class="info-item">
-            <span class="info-label">Payment Due Date</span>
-            <span class="info-colon">:</span>
-            <span class="info-value">${neededDate}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Sumber Dana</span>
-            <span class="info-colon">:</span>
-            <span class="info-value">${safeFundingSourceName}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Metode Pembayaran</span>
-            <span class="info-colon">:</span>
-            <span class="info-value" style="text-transform: capitalize;">${safePaymentMethod}</span>
-          </div>
+        <div class="info-item">
+          <span class="info-label">Sumber Dana</span>
+          <span class="info-colon">:</span>
+          <span class="info-value">${safeFundingSourceName}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Metode Pembayaran</span>
+          <span class="info-colon">:</span>
+          <span class="info-value" style="text-transform: capitalize;">${safePaymentMethod}</span>
         </div>
       </div>
     </div>
@@ -378,7 +420,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       <tbody>
         <tr>
           <td class="num">1</td>
-          <td>${safeDescription}</td>
+          <td class="description">${safeDescription}</td>
           <td class="amount">Rp. ${formatCurrency(nilaiPengajuan)}</td>
           <td class="amount">Rp. ${formatCurrency(nilaiApproved)}</td>
         </tr>
@@ -415,18 +457,32 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     <div class="signature-section">
       <div class="signature-box">
         <div class="signature-header">Pemohon</div>
-        <div class="signature-space"></div>
-        <div class="signature-date">Date: ___________</div>
+        <div class="signature-content">
+          <div class="signature-name">&nbsp;</div>
+          <div class="signature-date">Date: ___________</div>
+        </div>
       </div>
       <div class="signature-box">
         <div class="signature-header">Mengetahui</div>
-        <div class="signature-space"></div>
-        <div class="signature-date">Date: ___________</div>
+        <div class="signature-content">
+          <div class="signature-name">&nbsp;</div>
+          <div class="signature-date">Date: ___________</div>
+        </div>
       </div>
       <div class="signature-box">
         <div class="signature-header">Menyetujui</div>
-        <div class="signature-space"></div>
-        <div class="signature-date">Date: ___________</div>
+        <div class="signature-content">
+          ${safeApproverName ? `
+            <div class="signature-name" style="margin-top: 30px;">
+              <div class="signature-line"></div>
+              ${safeApproverName}
+            </div>
+            <div class="signature-date">Date: ${approvedDate || '___________'}</div>
+          ` : `
+            <div class="signature-name">&nbsp;</div>
+            <div class="signature-date">Date: ___________</div>
+          `}
+        </div>
       </div>
     </div>
 

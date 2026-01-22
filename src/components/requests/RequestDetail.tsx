@@ -593,6 +593,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     division: request.divisions as any,
                     category: request.cost_categories as any,
                     requester: request.requester as any,
+                    approver: request.approver as any,
                     funding_source: request.funding_sources as any,
                   });
                   setIsPDFPreviewOpen(true);

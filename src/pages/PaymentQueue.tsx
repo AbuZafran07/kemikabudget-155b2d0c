@@ -282,6 +282,17 @@ const PaymentQueue = () => {
       .eq('id', data.requester_id)
       .single();
 
+    // Get approver profile if approved
+    let approverProfile = null;
+    if (data.approved_by) {
+      const { data: approver } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', data.approved_by)
+        .single();
+      approverProfile = approver;
+    }
+
     // Get attachments
     const { data: attachments } = await supabase
       .from('request_attachments')
@@ -304,6 +315,7 @@ const PaymentQueue = () => {
       division: data.division as any,
       category: data.category as any,
       requester: profile || undefined,
+      approver: approverProfile,
       funding_source: data.funding_source as any,
       attachments: attachments || [],
     };
