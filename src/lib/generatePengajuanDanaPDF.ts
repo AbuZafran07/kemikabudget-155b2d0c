@@ -491,7 +491,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     <div class="approved-signature-section">
       <div class="approved-signature-header">Menyetujui</div>
       <div class="approved-signature-content">
-        <div class="approved-check">✓ APPROVED</div>
+        <div class="approved-check">&#10004; APPROVED</div>
         <div class="approved-by"><strong>Approved by:</strong> ${safeApproverName}</div>
         <div class="approved-at"><strong>Approved at:</strong> ${approvedDate}</div>
       </div>
