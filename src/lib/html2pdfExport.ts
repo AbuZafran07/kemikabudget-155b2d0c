@@ -1,12 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import html2pdf from "html2pdf.js";
-
-type JsPdfOrientation = "portrait" | "landscape";
 
 export async function exportStyledHtmlToPdf(params: {
   html: string;
   fileName: string;
   marginMm?: number;
-  orientation?: JsPdfOrientation;
+  orientation?: "portrait" | "landscape";
 }): Promise<void> {
   const { html, fileName, marginMm = 10, orientation = "portrait" } = params;
 
@@ -22,8 +21,7 @@ export async function exportStyledHtmlToPdf(params: {
   }
 
   // Render the content in the main document so html2canvas can reliably capture it.
-  // We keep it very close to the viewport (not 10000px away) to avoid browser
-  // optimizations that can result in blank renders on some devices.
+  // We keep it visible but off-screen to avoid browser optimizations that can result in blank renders.
   const wrapper = document.createElement("div");
   wrapper.style.position = "fixed";
   wrapper.style.left = "-200vw";
@@ -52,7 +50,10 @@ export async function exportStyledHtmlToPdf(params: {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-    const opt: any = {
+    // Create worker and configure - using any to bypass html2pdf.js typing issues
+    const worker = html2pdf();
+    
+    (worker as any).set({
       margin: marginMm,
       filename: fileName,
       image: { type: "jpeg", quality: 0.98 },
@@ -66,11 +67,11 @@ export async function exportStyledHtmlToPdf(params: {
       jsPDF: {
         unit: "mm",
         format: "a4",
-        orientation,
+        orientation: orientation,
       },
-    };
+    });
 
-    await html2pdf().set(opt).from(wrapper).save();
+    await worker.from(wrapper).save();
   } finally {
     if (injectedStyle?.parentNode) injectedStyle.parentNode.removeChild(injectedStyle);
     if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
