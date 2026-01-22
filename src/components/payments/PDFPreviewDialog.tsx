@@ -7,7 +7,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, X, Eye } from "lucide-react";
+import { Printer, X, Eye, Download } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { 
   generatePengajuanDanaHTML, 
@@ -73,6 +73,28 @@ export function PDFPreviewDialog({
     }
   };
 
+  const handleDownload = () => {
+    if (data) {
+      const logo = externalLogo || logoBase64;
+      const html = generatePengajuanDanaHTML(data, logo);
+      // Remove preview actions from download
+      const cleanHtml = html.replace(
+        /<div class="preview-actions no-print">[\s\S]*?<\/div>/,
+        ''
+      );
+      
+      const blob = new Blob([cleanHtml], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Pengajuan_Budget_${data.request_number.replace(/\//g, '_')}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
   if (!data) return null;
 
   return (
@@ -97,6 +119,10 @@ export function PDFPreviewDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4 mr-2" />
             {language === 'id' ? 'Tutup' : 'Close'}
+          </Button>
+          <Button variant="outline" onClick={handleDownload} className="gap-2">
+            <Download className="h-4 w-4" />
+            {language === 'id' ? 'Download' : 'Download'}
           </Button>
           <Button onClick={handlePrint} className="gap-2">
             <Printer className="h-4 w-4" />
