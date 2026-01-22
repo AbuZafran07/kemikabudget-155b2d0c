@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,7 +31,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import StatusBadge from '@/components/common/StatusBadge';
 import { PDFPreviewDialog } from '@/components/payments/PDFPreviewDialog';
-import { PengajuanDanaData } from '@/lib/generatePengajuanDanaPDF';
+import { PengajuanDanaData, generatePengajuanDanaHTML } from '@/lib/generatePengajuanDanaPDF';
+import { toast } from 'sonner';
+import html2pdf from 'html2pdf.js';
 
 interface RequestDetailProps {
   requestId: string;
@@ -93,7 +95,26 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
   const { role } = useAuth();
   const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
   const [pdfPreviewData, setPdfPreviewData] = useState<PengajuanDanaData | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [logoBase64, setLogoBase64] = useState<string>('');
 
+  // Load logo as base64 on mount
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const response = await fetch('/lovable-uploads/cb7d852a-00a6-461a-ad8f-806dbf150cf5.png');
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setLogoBase64(reader.result as string);
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error('Failed to load logo:', error);
+      }
+    };
+    loadLogo();
+  }, []);
   // Mask account number for non-finance/non-super_admin users
   const maskAccountNumber = (account: string | null): string => {
     if (!account) return '-';
@@ -285,36 +306,129 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
             <p className="text-sm text-muted-foreground">
               Dibuat {format(new Date(request.created_at), 'dd MMM yyyy', { locale: localeId })}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => {
-                setPdfPreviewData({
-                  request_number: request.request_number,
-                  description: request.description,
-                  amount: request.amount,
-                  approved_amount: request.approved_amount,
-                  vendor: request.vendor,
-                  payment_method: request.payment_method,
-                  beneficiary_name: request.beneficiary_name,
-                  beneficiary_bank: request.beneficiary_bank,
-                  beneficiary_account: request.beneficiary_account,
-                  needed_date: request.needed_date,
-                  created_at: request.created_at,
-                  approved_at: request.approved_at,
-                  division: request.divisions as any,
-                  category: request.cost_categories as any,
-                  requester: request.requester as any,
-                  approver: (request as any).approver || null,
-                  funding_source: request.funding_sources as any,
-                });
-                setIsPDFPreviewOpen(true);
-              }}
-            >
-              <Eye className="h-4 w-4" />
-              Cetak PDF
-            </Button>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  setPdfPreviewData({
+                    request_number: request.request_number,
+                    description: request.description,
+                    amount: request.amount,
+                    approved_amount: request.approved_amount,
+                    vendor: request.vendor,
+                    payment_method: request.payment_method,
+                    beneficiary_name: request.beneficiary_name,
+                    beneficiary_bank: request.beneficiary_bank,
+                    beneficiary_account: request.beneficiary_account,
+                    needed_date: request.needed_date,
+                    created_at: request.created_at,
+                    approved_at: request.approved_at,
+                    division: request.divisions as any,
+                    category: request.cost_categories as any,
+                    requester: request.requester as any,
+                    approver: (request as any).approver || null,
+                    funding_source: request.funding_sources as any,
+                  });
+                  setIsPDFPreviewOpen(true);
+                }}
+              >
+                <Eye className="h-4 w-4" />
+                Preview
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2"
+                disabled={isDownloading}
+                onClick={async () => {
+                  setIsDownloading(true);
+                  try {
+                    const pdfData: PengajuanDanaData = {
+                      request_number: request.request_number,
+                      description: request.description,
+                      amount: request.amount,
+                      approved_amount: request.approved_amount,
+                      vendor: request.vendor,
+                      payment_method: request.payment_method,
+                      beneficiary_name: request.beneficiary_name,
+                      beneficiary_bank: request.beneficiary_bank,
+                      beneficiary_account: request.beneficiary_account,
+                      needed_date: request.needed_date,
+                      created_at: request.created_at,
+                      approved_at: request.approved_at,
+                      division: request.divisions as any,
+                      category: request.cost_categories as any,
+                      requester: request.requester as any,
+                      approver: (request as any).approver || null,
+                      funding_source: request.funding_sources as any,
+                    };
+                    
+                    const html = generatePengajuanDanaHTML(pdfData, logoBase64);
+                    const cleanHtml = html.replace(
+                      /<div class="preview-actions no-print">[\s\S]*?<\/div>/,
+                      ''
+                    );
+                    
+                    const doc = new DOMParser().parseFromString(cleanHtml, 'text/html');
+                    const styleEl = doc.querySelector('style');
+                    const containerEl = doc.querySelector('.container');
+                    
+                    if (!containerEl) {
+                      throw new Error('Could not find .container element in PDF HTML');
+                    }
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.style.position = 'fixed';
+                    wrapper.style.left = '-10000px';
+                    wrapper.style.top = '0';
+                    wrapper.style.pointerEvents = 'none';
+                    wrapper.style.zIndex = '-1';
+                    
+                    if (styleEl) wrapper.appendChild(styleEl.cloneNode(true));
+                    wrapper.appendChild(containerEl.cloneNode(true));
+                    document.body.appendChild(wrapper);
+                    
+                    const fileName = `Pengajuan_Budget_${request.request_number.replace(/\//g, '_')}.pdf`;
+                    
+                    const opt = {
+                      margin: 10,
+                      filename: fileName,
+                      image: { type: 'jpeg', quality: 0.98 },
+                      html2canvas: { 
+                        scale: 2, 
+                        useCORS: true,
+                        logging: false,
+                      },
+                      jsPDF: { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'portrait' as const
+                      }
+                    };
+                    
+                    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+                    await html2pdf().set(opt).from(wrapper).save();
+                    
+                    document.body.removeChild(wrapper);
+                    toast.success('PDF berhasil didownload');
+                  } catch (error) {
+                    console.error('PDF download error:', error);
+                    toast.error('Gagal mengunduh PDF');
+                  } finally {
+                    setIsDownloading(false);
+                  }
+                }}
+              >
+                {isDownloading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Download PDF
+              </Button>
+            </div>
           </div>
         </div>
       </div>
