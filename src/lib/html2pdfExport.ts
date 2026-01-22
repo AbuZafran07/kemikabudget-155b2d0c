@@ -1,38 +1,36 @@
+// @ts-nocheck
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import html2pdfImport from "html2pdf.js";
-
-// Force `any` because html2pdf.js typings are incomplete/inconsistent across versions
-const html2pdf: any = html2pdfImport;
+/**
+ * Centralized PDF export helper using html2pdf.js
+ * Uses @ts-nocheck because html2pdf.js typings are incomplete/inconsistent
+ */
+import html2pdf from "html2pdf.js";
 
 function waitForImages(root: HTMLElement, timeoutMs = 5000): Promise<void> {
   const imgs = Array.from(root.querySelectorAll("img"));
   if (imgs.length === 0) return Promise.resolve();
 
-  const all: Promise<void> = Promise.all(
+  const loadPromise = Promise.all(
     imgs.map(
       (img) =>
         new Promise<void>((resolve) => {
-          // Already loaded (or failed)
           if (img.complete) return resolve();
-          const cleanup = () => {
+          const onDone = () => {
             img.removeEventListener("load", onDone);
             img.removeEventListener("error", onDone);
-          };
-          const onDone = () => {
-            cleanup();
             resolve();
           };
           img.addEventListener("load", onDone);
           img.addEventListener("error", onDone);
         })
     )
-  ).then(() => undefined);
+  ).then(() => {});
 
   const timeout = new Promise<void>((resolve) => {
     window.setTimeout(resolve, timeoutMs);
   });
 
-  return Promise.race([all, timeout]);
+  return Promise.race([loadPromise, timeout]);
 }
 
 export async function exportStyledHtmlToPdf(params: {
@@ -54,31 +52,29 @@ export async function exportStyledHtmlToPdf(params: {
     throw new Error("Could not find export container in PDF HTML");
   }
 
-  // Render the content in the main document so html2canvas can reliably capture it.
-  // We keep it visible but off-screen to avoid browser optimizations that can result in blank renders.
+  // Create off-screen wrapper for html2canvas to capture
   const wrapper = document.createElement("div");
-  wrapper.style.position = "fixed";
-  wrapper.style.left = "0";
-  // Keep it just outside the viewport to avoid flashes while still being painted.
-  wrapper.style.transform = "translate3d(-120%, 0, 0)";
-  wrapper.style.willChange = "transform";
-  wrapper.style.top = "0";
-  wrapper.style.width = "210mm";
-  wrapper.style.height = "auto";
-  wrapper.style.overflow = "visible";
-  wrapper.style.background = "#fff";
-  wrapper.style.pointerEvents = "none";
-  // IMPORTANT: Don't use negative z-index; some browsers won't paint it (causes blank PDF).
-  wrapper.style.zIndex = "1";
+  wrapper.style.cssText = `
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    height: auto;
+    overflow: visible;
+    background: #fff;
+    pointer-events: none;
+    z-index: 1;
+    transform: translate3d(-120%, 0, 0);
+    will-change: transform;
+  `;
 
   const clonedContainer = containerEl.cloneNode(true) as HTMLElement;
   wrapper.appendChild(clonedContainer);
   document.body.appendChild(wrapper);
 
-  // IMPORTANT: Put the <style> into <head> (not inside the wrapper <div>),
-  // to ensure consistent style application across browsers.
+  // Inject styles into document head for consistent rendering
   let injectedStyle: HTMLStyleElement | null = null;
-  if (styleEl && styleEl.textContent) {
+  if (styleEl?.textContent) {
     injectedStyle = document.createElement("style");
     injectedStyle.setAttribute("data-pdf-export", "1");
     injectedStyle.textContent = styleEl.textContent;
@@ -86,26 +82,28 @@ export async function exportStyledHtmlToPdf(params: {
   }
 
   try {
-    // Force layout (avoid 0x0 capture in some browsers)
+    // Force layout calculation
     void wrapper.offsetHeight;
 
-    // Wait for web fonts when supported
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (document as any).fonts?.ready?.catch(() => undefined);
+    // Wait for fonts
+    if (document.fonts?.ready) {
+      await document.fonts.ready.catch(() => {});
+    }
 
-    // Wait for images (logo) to load inside the cloned DOM
+    // Wait for images to load
     await waitForImages(wrapper);
 
-    // Allow the browser to layout and paint before rendering to canvas.
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    // Double rAF to ensure browser has painted
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
+    // Get actual dimensions
     const rect = wrapper.getBoundingClientRect();
 
-    // Create worker and configure - force any to bypass html2pdf.js typing issues
-    const worker: any = html2pdf();
+    // Configure and run html2pdf
+    const worker = html2pdf();
     
-    const options: any = {
+    worker.set({
       margin: marginMm,
       filename: fileName,
       image: { type: "jpeg", quality: 0.98 },
@@ -114,8 +112,8 @@ export async function exportStyledHtmlToPdf(params: {
         useCORS: true,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: Math.ceil(rect.width || 0) || undefined,
-        windowHeight: Math.ceil(rect.height || 0) || undefined,
+        windowWidth: Math.max(rect.width, 800),
+        windowHeight: Math.max(rect.height, 600),
         letterRendering: true,
         logging: false,
         backgroundColor: "#ffffff",
@@ -125,15 +123,15 @@ export async function exportStyledHtmlToPdf(params: {
         format: "a4",
         orientation: orientation,
       },
-    };
-
-    // Fully bypass typing from html2pdf.js by extracting the function as any
-    const setFn: any = worker.set;
-    setFn.call(worker, options);
+    });
 
     await worker.from(wrapper).save();
   } finally {
-    if (injectedStyle?.parentNode) injectedStyle.parentNode.removeChild(injectedStyle);
-    if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+    if (injectedStyle?.parentNode) {
+      injectedStyle.parentNode.removeChild(injectedStyle);
+    }
+    if (wrapper.parentNode) {
+      wrapper.parentNode.removeChild(wrapper);
+    }
   }
 }
