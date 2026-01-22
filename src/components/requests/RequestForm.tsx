@@ -579,19 +579,18 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           </div>
         </div>
 
-        {/* Vendor & Beneficiary Name - Side by Side */}
+        {/* Vendor & Reference Number - Side by Side */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Vendor/Penerima</Label>
             <Input placeholder="Nama vendor/Penerima/Customer" {...form.register("vendor")} />
           </div>
 
-        {/* Reference Number & PO Number - Side by Side */}
-        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Reff No (INV/Nota/Resi)</Label>
             <Input placeholder="Nomor referensi" {...form.register("notes")} />
           </div>
+        </div>
 
         {/* Funding Source & Needed Date */}
         <div className="grid grid-cols-2 gap-4">
