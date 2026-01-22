@@ -32,8 +32,8 @@ import { Separator } from '@/components/ui/separator';
 import StatusBadge from '@/components/common/StatusBadge';
 import { PDFPreviewDialog } from '@/components/payments/PDFPreviewDialog';
 import { PengajuanDanaData, generatePengajuanDanaHTML } from '@/lib/generatePengajuanDanaPDF';
+import { exportStyledHtmlToPdf } from '@/lib/html2pdfExport';
 import { toast } from 'sonner';
-import html2pdf from 'html2pdf.js';
 
 interface RequestDetailProps {
   requestId: string;
@@ -371,48 +371,15 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                       /<div class="preview-actions no-print">[\s\S]*?<\/div>/,
                       ''
                     );
-                    
-                    const doc = new DOMParser().parseFromString(cleanHtml, 'text/html');
-                    const styleEl = doc.querySelector('style');
-                    const containerEl = doc.querySelector('.container');
-                    
-                    if (!containerEl) {
-                      throw new Error('Could not find .container element in PDF HTML');
-                    }
-                    
-                    const wrapper = document.createElement('div');
-                    wrapper.style.position = 'fixed';
-                    wrapper.style.left = '-10000px';
-                    wrapper.style.top = '0';
-                    wrapper.style.pointerEvents = 'none';
-                    wrapper.style.zIndex = '-1';
-                    
-                    if (styleEl) wrapper.appendChild(styleEl.cloneNode(true));
-                    wrapper.appendChild(containerEl.cloneNode(true));
-                    document.body.appendChild(wrapper);
-                    
+
                     const fileName = `Pengajuan_Budget_${request.request_number.replace(/\//g, '_')}.pdf`;
-                    
-                    const opt = {
-                      margin: 10,
-                      filename: fileName,
-                      image: { type: 'jpeg' as const, quality: 0.98 },
-                      html2canvas: { 
-                        scale: 2, 
-                        useCORS: true,
-                        logging: false,
-                      },
-                      jsPDF: { 
-                        unit: 'mm', 
-                        format: 'a4', 
-                        orientation: 'portrait' as const
-                      }
-                    };
-                    
-                    await new Promise<void>((resolve) => setTimeout(resolve, 50));
-                    await html2pdf().set(opt).from(wrapper).save();
-                    
-                    document.body.removeChild(wrapper);
+
+                    await exportStyledHtmlToPdf({
+                      html: cleanHtml,
+                      fileName,
+                      marginMm: 10,
+                      orientation: 'portrait',
+                    });
                     toast.success('PDF berhasil didownload');
                   } catch (error) {
                     console.error('PDF download error:', error);
