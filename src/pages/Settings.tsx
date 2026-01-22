@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import {
   Settings as SettingsIcon,
   Clock,
@@ -19,6 +20,15 @@ import { OtpSetupCard } from '@/components/settings/OtpSetupCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+// Zod schema for localStorage validation
+const AppSettingsSchema = z.object({
+  approval_sla_days: z.number().int().min(1).max(30),
+  payment_sla_days: z.number().int().min(1).max(30),
+  high_value_threshold: z.number().min(0),
+  require_invoice_before_pay: z.boolean(),
+  require_receipt_before_settle: z.boolean(),
+});
 
 interface AppSettings {
   approval_sla_days: number;
@@ -46,16 +56,33 @@ const Settings = () => {
   
   const isSuperAdmin = role === 'super_admin';
 
-  // In a real app, this would fetch from a settings table
-  // For now, we'll use localStorage as a simple persistence
+  // Fetch settings with zod validation
   const { isLoading } = useQuery({
     queryKey: ['app-settings'],
     queryFn: async () => {
       const stored = localStorage.getItem('app_settings');
       if (stored) {
-        const parsed = JSON.parse(stored);
-        setSettings(parsed);
-        return parsed;
+        try {
+          const parsed = JSON.parse(stored);
+          const result = AppSettingsSchema.safeParse(parsed);
+          if (result.success) {
+            // Spread with defaults to ensure all required fields are present
+            const validatedSettings: AppSettings = {
+              ...defaultSettings,
+              ...result.data,
+            };
+            setSettings(validatedSettings);
+            return validatedSettings;
+          } else {
+            // Invalid data - clear corrupted storage and use defaults
+            localStorage.removeItem('app_settings');
+            console.warn('Invalid app_settings in localStorage, cleared corrupted data');
+          }
+        } catch {
+          // JSON parse error - clear corrupted storage
+          localStorage.removeItem('app_settings');
+          console.warn('Corrupted app_settings in localStorage, cleared');
+        }
       }
       return defaultSettings;
     },

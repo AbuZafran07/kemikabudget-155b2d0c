@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +53,28 @@ export interface RequestFormData {
   notes: string;
   division_id?: string; // Optional: if provided, uses this division instead of user's division
 }
+
+// Zod schema for draft validation - matches RequestFormData structure
+const DraftDataSchema = z.object({
+  category_id: z.string().optional(),
+  description: z.string().optional(),
+  vendor: z.string().optional(),
+  amount: z.number().min(0).optional(),
+  needed_date: z.string().optional(),
+  funding_source_id: z.string().optional(),
+  payment_method: z.string().optional(),
+  beneficiary_name: z.string().optional(),
+  beneficiary_bank: z.string().optional(),
+  beneficiary_account: z.string().optional(),
+  beneficiary_email: z.string().email().optional().or(z.literal('')),
+  notes: z.string().optional(),
+  division_id: z.string().uuid().optional(),
+});
+
+const DraftStorageSchema = z.object({
+  data: DraftDataSchema,
+  timestamp: z.number().int().positive(),
+});
 
 const AUTOSAVE_INTERVAL = 15000; // 15 seconds
 const DRAFT_STORAGE_KEY = 'request_draft';
@@ -302,7 +325,19 @@ export function useRequests() {
       const stored = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (!stored) return null;
       
-      const { data, timestamp } = JSON.parse(stored);
+      // Parse and validate with zod schema
+      const parsed = JSON.parse(stored);
+      const result = DraftStorageSchema.safeParse(parsed);
+      
+      if (!result.success) {
+        // Invalid data structure - clear corrupted storage
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        console.warn('Invalid request draft in localStorage, cleared corrupted data');
+        return null;
+      }
+      
+      const { data, timestamp } = result.data;
+      
       // Check if draft is less than 24 hours old
       if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
         clearDraft();
@@ -310,6 +345,9 @@ export function useRequests() {
       }
       return data;
     } catch {
+      // JSON parse error - clear corrupted storage
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      console.warn('Corrupted request draft in localStorage, cleared');
       return null;
     }
   }, []);
