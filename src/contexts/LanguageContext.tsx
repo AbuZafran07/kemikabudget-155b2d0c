@@ -701,10 +701,24 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+// Type guard for valid language values
+const isValidLanguage = (value: unknown): value is Language => {
+  return value === 'id' || value === 'en';
+};
+
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem('app-language');
-    return (saved as Language) || 'id';
+    // Validate saved language to prevent invalid values from corrupted storage
+    if (isValidLanguage(saved)) {
+      return saved;
+    }
+    // Invalid value - clear and use default
+    if (saved !== null) {
+      localStorage.removeItem('app-language');
+      console.warn('Invalid app-language in localStorage, cleared corrupted data');
+    }
+    return 'id';
   });
 
   const setLanguage = (lang: Language) => {
