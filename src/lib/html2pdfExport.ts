@@ -1,6 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import html2pdf from "html2pdf.js";
 
+function waitForImages(root: HTMLElement, timeoutMs = 5000): Promise<void> {
+  const imgs = Array.from(root.querySelectorAll("img"));
+  if (imgs.length === 0) return Promise.resolve();
+
+  const all: Promise<void> = Promise.all(
+    imgs.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          // Already loaded (or failed)
+          if (img.complete) return resolve();
+          const cleanup = () => {
+            img.removeEventListener("load", onDone);
+            img.removeEventListener("error", onDone);
+          };
+          const onDone = () => {
+            cleanup();
+            resolve();
+          };
+          img.addEventListener("load", onDone);
+          img.addEventListener("error", onDone);
+        })
+    )
+  ).then(() => undefined);
+
+  const timeout = new Promise<void>((resolve) => {
+    window.setTimeout(resolve, timeoutMs);
+  });
+
+  return Promise.race([all, timeout]);
+}
+
 export async function exportStyledHtmlToPdf(params: {
   html: string;
   fileName: string;
@@ -29,7 +60,8 @@ export async function exportStyledHtmlToPdf(params: {
   wrapper.style.width = "210mm";
   wrapper.style.background = "#fff";
   wrapper.style.pointerEvents = "none";
-  wrapper.style.zIndex = "-1";
+  // IMPORTANT: Don't use negative z-index; some browsers won't paint it (causes blank PDF).
+  wrapper.style.zIndex = "1";
 
   const clonedContainer = containerEl.cloneNode(true) as HTMLElement;
   wrapper.appendChild(clonedContainer);
@@ -46,6 +78,16 @@ export async function exportStyledHtmlToPdf(params: {
   }
 
   try {
+    // Force layout (avoid 0x0 capture in some browsers)
+    void wrapper.offsetHeight;
+
+    // Wait for web fonts when supported
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (document as any).fonts?.ready?.catch(() => undefined);
+
+    // Wait for images (logo) to load inside the cloned DOM
+    await waitForImages(wrapper);
+
     // Allow the browser to layout and paint before rendering to canvas.
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -53,13 +95,15 @@ export async function exportStyledHtmlToPdf(params: {
     // Create worker and configure - using any to bypass html2pdf.js typing issues
     const worker = html2pdf();
     
-    (worker as any).set({
+    const options: any = {
       margin: marginMm,
       filename: fileName,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
         scale: 2,
         useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
         letterRendering: true,
         logging: false,
         backgroundColor: "#ffffff",
@@ -69,7 +113,9 @@ export async function exportStyledHtmlToPdf(params: {
         format: "a4",
         orientation: orientation,
       },
-    });
+    };
+
+    (worker as any).set(options);
 
     await worker.from(wrapper).save();
   } finally {
