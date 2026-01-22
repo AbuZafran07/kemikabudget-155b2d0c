@@ -7,7 +7,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, X, Eye, Download } from "lucide-react";
+import { Printer, X, Eye, Download, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { 
   generatePengajuanDanaHTML, 
@@ -15,6 +15,7 @@ import {
   type PengajuanDanaData 
 } from "@/lib/generatePengajuanDanaPDF";
 import logoKemika from "@/assets/logo-kemika.png";
+import html2pdf from "html2pdf.js";
 
 interface PDFPreviewDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function PDFPreviewDialog({
   const { language } = useLanguage();
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [logoBase64, setLogoBase64] = useState<string>("");
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Load logo as base64 on mount
   useEffect(() => {
@@ -73,8 +75,11 @@ export function PDFPreviewDialog({
     }
   };
 
-  const handleDownload = () => {
-    if (data) {
+  const handleDownload = async () => {
+    if (!data) return;
+    
+    setIsDownloading(true);
+    try {
       const logo = externalLogo || logoBase64;
       const html = generatePengajuanDanaHTML(data, logo);
       // Remove preview actions from download
@@ -83,15 +88,51 @@ export function PDFPreviewDialog({
         ''
       );
       
-      const blob = new Blob([cleanHtml], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Pengajuan_Budget_${data.request_number.replace(/\//g, '_')}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Create a temporary container
+      const container = document.createElement('div');
+      container.innerHTML = cleanHtml;
+      
+      // Extract just the body content
+      const bodyContent = container.querySelector('.container');
+      if (!bodyContent) {
+        throw new Error('Could not find container element');
+      }
+      
+      // Create wrapper with styles
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = cleanHtml;
+      document.body.appendChild(wrapper);
+      wrapper.style.position = 'absolute';
+      wrapper.style.left = '-9999px';
+      wrapper.style.top = '0';
+      
+      const fileName = `Pengajuan_Budget_${data.request_number.replace(/\//g, '_')}.pdf`;
+      
+      const opt = {
+        margin: 10,
+        filename: fileName,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          letterRendering: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait' 
+        }
+      };
+      
+      await html2pdf().set(opt).from(wrapper).save();
+      
+      // Cleanup
+      document.body.removeChild(wrapper);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -120,9 +161,18 @@ export function PDFPreviewDialog({
             <X className="h-4 w-4 mr-2" />
             {language === 'id' ? 'Tutup' : 'Close'}
           </Button>
-          <Button variant="outline" onClick={handleDownload} className="gap-2">
-            <Download className="h-4 w-4" />
-            {language === 'id' ? 'Download' : 'Download'}
+          <Button 
+            variant="outline" 
+            onClick={handleDownload} 
+            className="gap-2"
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {language === 'id' ? 'Download PDF' : 'Download PDF'}
           </Button>
           <Button onClick={handlePrint} className="gap-2">
             <Printer className="h-4 w-4" />
