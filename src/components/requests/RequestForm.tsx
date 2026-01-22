@@ -586,24 +586,12 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
             <Input placeholder="Nama vendor/Penerima/Customer" {...form.register("vendor")} />
           </div>
 
-          <div className="space-y-2">
-            <Label>Nama Bank</Label>
-            <Input placeholder="BCA/Mandiri/BRI" {...form.register("beneficiary_name")} />
-          </div>
-        </div>
-
         {/* Reference Number & PO Number - Side by Side */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Reff No (INV/Nota/Resi)</Label>
             <Input placeholder="Nomor referensi" {...form.register("notes")} />
           </div>
-
-          <div className="space-y-2">
-            <Label>No. Rekening</Label>
-            <Input placeholder="Nomor Rekening" />
-          </div>
-        </div>
 
         {/* Funding Source & Needed Date */}
         <div className="grid grid-cols-2 gap-4">
