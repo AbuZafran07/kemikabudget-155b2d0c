@@ -15,7 +15,7 @@ import {
   type PengajuanDanaData 
 } from "@/lib/generatePengajuanDanaPDF";
 import logoKemika from "@/assets/logo-kemika.png";
-import html2pdf from "html2pdf.js";
+import { exportStyledHtmlToPdf } from "@/lib/html2pdfExport";
 
 interface PDFPreviewDialogProps {
   open: boolean;
@@ -83,59 +83,14 @@ export function PDFPreviewDialog({
     
     setIsDownloading(true);
     try {
-      // Use the already-generated preview HTML (keeps content consistent)
-      const htmlForExport = previewHtml;
-      if (!htmlForExport) {
-        throw new Error('Preview HTML is empty');
-      }
-
-      // Parse full HTML document then export only the styled body content.
-      // This avoids blank PDFs caused by injecting <html>/<head> fragments into a <div>.
-      const doc = new DOMParser().parseFromString(htmlForExport, 'text/html');
-      const styleEl = doc.querySelector('style');
-      const containerEl = doc.querySelector('.container');
-      if (!containerEl) {
-        throw new Error('Could not find .container element in PDF HTML');
-      }
-
-      const wrapper = document.createElement('div');
-      // Keep it offscreen (not opacity:0) so html2canvas can still render it
-      wrapper.style.position = 'fixed';
-      wrapper.style.left = '-10000px';
-      wrapper.style.top = '0';
-      wrapper.style.pointerEvents = 'none';
-      wrapper.style.zIndex = '-1';
-
-      if (styleEl) wrapper.appendChild(styleEl.cloneNode(true));
-      wrapper.appendChild(containerEl.cloneNode(true));
-      document.body.appendChild(wrapper);
-      
       const fileName = `Pengajuan_Budget_${data.request_number.replace(/\//g, '_')}.pdf`;
-      
-      const opt = {
-        margin: 10,
-        filename: fileName,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          letterRendering: true,
-          logging: false
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait' as const
-        }
-      };
 
-      // Give the browser a tick to layout the hidden content before rendering.
-      await new Promise<void>((resolve) => setTimeout(resolve, 50));
-      
-      await html2pdf().set(opt).from(wrapper).save();
-      
-      // Cleanup
-      document.body.removeChild(wrapper);
+      await exportStyledHtmlToPdf({
+        html: previewHtml,
+        fileName,
+        marginMm: 10,
+        orientation: "portrait",
+      });
     } catch (error) {
       console.error('Failed to generate PDF:', error);
     } finally {
