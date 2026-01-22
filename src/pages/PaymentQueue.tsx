@@ -283,14 +283,21 @@ const PaymentQueue = () => {
       .single();
 
     // Get approver profile if approved
-    let approverProfile = null;
+    let approverProfile: { full_name: string } | null = null;
     if (data.approved_by) {
-      const { data: approver } = await supabase
-        .from('profiles')
+      // Use profiles_secure view which is accessible across roles
+      const { data: approver, error: approverError } = await supabase
+        .from('profiles_secure')
         .select('full_name')
         .eq('id', data.approved_by)
         .single();
-      approverProfile = approver;
+      
+      if (approver && approver.full_name) {
+        approverProfile = { full_name: approver.full_name };
+      }
+      if (approverError) {
+        console.warn('Could not fetch approver profile:', approverError);
+      }
     }
 
     // Get attachments
