@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, isLoading, hasRole } = useAuth();
+  const { user, isLoading, hasRoleOrHigher } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -26,7 +26,8 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && !hasRole(requiredRole)) {
+  // Use hasRoleOrHigher for route protection - allows higher roles to access lower-role pages
+  if (requiredRole && !hasRoleOrHigher(requiredRole)) {
     return <Navigate to="/dashboard" replace />;
   }
 

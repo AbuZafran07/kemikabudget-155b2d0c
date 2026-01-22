@@ -1174,6 +1174,14 @@ export type Database = {
         }
         Returns: Json
       }
+      decrypt_otp_secret: {
+        Args: { p_encrypted_secret: string; p_user_id: string }
+        Returns: string
+      }
+      encrypt_otp_secret: {
+        Args: { p_secret: string; p_user_id: string }
+        Returns: string
+      }
       get_funding_source_options: {
         Args: never
         Returns: {
