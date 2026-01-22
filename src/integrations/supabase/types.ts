@@ -1058,8 +1058,8 @@ export type Database = {
         Insert: {
           account_holder?: never
           account_number?: never
-          balance?: never
-          bank_name?: never
+          balance?: number | null
+          bank_name?: string | null
           code?: string | null
           created_at?: string | null
           id?: string | null
@@ -1071,8 +1071,8 @@ export type Database = {
         Update: {
           account_holder?: never
           account_number?: never
-          balance?: never
-          bank_name?: never
+          balance?: number | null
+          bank_name?: string | null
           code?: string | null
           created_at?: string | null
           id?: string | null
