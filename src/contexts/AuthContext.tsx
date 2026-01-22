@@ -25,7 +25,23 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   verifyOtp: (otp: string) => Promise<{ error: Error | null }>;
+  /**
+   * @deprecated Use hasRoleOrHigher() or hasRoleExact() instead for clarity
+   */
   hasRole: (requiredRole: AppRole) => boolean;
+  /**
+   * UI-ONLY: Checks if user has the required role OR HIGHER in hierarchy.
+   * super_admin > finance > admin > user
+   * Use for UI visibility decisions (showing/hiding menu items, buttons).
+   * Server-side uses exact role matching via has_role() RPC.
+   */
+  hasRoleOrHigher: (requiredRole: AppRole) => boolean;
+  /**
+   * Checks if user has EXACTLY the specified role.
+   * Mirrors server-side has_role() RPC behavior.
+   * Use when exact role matching is needed.
+   */
+  hasRoleExact: (requiredRole: AppRole) => boolean;
   canAccessDivision: (divisionId: string) => boolean;
 }
 
@@ -229,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * CLIENT-SIDE ROLE CHECK - FOR UI DISPLAY ONLY
+   * Uses role hierarchy: super_admin > finance > admin > user
    * 
    * ⚠️ SECURITY WARNING: This function is used ONLY for UI rendering decisions
    * (e.g., showing/hiding menu items, buttons). It does NOT provide security!
@@ -238,17 +255,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * - The has_role() PostgreSQL function which uses EXACT role matching
    * - Edge function authorization checks
    * 
-   * The hierarchy here (super_admin > finance > admin > user) means higher roles
-   * inherit UI access of lower roles. This is intentional for UI convenience but
-   * server-side RLS uses exact role matching for security.
-   * 
-   * NEVER rely on this function for security-critical decisions!
+   * @deprecated Use hasRoleOrHigher() for clarity about hierarchy behavior
    */
   const hasRole = (requiredRole: AppRole): boolean => {
+    return hasRoleOrHigher(requiredRole);
+  };
+
+  /**
+   * CLIENT-SIDE ROLE HIERARCHY CHECK - FOR UI DISPLAY ONLY
+   * 
+   * Checks if user has the required role OR a higher role in the hierarchy:
+   * super_admin (4) > finance (3) > admin (2) > user (1)
+   * 
+   * Example: hasRoleOrHigher('finance') returns true for super_admin and finance
+   * 
+   * ⚠️ SECURITY WARNING: Use ONLY for UI rendering decisions!
+   * Server-side uses EXACT role matching via has_role() RPC.
+   */
+  const hasRoleOrHigher = (requiredRole: AppRole): boolean => {
     if (!role) return false;
     
-    // Role hierarchy for UI display purposes only
-    // Server-side uses exact role matching via has_role() RPC
     const roleHierarchy: Record<AppRole, number> = {
       super_admin: 4,
       finance: 3,
@@ -257,6 +283,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return roleHierarchy[role] >= roleHierarchy[requiredRole];
+  };
+
+  /**
+   * CLIENT-SIDE EXACT ROLE CHECK
+   * 
+   * Checks if user has EXACTLY the specified role (no hierarchy).
+   * Mirrors server-side has_role() RPC behavior.
+   * 
+   * Example: hasRoleExact('finance') returns true ONLY for finance role
+   * 
+   * Use when you need to check for a specific role without hierarchy.
+   */
+  const hasRoleExact = (requiredRole: AppRole): boolean => {
+    return role === requiredRole;
   };
 
   const canAccessDivision = (divisionId: string): boolean => {
@@ -282,6 +322,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         verifyOtp,
         hasRole,
+        hasRoleOrHigher,
+        hasRoleExact,
         canAccessDivision,
       }}
     >
