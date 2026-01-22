@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import html2pdf from "html2pdf.js";
+import html2pdfImport from "html2pdf.js";
+
+// Force `any` because html2pdf.js typings are incomplete/inconsistent across versions
+const html2pdf: any = html2pdfImport;
 
 function waitForImages(root: HTMLElement, timeoutMs = 5000): Promise<void> {
   const imgs = Array.from(root.querySelectorAll("img"));
@@ -55,9 +58,14 @@ export async function exportStyledHtmlToPdf(params: {
   // We keep it visible but off-screen to avoid browser optimizations that can result in blank renders.
   const wrapper = document.createElement("div");
   wrapper.style.position = "fixed";
-  wrapper.style.left = "-200vw";
+  wrapper.style.left = "0";
+  // Keep it just outside the viewport to avoid flashes while still being painted.
+  wrapper.style.transform = "translate3d(-120%, 0, 0)";
+  wrapper.style.willChange = "transform";
   wrapper.style.top = "0";
   wrapper.style.width = "210mm";
+  wrapper.style.height = "auto";
+  wrapper.style.overflow = "visible";
   wrapper.style.background = "#fff";
   wrapper.style.pointerEvents = "none";
   // IMPORTANT: Don't use negative z-index; some browsers won't paint it (causes blank PDF).
@@ -92,8 +100,10 @@ export async function exportStyledHtmlToPdf(params: {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-    // Create worker and configure - using any to bypass html2pdf.js typing issues
-    const worker = html2pdf();
+    const rect = wrapper.getBoundingClientRect();
+
+    // Create worker and configure - force any to bypass html2pdf.js typing issues
+    const worker: any = html2pdf();
     
     const options: any = {
       margin: marginMm,
@@ -104,6 +114,8 @@ export async function exportStyledHtmlToPdf(params: {
         useCORS: true,
         scrollX: 0,
         scrollY: 0,
+        windowWidth: Math.ceil(rect.width || 0) || undefined,
+        windowHeight: Math.ceil(rect.height || 0) || undefined,
         letterRendering: true,
         logging: false,
         backgroundColor: "#ffffff",
@@ -115,7 +127,9 @@ export async function exportStyledHtmlToPdf(params: {
       },
     };
 
-    (worker as any).set(options);
+    // Fully bypass typing from html2pdf.js by extracting the function as any
+    const setFn: any = worker.set;
+    setFn.call(worker, options);
 
     await worker.from(wrapper).save();
   } finally {
