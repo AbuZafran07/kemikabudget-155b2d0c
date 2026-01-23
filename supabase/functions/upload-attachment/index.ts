@@ -122,6 +122,25 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[upload-attachment] Processing upload for user: ${user.id}`);
 
+    // Rate limiting: max 20 uploads per 5 minutes per user
+    const fiveMinutesAgo = new Date(Date.now() - 300000).toISOString();
+    const { count: recentUploads, error: rateLimitError } = await supabase
+      .from('request_attachments')
+      .select('*', { count: 'exact', head: true })
+      .eq('uploaded_by', user.id)
+      .gte('created_at', fiveMinutesAgo);
+
+    if (rateLimitError) {
+      console.error('[upload-attachment] Rate limit check error:', rateLimitError);
+      // Continue on error - don't block legitimate requests
+    } else if (recentUploads !== null && recentUploads >= 20) {
+      console.log(`[upload-attachment] Rate limit exceeded for user ${user.id}: ${recentUploads} uploads in last 5 minutes`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Rate limit exceeded: maximum 20 uploads per 5 minutes' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+      );
+    }
+
     // Parse form data
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

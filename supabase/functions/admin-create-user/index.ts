@@ -70,6 +70,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Rate limiting: max 10 users created per hour per admin
+    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+    const { count: recentCreations, error: rateLimitError } = await supabaseAdmin
+      .from('audit_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', callerUser.id)
+      .eq('event_type', 'user_created')
+      .gte('created_at', oneHourAgo);
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+      // Continue on error - don't block legitimate requests
+    } else if (recentCreations !== null && recentCreations >= 10) {
+      console.log(`Rate limit exceeded for admin ${callerUser.id}: ${recentCreations} users in last hour`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Rate limit exceeded: maximum 10 users per hour' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
     const payload: CreateUserPayload = await req.json();
     const { email, password, fullName, divisionId, phone, role } = payload;
