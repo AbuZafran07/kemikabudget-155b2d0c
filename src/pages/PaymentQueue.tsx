@@ -319,6 +319,7 @@ const PaymentQueue = () => {
       needed_date: data.needed_date,
       created_at: data.created_at,
       approved_at: data.approved_at,
+      status: data.status, // Add status for proper approval detection
       division: data.division as any,
       category: data.category as any,
       requester: profile || undefined,
