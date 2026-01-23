@@ -325,6 +325,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     needed_date: request.needed_date,
                     created_at: request.created_at,
                     approved_at: request.approved_at,
+                    status: request.status, // Add status for proper approval detection
                     division: request.divisions as any,
                     category: request.cost_categories as any,
                     requester: request.requester as any,
@@ -358,6 +359,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                       needed_date: request.needed_date,
                       created_at: request.created_at,
                       approved_at: request.approved_at,
+                      status: request.status, // Add status for proper approval detection
                       division: request.divisions as any,
                       category: request.cost_categories as any,
                       requester: request.requester as any,

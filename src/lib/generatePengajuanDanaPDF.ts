@@ -15,6 +15,7 @@ export interface PengajuanDanaData {
   needed_date: string;
   created_at: string;
   approved_at?: string | null;
+  status?: string; // Add status field for proper approval detection
   division?: { name: string; code: string };
   category?: { name: string; code: string };
   requester?: { full_name: string; email: string };
@@ -62,6 +63,9 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
   const isTransfer = data.payment_method?.toLowerCase() === 'transfer' || 
                      data.funding_source?.type === 'bank';
   const isCash = !isTransfer;
+  
+  // Check if request is truly approved (status-based, not just approver name)
+  const isApproved = ['approved', 'paid', 'settled'].includes(data.status || '');
 
   // Find attachment references
   const invoiceReff = data.attachments?.find(a => a.attachment_type === 'invoice')?.file_name || '';
@@ -486,7 +490,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       </div>
     </div>
 
-    ${safeApproverName ? `
+    ${isApproved && safeApproverName ? `
     <!-- Approved: Single wide box -->
     <div class="approved-signature-section">
       <div class="approved-signature-header">Menyetujui</div>

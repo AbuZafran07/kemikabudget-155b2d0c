@@ -52,7 +52,20 @@ export async function exportStyledHtmlToPdf(params: {
     throw new Error("Could not find export container in PDF HTML");
   }
 
-  // Create off-screen wrapper for html2canvas to capture
+  // Create an overlay to hide the rendering from user but keep it visible to browser paint
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.95);
+    z-index: 99998;
+    pointer-events: none;
+  `;
+  
+  // Create wrapper - MUST be fully visible (opacity: 1) for html2canvas to work
   const wrapper = document.createElement("div");
   wrapper.style.cssText = `
     position: fixed;
@@ -63,13 +76,15 @@ export async function exportStyledHtmlToPdf(params: {
     overflow: visible;
     background: #fff;
     pointer-events: none;
-    z-index: 1;
-    transform: translate3d(-120%, 0, 0);
-    will-change: transform;
+    z-index: 99999;
+    opacity: 1;
   `;
 
   const clonedContainer = containerEl.cloneNode(true) as HTMLElement;
   wrapper.appendChild(clonedContainer);
+  
+  // Add overlay first, then wrapper on top
+  document.body.appendChild(overlay);
   document.body.appendChild(wrapper);
 
   // Inject styles into document head for consistent rendering
@@ -93,9 +108,13 @@ export async function exportStyledHtmlToPdf(params: {
     // Wait for images to load
     await waitForImages(wrapper);
 
-    // Double rAF to ensure browser has painted
+    // Triple rAF to ensure browser has fully painted
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    
+    // Additional small delay to ensure paint is complete
+    await new Promise<void>((r) => setTimeout(r, 100));
 
     // Get actual dimensions
     const rect = wrapper.getBoundingClientRect();
@@ -117,6 +136,8 @@ export async function exportStyledHtmlToPdf(params: {
         letterRendering: true,
         logging: false,
         backgroundColor: "#ffffff",
+        x: 0,
+        y: 0,
       },
       jsPDF: {
         unit: "mm",
@@ -132,6 +153,9 @@ export async function exportStyledHtmlToPdf(params: {
     }
     if (wrapper.parentNode) {
       wrapper.parentNode.removeChild(wrapper);
+    }
+    if (overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
     }
   }
 }
