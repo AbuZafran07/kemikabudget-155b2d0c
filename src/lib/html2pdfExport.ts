@@ -65,9 +65,15 @@ export async function exportStyledHtmlToPdf(params: {
     pointer-events: none;
   `;
   
-  // Create wrapper - MUST be fully visible (opacity: 1) for html2canvas to work
+  // Create wrapper - MUST be fully visible (opacity: 1) for html2canvas to work.
+  // IMPORTANT: Set explicit typography + color here.
+  // We only clone `.container` (not the `<body>` element), so any `body { color: ... }`
+  // rules in the PDF HTML won't apply. In dark mode this can cause white-on-white
+  // output ("blank" PDF). Setting a safe root style prevents inherited app theme
+  // styles from leaking into the exported document.
   const wrapper = document.createElement("div");
   wrapper.style.cssText = `
+    all: initial;
     position: fixed;
     left: 0;
     top: 0;
@@ -75,6 +81,12 @@ export async function exportStyledHtmlToPdf(params: {
     height: auto;
     overflow: visible;
     background: #fff;
+    color: #000;
+    font-family: Arial, sans-serif;
+    font-size: 9pt;
+    line-height: 1.3;
+    display: block;
+    visibility: visible;
     pointer-events: none;
     z-index: 99999;
     opacity: 1;
@@ -118,6 +130,11 @@ export async function exportStyledHtmlToPdf(params: {
 
     // Get actual dimensions
     const rect = wrapper.getBoundingClientRect();
+
+    // Guard: if layout somehow didn't happen, fail loudly instead of generating a blank PDF
+    if (!rect.width || !rect.height) {
+      throw new Error(`PDF export wrapper has invalid size (w:${rect.width}, h:${rect.height})`);
+    }
 
     // Configure and run html2pdf
     const worker = html2pdf();
