@@ -407,6 +407,119 @@ export type Database = {
         }
         Relationships: []
       }
+      document_sequences: {
+        Row: {
+          created_at: string
+          current_sequence: number
+          division_id: string | null
+          id: string
+          month: number | null
+          template_type: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          current_sequence?: number
+          division_id?: string | null
+          id?: string
+          month?: number | null
+          template_type: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          current_sequence?: number
+          division_id?: string | null
+          id?: string
+          month?: number | null
+          template_type?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_sequences_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_templates: {
+        Row: {
+          created_at: string
+          draft_watermark_opacity: number
+          draft_watermark_text: string
+          footer_page_number: boolean
+          footer_text: string | null
+          header_address: string | null
+          header_company_name: string
+          header_email: string | null
+          header_logo_url: string | null
+          header_phone: string | null
+          id: string
+          number_format: string
+          number_prefix: string | null
+          reset_sequence_monthly: boolean
+          reset_sequence_yearly: boolean
+          show_draft_watermark: boolean
+          show_footer: boolean
+          show_header: boolean
+          template_type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          draft_watermark_opacity?: number
+          draft_watermark_text?: string
+          footer_page_number?: boolean
+          footer_text?: string | null
+          header_address?: string | null
+          header_company_name?: string
+          header_email?: string | null
+          header_logo_url?: string | null
+          header_phone?: string | null
+          id?: string
+          number_format?: string
+          number_prefix?: string | null
+          reset_sequence_monthly?: boolean
+          reset_sequence_yearly?: boolean
+          show_draft_watermark?: boolean
+          show_footer?: boolean
+          show_header?: boolean
+          template_type: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          draft_watermark_opacity?: number
+          draft_watermark_text?: string
+          footer_page_number?: boolean
+          footer_text?: string | null
+          header_address?: string | null
+          header_company_name?: string
+          header_email?: string | null
+          header_logo_url?: string | null
+          header_phone?: string | null
+          id?: string
+          number_format?: string
+          number_prefix?: string | null
+          reset_sequence_monthly?: boolean
+          reset_sequence_yearly?: boolean
+          show_draft_watermark?: boolean
+          show_footer?: boolean
+          show_header?: boolean
+          template_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       funding_sources: {
         Row: {
           account_holder: string | null
@@ -1191,6 +1304,10 @@ export type Database = {
           name: string
           type: string
         }[]
+      }
+      get_next_document_number: {
+        Args: { p_division_id: string; p_template_type: string }
+        Returns: string
       }
       get_user_division_id: { Args: { _user_id: string }; Returns: string }
       get_user_otp_secret: { Args: { p_user_id: string }; Returns: string }

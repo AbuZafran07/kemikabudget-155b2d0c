@@ -21,6 +21,7 @@ import Categories from "./pages/Categories";
 import FundingSources from "./pages/FundingSources";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import DocumentTemplates from "./pages/DocumentTemplates";
 import Reports from "./pages/Reports";
 import AuditLogs from "./pages/AuditLogs";
 import NotificationHistory from "./pages/NotificationHistory";
@@ -113,6 +114,11 @@ const App = () => (
                 <Route path="/settings" element={
                   <ProtectedRoute requiredRole="super_admin">
                     <Settings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/document-templates" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <DocumentTemplates />
                   </ProtectedRoute>
                 } />
                 <Route path="/reports" element={
