@@ -33,6 +33,19 @@ function waitForImages(root: HTMLElement, timeoutMs = 5000): Promise<void> {
   return Promise.race([loadPromise, timeout]);
 }
 
+function waitForFonts(doc: Document): Promise<void> {
+  // `document.fonts` is not available in all browsers; best-effort only.
+  // When exporting from an iframe, we must wait on the iframe document, not the app document.
+  const anyDoc = doc as any;
+  const fonts = anyDoc?.fonts;
+  if (!fonts?.ready) return Promise.resolve();
+  return fonts.ready.catch(() => {});
+}
+
+function raf(win: Window): Promise<void> {
+  return new Promise<void>((resolve) => win.requestAnimationFrame(() => resolve()));
+}
+
 export async function exportStyledHtmlToPdf(params: {
   html: string;
   fileName: string;
@@ -45,95 +58,69 @@ export async function exportStyledHtmlToPdf(params: {
     throw new Error("PDF HTML is empty");
   }
 
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const styleEl = doc.querySelector("style");
-  const containerEl = doc.querySelector(".container") ?? doc.body;
-  if (!containerEl) {
-    throw new Error("Could not find export container in PDF HTML");
-  }
-
-  // Create an overlay to hide the rendering from user but keep it visible to browser paint
-  const overlay = document.createElement("div");
-  overlay.style.cssText = `
+  // Robust approach: render the FULL HTML inside an off-screen iframe (same as preview)
+  // to avoid style/theme leakage from the app and prevent blank canvas captures.
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("title", "pdf-export");
+  iframe.style.cssText = `
     position: fixed;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255,255,255,0.95);
-    z-index: 99998;
-    pointer-events: none;
-  `;
-  
-  // Create wrapper - MUST be fully visible (opacity: 1) for html2canvas to work.
-  // IMPORTANT: Set explicit typography + color here.
-  // We only clone `.container` (not the `<body>` element), so any `body { color: ... }`
-  // rules in the PDF HTML won't apply. In dark mode this can cause white-on-white
-  // output ("blank" PDF). Setting a safe root style prevents inherited app theme
-  // styles from leaking into the exported document.
-  const wrapper = document.createElement("div");
-  wrapper.style.cssText = `
-    all: initial;
-    position: fixed;
-    left: 0;
+    left: -100000px;
     top: 0;
     width: 210mm;
-    height: auto;
-    overflow: visible;
+    height: 297mm;
+    border: 0;
     background: #fff;
-    color: #000;
-    font-family: Arial, sans-serif;
-    font-size: 9pt;
-    line-height: 1.3;
-    display: block;
-    visibility: visible;
-    pointer-events: none;
-    z-index: 99999;
     opacity: 1;
+    pointer-events: none;
+    z-index: -1;
   `;
 
-  const clonedContainer = containerEl.cloneNode(true) as HTMLElement;
-  wrapper.appendChild(clonedContainer);
-  
-  // Add overlay first, then wrapper on top
-  document.body.appendChild(overlay);
-  document.body.appendChild(wrapper);
+  document.body.appendChild(iframe);
 
-  // Inject styles into document head for consistent rendering
-  let injectedStyle: HTMLStyleElement | null = null;
-  if (styleEl?.textContent) {
-    injectedStyle = document.createElement("style");
-    injectedStyle.setAttribute("data-pdf-export", "1");
-    injectedStyle.textContent = styleEl.textContent;
-    document.head.appendChild(injectedStyle);
+  const iframeDoc = iframe.contentDocument;
+  const iframeWin = iframe.contentWindow;
+  if (!iframeDoc || !iframeWin) {
+    iframe.parentNode?.removeChild(iframe);
+    throw new Error("PDF export iframe not available");
   }
 
-  try {
-    // Force layout calculation
-    void wrapper.offsetHeight;
+  // Write the full HTML into the iframe
+  iframeDoc.open();
+  iframeDoc.write(html);
+  iframeDoc.close();
 
-    // Wait for fonts
-    if (document.fonts?.ready) {
-      await document.fonts.ready.catch(() => {});
+  try {
+    // Ensure a known safe base (in case the HTML lacks body styling)
+    iframeDoc.documentElement.style.background = "#fff";
+    iframeDoc.body.style.background = "#fff";
+    iframeDoc.body.style.color = "#000";
+    iframeDoc.body.style.fontFamily = "Arial, sans-serif";
+
+    const exportRoot =
+      (iframeDoc.querySelector(".container") as HTMLElement | null) ??
+      (iframeDoc.body as unknown as HTMLElement | null);
+
+    if (!exportRoot) {
+      throw new Error("Could not find export container in PDF HTML");
     }
 
-    // Wait for images to load
-    await waitForImages(wrapper);
+    // Force layout calculation
+    void exportRoot.offsetHeight;
 
-    // Triple rAF to ensure browser has fully painted
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    
-    // Additional small delay to ensure paint is complete
-    await new Promise<void>((r) => setTimeout(r, 100));
+    // Wait resources INSIDE the iframe
+    await waitForFonts(iframeDoc);
+    await waitForImages(exportRoot);
 
-    // Get actual dimensions
-    const rect = wrapper.getBoundingClientRect();
+    // Ensure paint is complete (iframe window)
+    await raf(iframeWin);
+    await raf(iframeWin);
+    await new Promise<void>((r) => iframeWin.setTimeout(r, 50));
 
-    // Guard: if layout somehow didn't happen, fail loudly instead of generating a blank PDF
+    const rect = exportRoot.getBoundingClientRect();
     if (!rect.width || !rect.height) {
-      throw new Error(`PDF export wrapper has invalid size (w:${rect.width}, h:${rect.height})`);
+      throw new Error(
+        `PDF export root has invalid size (w:${rect.width}, h:${rect.height})`
+      );
     }
 
     // Configure and run html2pdf
@@ -163,16 +150,8 @@ export async function exportStyledHtmlToPdf(params: {
       },
     });
 
-    await worker.from(wrapper).save();
+    await worker.from(exportRoot).save();
   } finally {
-    if (injectedStyle?.parentNode) {
-      injectedStyle.parentNode.removeChild(injectedStyle);
-    }
-    if (wrapper.parentNode) {
-      wrapper.parentNode.removeChild(wrapper);
-    }
-    if (overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-    }
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
   }
 }
