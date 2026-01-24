@@ -31,6 +31,7 @@ const translations: Translations = {
   'nav.users': { id: 'Pengguna', en: 'Users' },
   'nav.sessionManagement': { id: 'Manajemen Sesi', en: 'Session Management' },
   'nav.settings': { id: 'Pengaturan', en: 'Settings' },
+  'nav.documentTemplates': { id: 'Template Dokumen', en: 'Document Templates' },
   'nav.reports': { id: 'LAPORAN', en: 'REPORTS' },
   'nav.report': { id: 'Laporan', en: 'Reports' },
   'nav.auditLogs': { id: 'Audit Log', en: 'Audit Logs' },

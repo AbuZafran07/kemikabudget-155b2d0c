@@ -23,6 +23,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Shield,
+  FileType,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ const getMenuSections = (): MenuSection[] => [
       { titleKey: "nav.fundingSources", icon: Landmark, href: "/funding-sources", roles: ["super_admin"] },
       { titleKey: "nav.users", icon: Users, href: "/users", roles: ["super_admin"] },
       { titleKey: "nav.sessionManagement", icon: Shield, href: "/session-management", roles: ["super_admin"] },
+      { titleKey: "nav.documentTemplates", icon: FileType, href: "/document-templates", roles: ["super_admin"] },
       { titleKey: "nav.settings", icon: Settings, href: "/settings", roles: ["super_admin"] },
     ],
     roles: ["super_admin"],
