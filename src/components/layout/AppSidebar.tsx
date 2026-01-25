@@ -20,7 +20,6 @@ import {
   Mail,
   ChevronDown,
   ChevronRight,
-  PanelLeftClose,
   PanelLeft,
   Shield,
   FileType,
@@ -36,7 +35,6 @@ import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import appIcon from "@/assets/app-icon.png";
 
 interface MenuItem {
   titleKey: string;
@@ -310,43 +308,10 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
   return (
     <aside
       className={cn(
-        "h-screen flex flex-col gradient-sidebar border-r border-sidebar-border transition-all duration-300 flex-shrink-0 sticky top-0",
+        "h-full flex flex-col gradient-sidebar border-r border-sidebar-border transition-all duration-300 flex-shrink-0",
         isCollapsed ? "w-[70px]" : "w-[260px]"
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-        <div className={cn("flex items-center gap-3", isCollapsed && "justify-center w-full")}>
-          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-background/10">
-            <img 
-              src={appIcon} 
-              alt="Kemika" 
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </div>
-          {!isCollapsed && (
-            <div>
-              <h1 className="text-lg font-bold text-sidebar-foreground tracking-wide">
-                KEMIKA
-              </h1>
-              <p className="text-xs text-sidebar-muted">Expense System</p>
-            </div>
-          )}
-        </div>
-        {!isCollapsed && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-          >
-            <PanelLeftClose className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
