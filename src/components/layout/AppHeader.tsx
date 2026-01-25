@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { formatDistanceToNow } from "date-fns";
 import { id as localeId, enUS } from "date-fns/locale";
-import appIcon from "@/assets/logo-kemika.png";
+import logoImage from "@/assets/logo-kemika.png";
 
 interface NotificationLog {
   id: string;
