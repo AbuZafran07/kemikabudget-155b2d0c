@@ -231,7 +231,7 @@ const AppHeader = ({ isCollapsed, onToggle }: AppHeaderProps) => {
         {/* Logo */}
         <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-primary/10">
           <img
-            src={appIcon}
+            src={logoImage}
             alt="Kemika"
             className="w-full h-full object-cover"
             onError={(e) => {
