@@ -306,43 +306,58 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
   };
 
   return (
-    <aside
-      className={cn(
-        "h-full flex flex-col gradient-sidebar border-r border-sidebar-border transition-all duration-300 flex-shrink-0",
-        isCollapsed ? "w-[70px]" : "w-[260px]"
+    <>
+      {/* Mobile Overlay */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
+          onClick={onToggle}
+        />
       )}
-    >
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
-        {menuSections.map(renderSection)}
-      </nav>
-
-      {/* Footer Section */}
-      <div className="p-3 border-t border-sidebar-border">
-        {isCollapsed ? (
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggle}
-                className="w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-              >
-                <PanelLeft className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{t('common.expandSidebar')}</TooltipContent>
-          </Tooltip>
-        ) : (
-          <div className="text-center">
-            <p className="text-xs text-sidebar-muted">
-              © 2026 PT. Kemika Karya Pratama
-            </p>
-          </div>
+      
+      <aside
+        className={cn(
+          "h-full flex flex-col gradient-sidebar border-r border-sidebar-border transition-all duration-300 flex-shrink-0",
+          // Mobile: Fixed overlay sidebar
+          "fixed md:relative z-50 md:z-auto",
+          // Mobile: Hide by default, show when not collapsed
+          isCollapsed 
+            ? "-translate-x-full md:translate-x-0 md:w-[70px]" 
+            : "translate-x-0 w-[260px]"
         )}
-      </div>
-    </aside>
+      >
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+          {menuSections.map(renderSection)}
+        </nav>
+
+        {/* Footer Section */}
+        <div className="p-3 border-t border-sidebar-border">
+          {isCollapsed ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggle}
+                  className="w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                >
+                  <PanelLeft className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">{t('common.expandSidebar')}</TooltipContent>
+            </Tooltip>
+          ) : (
+            <div className="text-center">
+              <p className="text-xs text-sidebar-muted">
+                © 2026 PT. Kemika Karya Pratama
+              </p>
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
   );
 };
 
