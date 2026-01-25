@@ -223,17 +223,32 @@ const AppHeader = ({ isCollapsed, onToggle }: AppHeaderProps) => {
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-40 flex-shrink-0">
       {/* Left Section: Logo & Company Name */}
       <div className="flex items-center gap-3">
-        {/* Toggle Sidebar Button */}
-        <Button variant="ghost" size="icon" onClick={onToggle} className="text-muted-foreground hover:text-foreground">
+        {/* Toggle Sidebar Button - Desktop */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onToggle} 
+          className="hidden md:flex text-muted-foreground hover:text-foreground"
+        >
           {isCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
         </Button>
 
-        {/* Logo */}
-        <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-primary/10">
+        {/* Hamburger Menu - Mobile */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onToggle} 
+          className="md:hidden text-muted-foreground hover:text-foreground"
+        >
+          <PanelLeft className="h-5 w-5" />
+        </Button>
+
+        {/* Logo - Fixed size with contain for full visibility */}
+        <div className="w-14 h-12 flex-shrink-0 flex items-center justify-center">
           <img
             src={logoImage}
             alt="Kemika"
-            className="w-full h-full object-cover"
+            className="max-w-full max-h-full object-contain"
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
