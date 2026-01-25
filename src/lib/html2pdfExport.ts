@@ -34,8 +34,6 @@ function waitForImages(root: HTMLElement, timeoutMs = 5000): Promise<void> {
 }
 
 function waitForFonts(doc: Document): Promise<void> {
-  // `document.fonts` is not available in all browsers; best-effort only.
-  // When exporting from an iframe, we must wait on the iframe document, not the app document.
   const anyDoc = doc as any;
   const fonts = anyDoc?.fonts;
   if (!fonts?.ready) return Promise.resolve();
@@ -58,71 +56,93 @@ export async function exportStyledHtmlToPdf(params: {
     throw new Error("PDF HTML is empty");
   }
 
-  // Robust approach: render the FULL HTML inside an off-screen iframe (same as preview)
-  // to avoid style/theme leakage from the app and prevent blank canvas captures.
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("title", "pdf-export");
-  iframe.style.cssText = `
+  // Create visible container for rendering (html2canvas needs visible elements)
+  const wrapper = document.createElement("div");
+  wrapper.id = "pdf-export-wrapper";
+  wrapper.style.cssText = `
     position: fixed;
-    left: -100000px;
+    left: 0;
     top: 0;
     width: 210mm;
-    height: 297mm;
-    border: 0;
+    min-height: 297mm;
     background: #fff;
-    opacity: 1;
-    pointer-events: none;
-    z-index: -1;
+    z-index: 99999;
+    overflow: visible;
+    padding: 0;
+    margin: 0;
   `;
-
-  document.body.appendChild(iframe);
-
-  const iframeDoc = iframe.contentDocument;
-  const iframeWin = iframe.contentWindow;
-  if (!iframeDoc || !iframeWin) {
-    iframe.parentNode?.removeChild(iframe);
-    throw new Error("PDF export iframe not available");
-  }
-
-  // Write the full HTML into the iframe
-  iframeDoc.open();
-  iframeDoc.write(html);
-  iframeDoc.close();
-
+  
+  // Parse and inject the HTML body content
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  
+  // Extract styles and body
+  const styles = doc.querySelectorAll("style");
+  const bodyContent = doc.body.innerHTML;
+  
+  // Create style element with all styles
+  let combinedStyles = "";
+  styles.forEach((style) => {
+    combinedStyles += style.textContent || "";
+  });
+  
+  // Add critical fixes for PDF rendering
+  combinedStyles += `
+    * { box-sizing: border-box !important; }
+    body, html { margin: 0 !important; padding: 0 !important; }
+    .container { 
+      width: 190mm !important; 
+      margin: 0 auto !important; 
+      padding: 5mm !important;
+      background: #fff !important;
+    }
+    .preview-actions { display: none !important; }
+    
+    /* Force table layouts to render properly */
+    table { border-collapse: collapse !important; }
+    td, th { padding: 8px !important; }
+    
+    /* Force flexbox to work */
+    .header, .info-section, .payment-section, .signature-section {
+      display: flex !important;
+    }
+  `;
+  
+  const styleEl = document.createElement("style");
+  styleEl.textContent = combinedStyles;
+  
+  wrapper.appendChild(styleEl);
+  wrapper.innerHTML += bodyContent;
+  
+  document.body.appendChild(wrapper);
+  
   try {
-    // Ensure a known safe base (in case the HTML lacks body styling)
-    iframeDoc.documentElement.style.background = "#fff";
-    iframeDoc.body.style.background = "#fff";
-    iframeDoc.body.style.color = "#000";
-    iframeDoc.body.style.fontFamily = "Arial, sans-serif";
-
-    const exportRoot =
-      (iframeDoc.querySelector(".container") as HTMLElement | null) ??
-      (iframeDoc.body as unknown as HTMLElement | null);
-
-    if (!exportRoot) {
-      throw new Error("Could not find export container in PDF HTML");
-    }
-
     // Force layout calculation
-    void exportRoot.offsetHeight;
-
-    // Wait resources INSIDE the iframe
-    await waitForFonts(iframeDoc);
-    await waitForImages(exportRoot);
-
-    // Ensure paint is complete (iframe window)
-    await raf(iframeWin);
-    await raf(iframeWin);
-    await new Promise<void>((r) => iframeWin.setTimeout(r, 50));
-
-    const rect = exportRoot.getBoundingClientRect();
+    void wrapper.offsetHeight;
+    void wrapper.offsetWidth;
+    
+    // Wait for fonts
+    await waitForFonts(document);
+    
+    // Wait for images
+    await waitForImages(wrapper);
+    
+    // Multiple animation frames for proper rendering
+    await raf(window);
+    await raf(window);
+    await raf(window);
+    
+    // Extra delay for complex layouts
+    await new Promise<void>((r) => setTimeout(r, 300));
+    
+    // Find the container element
+    const container = wrapper.querySelector(".container") as HTMLElement || wrapper;
+    
+    const rect = container.getBoundingClientRect();
     if (!rect.width || !rect.height) {
-      throw new Error(
-        `PDF export root has invalid size (w:${rect.width}, h:${rect.height})`
-      );
+      throw new Error(`PDF export root has invalid size (w:${rect.width}, h:${rect.height})`);
     }
-
+    
     // Configure and run html2pdf
     const worker = html2pdf();
     
@@ -134,14 +154,14 @@ export async function exportStyledHtmlToPdf(params: {
         scale: 2,
         useCORS: true,
         scrollX: 0,
-        scrollY: 0,
-        windowWidth: Math.max(rect.width, 800),
-        windowHeight: Math.max(rect.height, 600),
+        scrollY: -window.scrollY,
+        windowWidth: 794, // A4 width in pixels at 96dpi
+        windowHeight: 1123, // A4 height in pixels at 96dpi
         letterRendering: true,
         logging: false,
         backgroundColor: "#ffffff",
-        x: 0,
-        y: 0,
+        allowTaint: true,
+        foreignObjectRendering: false,
       },
       jsPDF: {
         unit: "mm",
@@ -150,8 +170,10 @@ export async function exportStyledHtmlToPdf(params: {
       },
     });
 
-    await worker.from(exportRoot).save();
+    await worker.from(container).save();
   } finally {
-    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    if (wrapper.parentNode) {
+      wrapper.parentNode.removeChild(wrapper);
+    }
   }
 }
