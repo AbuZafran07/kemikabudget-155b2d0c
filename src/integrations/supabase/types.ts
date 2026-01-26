@@ -50,6 +50,50 @@ export type Database = {
         }
         Relationships: []
       }
+      budget_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          division_budget_id: string
+          entry_type: Database["public"]["Enums"]["budget_ledger_type"]
+          id: string
+          performed_by: string
+          reference_id: string
+          reference_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          division_budget_id: string
+          entry_type: Database["public"]["Enums"]["budget_ledger_type"]
+          id?: string
+          performed_by: string
+          reference_id: string
+          reference_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          division_budget_id?: string
+          entry_type?: Database["public"]["Enums"]["budget_ledger_type"]
+          id?: string
+          performed_by?: string
+          reference_id?: string
+          reference_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_ledger_division_budget_id_fkey"
+            columns: ["division_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_movements: {
         Row: {
           amount: number
@@ -218,6 +262,339 @@ export type Database = {
             columns: ["to_budget_id"]
             isOneToOne: false
             referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_advance_events: {
+        Row: {
+          cash_advance_id: string
+          created_at: string
+          description: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          performed_by: string
+        }
+        Insert: {
+          cash_advance_id: string
+          created_at?: string
+          description: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          performed_by: string
+        }
+        Update: {
+          cash_advance_id?: string
+          created_at?: string
+          description?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advance_events_cash_advance_id_fkey"
+            columns: ["cash_advance_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_advance_items: {
+        Row: {
+          amount: number
+          cash_advance_id: string
+          created_at: string
+          description: string
+          id: string
+          notes: string | null
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          amount: number
+          cash_advance_id: string
+          created_at?: string
+          description: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          unit_price: number
+        }
+        Update: {
+          amount?: number
+          cash_advance_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advance_items_cash_advance_id_fkey"
+            columns: ["cash_advance_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_advance_settlement_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          notes: string | null
+          quantity: number
+          receipt_date: string | null
+          receipt_number: string | null
+          settlement_id: string
+          unit_price: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          receipt_date?: string | null
+          receipt_number?: string | null
+          settlement_id: string
+          unit_price: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          receipt_date?: string | null
+          receipt_number?: string | null
+          settlement_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advance_settlement_items_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advance_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_advance_settlements: {
+        Row: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          cash_advance_id: string
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          settlement_number: string
+          status: Database["public"]["Enums"]["settlement_status"]
+          submitted_at: string | null
+          total_realized: number
+          updated_at: string
+          variance_amount: number
+        }
+        Insert: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          cash_advance_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          settlement_number: string
+          status?: Database["public"]["Enums"]["settlement_status"]
+          submitted_at?: string | null
+          total_realized?: number
+          updated_at?: string
+          variance_amount?: number
+        }
+        Update: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          cash_advance_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          settlement_number?: string
+          status?: Database["public"]["Enums"]["settlement_status"]
+          submitted_at?: string | null
+          total_realized?: number
+          updated_at?: string
+          variance_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advance_settlements_cash_advance_id_fkey"
+            columns: ["cash_advance_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_advances: {
+        Row: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          ca_number: string
+          category_id: string
+          created_at: string
+          division_id: string
+          funding_source_id: string | null
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
+          needed_date: string
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          period_id: string | null
+          purpose: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          requester_id: string
+          settled_at: string | null
+          settled_by: string | null
+          status: Database["public"]["Enums"]["cash_advance_status"]
+          submitted_at: string | null
+          total_amount: number
+          total_realized: number | null
+          updated_at: string
+        }
+        Insert: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          ca_number: string
+          category_id: string
+          created_at?: string
+          division_id: string
+          funding_source_id?: string | null
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          needed_date: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_id?: string | null
+          purpose: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requester_id: string
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: Database["public"]["Enums"]["cash_advance_status"]
+          submitted_at?: string | null
+          total_amount: number
+          total_realized?: number | null
+          updated_at?: string
+        }
+        Update: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          ca_number?: string
+          category_id?: string
+          created_at?: string
+          division_id?: string
+          funding_source_id?: string | null
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          needed_date?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_id?: string | null
+          purpose?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requester_id?: string
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: Database["public"]["Enums"]["cash_advance_status"]
+          submitted_at?: string | null
+          total_amount?: number
+          total_realized?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advances_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_source_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "budget_periods"
             referencedColumns: ["id"]
           },
         ]
@@ -1260,6 +1637,10 @@ export type Database = {
         Args: { p_transfer_id: string }
         Returns: Json
       }
+      approve_cash_advance: {
+        Args: { p_ca_id: string; p_note?: string }
+        Returns: Json
+      }
       approve_request:
         | {
             Args: { p_approval_note?: string; p_request_id: string }
@@ -1273,6 +1654,10 @@ export type Database = {
             }
             Returns: Json
           }
+      approve_settlement: {
+        Args: { p_note?: string; p_settlement_id: string }
+        Returns: Json
+      }
       can_access_division: {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean
@@ -1322,6 +1707,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      pay_cash_advance: {
+        Args: { p_ca_id: string; p_funding_source_id: string }
+        Returns: Json
+      }
       pay_request: {
         Args: { p_payment_note?: string; p_request_id: string }
         Returns: Json
@@ -1329,6 +1718,10 @@ export type Database = {
       record_otp_failure: { Args: { p_user_id: string }; Returns: undefined }
       reject_budget_transfer: {
         Args: { p_rejection_reason: string; p_transfer_id: string }
+        Returns: Json
+      }
+      reject_cash_advance: {
+        Args: { p_ca_id: string; p_reason: string }
         Returns: Json
       }
       reject_request: {
@@ -1341,6 +1734,7 @@ export type Database = {
         Returns: boolean
       }
       settle_request: { Args: { p_request_id: string }; Returns: Json }
+      submit_cash_advance: { Args: { p_ca_id: string }; Returns: Json }
       topup_petty_cash: {
         Args: {
           p_amount: number
@@ -1357,6 +1751,23 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "finance" | "admin" | "user"
+      budget_ledger_type:
+        | "commitment_add"
+        | "commitment_release"
+        | "actual_add"
+        | "actual_release"
+        | "refund"
+        | "topup"
+      cash_advance_status:
+        | "draft"
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "paid"
+        | "partially_settled"
+        | "settled"
+        | "cancelled"
       request_status:
         | "draft"
         | "submitted"
@@ -1366,6 +1777,7 @@ export type Database = {
         | "paid"
         | "settled"
         | "cancelled"
+      settlement_status: "draft" | "submitted" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1494,6 +1906,25 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "finance", "admin", "user"],
+      budget_ledger_type: [
+        "commitment_add",
+        "commitment_release",
+        "actual_add",
+        "actual_release",
+        "refund",
+        "topup",
+      ],
+      cash_advance_status: [
+        "draft",
+        "submitted",
+        "under_review",
+        "approved",
+        "rejected",
+        "paid",
+        "partially_settled",
+        "settled",
+        "cancelled",
+      ],
       request_status: [
         "draft",
         "submitted",
@@ -1504,6 +1935,7 @@ export const Constants = {
         "settled",
         "cancelled",
       ],
+      settlement_status: ["draft", "submitted", "approved", "rejected"],
     },
   },
 } as const
