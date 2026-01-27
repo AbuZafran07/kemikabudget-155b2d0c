@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type { Database } from "@/integrations/supabase/types";
+
+type CashAdvanceStatus = Database["public"]["Enums"]["cash_advance_status"];
 
 export interface CashAdvance {
   id: string;
@@ -11,7 +14,7 @@ export interface CashAdvance {
   category_id: string;
   period_id: string | null;
   requester_id: string;
-  status: string;
+  status: CashAdvanceStatus;
   purpose: string;
   total_amount: number;
   needed_date: string;
@@ -110,12 +113,18 @@ export interface CreateCashAdvanceData {
   }[];
 }
 
+interface RpcResult {
+  success?: boolean;
+  error?: string;
+  variance?: number;
+}
+
 export const useCashAdvances = (filters?: {
   status?: string;
   division_id?: string;
   search?: string;
 }) => {
-  const { user, divisionId, role } = useAuth();
+  const { user, profile, role } = useAuth();
 
   return useQuery({
     queryKey: ["cash-advances", filters, user?.id],
@@ -130,7 +139,7 @@ export const useCashAdvances = (filters?: {
         .order("created_at", { ascending: false });
 
       if (filters?.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
+        query = query.eq("status", filters.status as CashAdvanceStatus);
       }
 
       if (filters?.division_id) {
@@ -300,18 +309,28 @@ export const useCreateCashAdvance = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
-  const { user, divisionId } = useAuth();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async (data: CreateCashAdvanceData) => {
-      if (!user?.id || !divisionId) throw new Error("Not authenticated");
+      const divisionId = profile?.division_id;
+      if (!user?.id || !divisionId) throw new Error("Not authenticated or no division assigned");
 
       const totalAmount = data.items.reduce((sum, item) => sum + item.amount, 0);
+
+      // Generate CA number
+      const { data: seqData } = await supabase.rpc("get_next_document_number", {
+        p_template_type: "cash_advance",
+        p_division_id: divisionId,
+      });
+
+      const caNumber = seqData || `CA-${Date.now()}`;
 
       // Create cash advance
       const { data: ca, error: caError } = await supabase
         .from("cash_advances")
         .insert({
+          ca_number: caNumber,
           division_id: divisionId,
           category_id: data.category_id,
           requester_id: user.id,
@@ -380,8 +399,9 @@ export const useSubmitCashAdvance = () => {
       });
 
       if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-      return data;
+      const result = data as RpcResult;
+      if (!result?.success) throw new Error(result?.error || "Failed to submit");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
@@ -414,8 +434,9 @@ export const useApproveCashAdvance = () => {
       });
 
       if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-      return data;
+      const result = data as RpcResult;
+      if (!result?.success) throw new Error(result?.error || "Failed to approve");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
@@ -448,8 +469,9 @@ export const useRejectCashAdvance = () => {
       });
 
       if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-      return data;
+      const result = data as RpcResult;
+      if (!result?.success) throw new Error(result?.error || "Failed to reject");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
@@ -482,8 +504,9 @@ export const usePayCashAdvance = () => {
       });
 
       if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-      return data;
+      const result = data as RpcResult;
+      if (!result?.success) throw new Error(result?.error || "Failed to pay");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
@@ -532,12 +555,23 @@ export const useCreateSettlement = () => {
 
       const totalRealized = items.reduce((sum, item) => sum + item.amount, 0);
 
+      // Get CA to generate settlement number
+      const { data: ca } = await supabase
+        .from("cash_advances")
+        .select("ca_number, division_id")
+        .eq("id", cashAdvanceId)
+        .single();
+
+      const settlementNumber = `STL-${ca?.ca_number?.replace("CA-", "") || Date.now()}`;
+
       // Create settlement
       const { data: settlement, error: settlementError } = await supabase
         .from("cash_advance_settlements")
         .insert({
+          settlement_number: settlementNumber,
           cash_advance_id: cashAdvanceId,
           total_realized: totalRealized,
+          variance_amount: 0, // Will be calculated when approved
           notes: notes || null,
           created_by: user.id,
         })
@@ -661,8 +695,9 @@ export const useApproveSettlement = () => {
       });
 
       if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-      return data;
+      const result = data as RpcResult;
+      if (!result?.success) throw new Error(result?.error || "Failed to approve settlement");
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
@@ -671,7 +706,7 @@ export const useApproveSettlement = () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advance-events"] });
       queryClient.invalidateQueries({ queryKey: ["division-budgets"] });
 
-      const variance = data.variance || 0;
+      const variance = data?.variance || 0;
       let description = t("cashAdvance.settlementApproveSuccessDesc");
       if (variance > 0) {
         description += ` ${t("cashAdvance.refundRequired")}: ${new Intl.NumberFormat("id-ID", {

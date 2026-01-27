@@ -61,7 +61,14 @@ const getMenuSections = (): MenuSection[] => [
   {
     titleKey: "nav.transactions",
     items: [
-      { titleKey: "nav.requests", icon: FileText, href: "/requests" },
+      { 
+        titleKey: "nav.expenseRequest", 
+        icon: FileText, 
+        children: [
+          { titleKey: "nav.requests", icon: FileText, href: "/requests" },
+          { titleKey: "nav.cashAdvance", icon: Wallet, href: "/cash-advance" },
+        ]
+      },
       { titleKey: "nav.approvals", icon: CheckSquare, href: "/approvals", badgeKey: "pendingApprovals", roles: ["super_admin"] },
     ],
   },

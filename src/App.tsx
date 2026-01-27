@@ -26,6 +26,10 @@ import Reports from "./pages/Reports";
 import AuditLogs from "./pages/AuditLogs";
 import NotificationHistory from "./pages/NotificationHistory";
 import SessionManagement from "./pages/SessionManagement";
+import CashAdvance from "./pages/CashAdvance";
+import CashAdvanceForm from "./pages/CashAdvanceForm";
+import CashAdvanceDetail from "./pages/CashAdvanceDetail";
+import CashAdvanceSettlementForm from "./pages/CashAdvanceSettlementForm";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -50,6 +54,10 @@ const App = () => (
               >
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/requests" element={<Requests />} />
+                <Route path="/cash-advance" element={<CashAdvance />} />
+                <Route path="/cash-advance/new" element={<CashAdvanceForm />} />
+                <Route path="/cash-advance/:id" element={<CashAdvanceDetail />} />
+                <Route path="/cash-advance/:id/settlement/new" element={<CashAdvanceSettlementForm />} />
                 <Route
                   path="/approvals"
                   element={
