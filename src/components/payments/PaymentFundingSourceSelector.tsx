@@ -55,7 +55,7 @@ export function PaymentFundingSourceSelector({
     }
   }, [selectedFundingSourceId, fundingSources]);
 
-  const activeSources = fundingSources?.filter(fs => fs.is_active) || [];
+  const activeSources = fundingSources?.filter(fs => fs.is_active && fs.id) || [];
   const hasInsufficientBalance = selectedSource && 
     selectedSource.balance !== undefined && 
     selectedSource.balance < paymentAmount;
