@@ -25,6 +25,7 @@ const statusIcons: Record<RequestStatus, React.ElementType> = {
   approved: CheckCircle,
   rejected: XCircle,
   paid: CheckCircle,
+  partially_settled: AlertCircle,
   settled: CheckCircle,
   cancelled: XCircle,
 };

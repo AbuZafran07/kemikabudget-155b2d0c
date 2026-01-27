@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, FileText, Download, Eye } from "lucide-react";
+import { Plus, Search, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,10 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/common/StatusBadge";
+import StatusBadge from "@/components/common/StatusBadge";
 import { TablePagination } from "@/components/common/TablePagination";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,7 +33,7 @@ import { id as idLocale } from "date-fns/locale";
 
 const CashAdvance = () => {
   const { t, language } = useLanguage();
-  const { role, divisionId } = useAuth();
+  const { role, profile } = useAuth();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
@@ -66,7 +66,6 @@ const CashAdvance = () => {
   // Pagination
   const filteredData = cashAdvances || [];
   const totalItems = filteredData.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
   const paginatedData = filteredData.slice((page - 1) * pageSize, page * pageSize);
 
   const formatCurrency = (amount: number) => {
@@ -253,19 +252,16 @@ const CashAdvance = () => {
 
           {/* Pagination */}
           {totalItems > 0 && (
-            <div className="border-t p-4">
-              <TablePagination
-                currentPage={page}
-                totalPages={totalPages}
-                pageSize={pageSize}
-                totalItems={totalItems}
-                onPageChange={setPage}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setPage(1);
-                }}
-              />
-            </div>
+            <TablePagination
+              currentPage={page}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+            />
           )}
         </CardContent>
       </Card>

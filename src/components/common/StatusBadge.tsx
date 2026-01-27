@@ -8,6 +8,7 @@ export type RequestStatus =
   | "approved"
   | "rejected"
   | "paid"
+  | "partially_settled"
   | "settled"
   | "cancelled";
 
@@ -43,6 +44,10 @@ const statusConfig: Record<
   paid: {
     label: "Dibayar",
     className: "bg-primary/10 text-primary border-primary/20",
+  },
+  partially_settled: {
+    label: "Sebagian Selesai",
+    className: "bg-info/10 text-info border-info/20",
   },
   settled: {
     label: "Selesai",

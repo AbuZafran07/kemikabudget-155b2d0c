@@ -15,7 +15,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -56,10 +55,12 @@ interface CashAdvanceItemRow {
 
 const CashAdvanceForm = () => {
   const { t } = useLanguage();
-  const { divisionId, user } = useAuth();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
+
+  const divisionId = profile?.division_id;
 
   const [purpose, setPurpose] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -69,7 +70,6 @@ const CashAdvanceForm = () => {
     { id: "1", description: "", quantity: 1, unit_price: 0, amount: 0, notes: "" },
   ]);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
-  const [savedCaId, setSavedCaId] = useState<string | null>(null);
 
   const createCashAdvance = useCreateCashAdvance();
   const submitCashAdvance = useSubmitCashAdvance();
@@ -205,7 +205,6 @@ const CashAdvanceForm = () => {
     });
 
     if (result) {
-      setSavedCaId(result.id);
       navigate(`/cash-advance/${result.id}`);
     }
   };

@@ -6,11 +6,9 @@ import {
   CheckCircle,
   XCircle,
   CreditCard,
-  FileText,
   Download,
   Plus,
   Clock,
-  DollarSign,
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,16 +43,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/common/StatusBadge";
+import StatusBadge from "@/components/common/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -457,15 +447,13 @@ const CashAdvanceDetail = () => {
                       >
                         <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                         <TableCell>
-                          <StatusBadge status={settlement.status} />
+                          <Badge variant={settlement.status === "approved" ? "default" : "secondary"}>
+                            {t(`status.${settlement.status}`)}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(settlement.total_realized)}</TableCell>
                         <TableCell className="text-right">
-                          {settlement.variance_amount !== 0 && (
-                            <span className={settlement.variance_amount > 0 ? "text-primary" : "text-destructive"}>
-                              {formatCurrency(settlement.variance_amount)}
-                            </span>
-                          )}
+                          {formatCurrency(settlement.variance_amount)}
                         </TableCell>
                         <TableCell>{formatDate(settlement.created_at)}</TableCell>
                       </TableRow>
@@ -487,19 +475,21 @@ const CashAdvanceDetail = () => {
             <AlertDialogTitle>{t("cashAdvance.confirmApprove")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("cashAdvance.confirmApproveDesc")}
-              <div className="mt-4 space-y-2">
-                <Label>{t("cashAdvance.approvalNote")}</Label>
-                <Textarea
-                  value={approvalNote}
-                  onChange={(e) => setApprovalNote(e.target.value)}
-                  placeholder={t("cashAdvance.approvalNotePlaceholder")}
-                />
-              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>{t("cashAdvance.approvalNote")}</Label>
+            <Textarea
+              placeholder={t("cashAdvance.approvalNotePlaceholder")}
+              value={approvalNote}
+              onChange={(e) => setApprovalNote(e.target.value)}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApprove}>{t("action.approve")}</AlertDialogAction>
+            <AlertDialogAction onClick={handleApprove} disabled={approveCashAdvance.isPending}>
+              {t("action.approve")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -511,22 +501,21 @@ const CashAdvanceDetail = () => {
             <AlertDialogTitle>{t("cashAdvance.confirmReject")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("cashAdvance.confirmRejectDesc")}
-              <div className="mt-4 space-y-2">
-                <Label>{t("cashAdvance.rejectionReason")} *</Label>
-                <Textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder={t("cashAdvance.rejectionReasonPlaceholder")}
-                  required
-                />
-              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>{t("cashAdvance.rejectionReason")} *</Label>
+            <Textarea
+              placeholder={t("cashAdvance.rejectionReasonPlaceholder")}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReject}
-              disabled={rejectionReason.length < 10}
+              disabled={!rejectionReason.trim() || rejectCashAdvance.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {t("action.reject")}
@@ -536,44 +525,44 @@ const CashAdvanceDetail = () => {
       </AlertDialog>
 
       {/* Pay Dialog */}
-      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("cashAdvance.processPayment")}</DialogTitle>
-            <DialogDescription>{t("cashAdvance.processPaymentDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t("cashAdvance.totalAmount")}</span>
-              <span className="font-bold">{formatCurrency(ca.total_amount)}</span>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("cashAdvance.selectFundingSource")} *</Label>
-              <Select value={selectedFundingSource} onValueChange={setSelectedFundingSource}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("cashAdvance.selectFundingSourcePlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {fundingSources?.map((source: { id: string; name: string; code: string }) => (
-                    <SelectItem key={source.id} value={source.id}>
-                      {source.name} ({source.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <AlertDialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cashAdvance.confirmPay")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cashAdvance.confirmPayDesc")}
+              <br />
+              <span className="font-semibold text-foreground">
+                {t("cashAdvance.totalAmount")}: {formatCurrency(ca.total_amount)}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>{t("cashAdvance.selectFundingSource")} *</Label>
+            <Select value={selectedFundingSource} onValueChange={setSelectedFundingSource}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("cashAdvance.selectFundingSourcePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {fundingSources?.map((source: { id: string; name: string; code: string }) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.code} - {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPayDialog(false)}>
-              {t("action.cancel")}
-            </Button>
-            <Button onClick={handlePay} disabled={!selectedFundingSource || payCashAdvance.isPending}>
-              <CreditCard className="h-4 w-4 mr-2" />
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handlePay}
+              disabled={!selectedFundingSource || payCashAdvance.isPending}
+            >
               {t("action.pay")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
