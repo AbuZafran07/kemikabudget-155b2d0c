@@ -38,13 +38,13 @@ const CashAdvance = () => {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [divisionFilter, setDivisionFilter] = useState<string>("");
+  const [divisionFilter, setDivisionFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   const { data: cashAdvances, isLoading } = useCashAdvances({
     status: statusFilter,
-    division_id: divisionFilter || undefined,
+    division_id: divisionFilter === "all" ? undefined : divisionFilter,
     search: search || undefined,
   });
 
@@ -158,7 +158,7 @@ const CashAdvance = () => {
                   <SelectValue placeholder={t("common.allDivisions")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t("common.allDivisions")}</SelectItem>
+                  <SelectItem value="all">{t("common.allDivisions")}</SelectItem>
                   {divisions?.map((division) => (
                     <SelectItem key={division.id} value={division.id}>
                       {division.name}
