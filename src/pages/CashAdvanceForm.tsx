@@ -47,10 +47,18 @@ import { format } from "date-fns";
 interface CashAdvanceItemRow {
   id: string;
   description: string;
+  category_id: string;
   quantity: number;
   unit_price: number;
   amount: number;
   notes: string;
+}
+
+interface CategoryOption {
+  id: string;
+  code: string;
+  name: string;
+  remaining: number;
 }
 
 const CashAdvanceForm = () => {
@@ -63,11 +71,10 @@ const CashAdvanceForm = () => {
   const divisionId = profile?.division_id;
 
   const [purpose, setPurpose] = useState("");
-  const [categoryId, setCategoryId] = useState("");
   const [neededDate, setNeededDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<CashAdvanceItemRow[]>([
-    { id: "1", description: "", quantity: 1, unit_price: 0, amount: 0, notes: "" },
+    { id: "1", description: "", category_id: "", quantity: 1, unit_price: 0, amount: 0, notes: "" },
   ]);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
@@ -109,7 +116,7 @@ const CashAdvanceForm = () => {
         code: d.category?.code,
         name: d.category?.name,
         remaining: d.allocated_amount - d.used_amount,
-      })) || [];
+      })).filter((c): c is CategoryOption => !!c.id) || [];
     },
     enabled: !!divisionId,
   });
@@ -121,13 +128,13 @@ const CashAdvanceForm = () => {
   useEffect(() => {
     if (isEdit && existingCa && existingItems) {
       setPurpose(existingCa.purpose);
-      setCategoryId(existingCa.category_id);
       setNeededDate(existingCa.needed_date);
       setNotes(existingCa.notes || "");
       setItems(
         existingItems.map((item, index) => ({
           id: String(index + 1),
           description: item.description,
+          category_id: item.category_id || "",
           quantity: item.quantity,
           unit_price: item.unit_price,
           amount: item.amount,
@@ -143,6 +150,7 @@ const CashAdvanceForm = () => {
       {
         id: String(Date.now()),
         description: "",
+        category_id: "",
         quantity: 1,
         unit_price: 0,
         amount: 0,
@@ -183,16 +191,18 @@ const CashAdvanceForm = () => {
     }).format(amount);
   };
 
-  const isValid = purpose.trim() && categoryId && neededDate && items.some((item) => item.description.trim() && item.amount > 0);
+  // Validation: purpose + needed date + at least one item with description, amount > 0, and category selected
+  const isValid = purpose.trim() && neededDate && items.some((item) => 
+    item.description.trim() && item.amount > 0 && item.category_id
+  );
 
   const handleSave = async () => {
     if (!isValid) return;
 
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
+    const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
 
     const result = await createCashAdvance.mutateAsync({
       purpose,
-      category_id: categoryId,
       needed_date: neededDate,
       notes: notes || undefined,
       items: validItems.map((item) => ({
@@ -201,6 +211,7 @@ const CashAdvanceForm = () => {
         unit_price: item.unit_price,
         amount: item.amount,
         notes: item.notes || undefined,
+        category_id: item.category_id,
       })),
     });
 
@@ -212,11 +223,10 @@ const CashAdvanceForm = () => {
   const handleSaveAndSubmit = async () => {
     if (!isValid) return;
 
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
+    const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
 
     const result = await createCashAdvance.mutateAsync({
       purpose,
-      category_id: categoryId,
       needed_date: neededDate,
       notes: notes || undefined,
       items: validItems.map((item) => ({
@@ -225,6 +235,7 @@ const CashAdvanceForm = () => {
         unit_price: item.unit_price,
         amount: item.amount,
         notes: item.notes || undefined,
+        category_id: item.category_id,
       })),
     });
 
@@ -258,19 +269,13 @@ const CashAdvanceForm = () => {
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>{t("common.category")} *</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("cashAdvance.selectCategory")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories?.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id!}>
-                          {cat.code} - {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>{t("common.division")}</Label>
+                  <Input
+                    value={profile?.division_id ? (categories?.length ? `${t("common.division")}` : t("common.loading")) : t("common.notAssigned")}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">{t("cashAdvance.divisionAutoSelected")}</p>
                 </div>
                 <div className="space-y-2">
                   <Label>{t("cashAdvance.neededDate")} *</Label>
@@ -317,16 +322,34 @@ const CashAdvanceForm = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[40%]">{t("cashAdvance.itemDescription")}</TableHead>
-                      <TableHead className="w-[15%] text-right">{t("cashAdvance.quantity")}</TableHead>
-                      <TableHead className="w-[20%] text-right">{t("cashAdvance.unitPrice")}</TableHead>
-                      <TableHead className="w-[20%] text-right">{t("cashAdvance.amount")}</TableHead>
+                      <TableHead className="w-[25%]">{t("common.category")}</TableHead>
+                      <TableHead className="w-[25%]">{t("cashAdvance.itemDescription")}</TableHead>
+                      <TableHead className="w-[10%] text-right">{t("cashAdvance.quantity")}</TableHead>
+                      <TableHead className="w-[15%] text-right">{t("cashAdvance.unitPrice")}</TableHead>
+                      <TableHead className="w-[15%] text-right">{t("cashAdvance.amount")}</TableHead>
                       <TableHead className="w-[5%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          <Select
+                            value={item.category_id}
+                            onValueChange={(value) => updateItem(item.id, "category_id", value)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder={t("cashAdvance.selectCategory")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories?.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id}>
+                                  {cat.code} - {cat.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell>
                           <Input
                             placeholder={t("cashAdvance.itemDescPlaceholder")}
@@ -370,7 +393,7 @@ const CashAdvanceForm = () => {
                   </TableBody>
                   <TableFooter>
                     <TableRow>
-                      <TableCell colSpan={3} className="text-right font-semibold">
+                      <TableCell colSpan={4} className="text-right font-semibold">
                         {t("cashAdvance.totalAmount")}
                       </TableCell>
                       <TableCell className="text-right font-bold text-lg">
@@ -394,7 +417,7 @@ const CashAdvanceForm = () => {
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("cashAdvance.totalItems")}</span>
-                <span className="font-medium">{items.filter((i) => i.description.trim()).length}</span>
+                <span className="font-medium">{items.filter((i) => i.description.trim() && i.category_id).length}</span>
               </div>
               <div className="flex justify-between border-t pt-4">
                 <span className="text-muted-foreground">{t("cashAdvance.totalAmount")}</span>

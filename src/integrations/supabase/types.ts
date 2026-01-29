@@ -308,6 +308,7 @@ export type Database = {
         Row: {
           amount: number
           cash_advance_id: string
+          category_id: string | null
           created_at: string
           description: string
           id: string
@@ -318,6 +319,7 @@ export type Database = {
         Insert: {
           amount: number
           cash_advance_id: string
+          category_id?: string | null
           created_at?: string
           description: string
           id?: string
@@ -328,6 +330,7 @@ export type Database = {
         Update: {
           amount?: number
           cash_advance_id?: string
+          category_id?: string | null
           created_at?: string
           description?: string
           id?: string
@@ -341,6 +344,13 @@ export type Database = {
             columns: ["cash_advance_id"]
             isOneToOne: false
             referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advance_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -466,7 +476,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           ca_number: string
-          category_id: string
+          category_id: string | null
           created_at: string
           division_id: string
           funding_source_id: string | null
@@ -497,7 +507,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           ca_number: string
-          category_id: string
+          category_id?: string | null
           created_at?: string
           division_id: string
           funding_source_id?: string | null
@@ -528,7 +538,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           ca_number?: string
-          category_id?: string
+          category_id?: string | null
           created_at?: string
           division_id?: string
           funding_source_id?: string | null
@@ -555,13 +565,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "cash_advances_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "cost_categories"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "cash_advances_division_id_fkey"
             columns: ["division_id"]

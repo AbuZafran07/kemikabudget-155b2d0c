@@ -11,7 +11,7 @@ export interface CashAdvance {
   id: string;
   ca_number: string;
   division_id: string;
-  category_id: string;
+  category_id: string | null;
   period_id: string | null;
   requester_id: string;
   status: CashAdvanceStatus;
@@ -37,7 +37,7 @@ export interface CashAdvance {
   updated_at: string;
   // Joined data
   division?: { id: string; code: string; name: string };
-  category?: { id: string; code: string; name: string };
+  category?: { id: string; code: string; name: string } | null;
   requester?: { id: string; full_name: string; email: string };
   approver?: { id: string; full_name: string };
   payer?: { id: string; full_name: string };
@@ -52,7 +52,10 @@ export interface CashAdvanceItem {
   unit_price: number;
   amount: number;
   notes: string | null;
+  category_id: string | null;
   created_at: string;
+  // Joined
+  category?: { id: string; code: string; name: string };
 }
 
 export interface CashAdvanceSettlement {
@@ -101,7 +104,6 @@ export interface CashAdvanceEvent {
 
 export interface CreateCashAdvanceData {
   purpose: string;
-  category_id: string;
   needed_date: string;
   notes?: string;
   items: {
@@ -110,6 +112,7 @@ export interface CreateCashAdvanceData {
     unit_price: number;
     amount: number;
     notes?: string;
+    category_id: string;
   }[];
 }
 
@@ -133,8 +136,7 @@ export const useCashAdvances = (filters?: {
         .from("cash_advances")
         .select(`
           *,
-          division:divisions(id, code, name),
-          category:cost_categories(id, code, name)
+          division:divisions!inner(id, code, name)
         `)
         .order("created_at", { ascending: false });
 
@@ -169,8 +171,7 @@ export const useCashAdvance = (id: string) => {
         .from("cash_advances")
         .select(`
           *,
-          division:divisions(id, code, name),
-          category:cost_categories(id, code, name)
+          division:divisions!inner(id, code, name)
         `)
         .eq("id", id)
         .maybeSingle();
@@ -232,7 +233,10 @@ export const useCashAdvanceItems = (cashAdvanceId: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cash_advance_items")
-        .select("*")
+        .select(`
+          *,
+          category:cost_categories(id, code, name)
+        `)
         .eq("cash_advance_id", cashAdvanceId)
         .order("created_at", { ascending: true });
 
@@ -326,13 +330,12 @@ export const useCreateCashAdvance = () => {
 
       const caNumber = seqData || `CA-${Date.now()}`;
 
-      // Create cash advance
+      // Create cash advance (category_id is now per-item, not on CA header)
       const { data: ca, error: caError } = await supabase
         .from("cash_advances")
         .insert({
           ca_number: caNumber,
           division_id: divisionId,
-          category_id: data.category_id,
           requester_id: user.id,
           purpose: data.purpose,
           total_amount: totalAmount,
@@ -344,7 +347,7 @@ export const useCreateCashAdvance = () => {
 
       if (caError) throw caError;
 
-      // Create items
+      // Create items with category_id per item
       const itemsToInsert = data.items.map((item) => ({
         cash_advance_id: ca.id,
         description: item.description,
@@ -352,6 +355,7 @@ export const useCreateCashAdvance = () => {
         unit_price: item.unit_price,
         amount: item.amount,
         notes: item.notes || null,
+        category_id: item.category_id,
       }));
 
       const { error: itemsError } = await supabase

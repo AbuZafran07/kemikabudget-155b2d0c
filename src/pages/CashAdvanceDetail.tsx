@@ -304,6 +304,7 @@ const CashAdvanceDetail = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>#</TableHead>
+                    <TableHead>{t("common.category")}</TableHead>
                     <TableHead>{t("cashAdvance.itemDescription")}</TableHead>
                     <TableHead className="text-right">{t("cashAdvance.quantity")}</TableHead>
                     <TableHead className="text-right">{t("cashAdvance.unitPrice")}</TableHead>
@@ -314,6 +315,9 @@ const CashAdvanceDetail = () => {
                   {items?.map((item, index) => (
                     <TableRow key={item.id}>
                       <TableCell>{index + 1}</TableCell>
+                      <TableCell>
+                        {item.category ? `${item.category.code} - ${item.category.name}` : "-"}
+                      </TableCell>
                       <TableCell>{item.description}</TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
@@ -323,7 +327,7 @@ const CashAdvanceDetail = () => {
                 </TableBody>
                 <TableFooter>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-right font-semibold">
+                    <TableCell colSpan={5} className="text-right font-semibold">
                       {t("cashAdvance.totalAmount")}
                     </TableCell>
                     <TableCell className="text-right font-bold">{formatCurrency(ca.total_amount)}</TableCell>
@@ -343,10 +347,6 @@ const CashAdvanceDetail = () => {
                 <div>
                   <dt className="text-sm text-muted-foreground">{t("common.division")}</dt>
                   <dd className="font-medium">{ca.division?.name}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">{t("common.category")}</dt>
-                  <dd className="font-medium">{ca.category?.name}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-muted-foreground">{t("cashAdvance.requester")}</dt>

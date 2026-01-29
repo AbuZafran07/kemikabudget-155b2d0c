@@ -752,6 +752,7 @@ const translations: Translations = {
   'cashAdvance.settlements': { id: 'Realisasi', en: 'Settlements' },
   'cashAdvance.addRealization': { id: 'Tambah Realisasi', en: 'Add Realization' },
   'cashAdvance.activityTimeline': { id: 'Timeline Aktivitas', en: 'Activity Timeline' },
+  'cashAdvance.divisionAutoSelected': { id: 'Divisi otomatis sesuai profil Anda', en: 'Division is auto-selected based on your profile' },
   'cashAdvance.noActivity': { id: 'Belum ada aktivitas', en: 'No activity yet' },
   'cashAdvance.noSettlements': { id: 'Belum ada realisasi', en: 'No settlements yet' },
   'cashAdvance.settlementNumber': { id: 'No. Realisasi', en: 'Settlement No.' },
