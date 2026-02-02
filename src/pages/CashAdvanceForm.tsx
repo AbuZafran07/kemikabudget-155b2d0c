@@ -81,6 +81,22 @@ const CashAdvanceForm = () => {
   const createCashAdvance = useCreateCashAdvance();
   const submitCashAdvance = useSubmitCashAdvance();
 
+  // Fetch user's division name
+  const { data: userDivision } = useQuery({
+    queryKey: ["user-division", divisionId],
+    queryFn: async () => {
+      if (!divisionId) return null;
+      const { data, error } = await supabase
+        .from("divisions")
+        .select("id, name, code")
+        .eq("id", divisionId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!divisionId,
+  });
+
   // Fetch categories with active budget allocations for user's division
   const { data: categories } = useQuery({
     queryKey: ["categories-with-budget", divisionId],
@@ -191,10 +207,10 @@ const CashAdvanceForm = () => {
     }).format(amount);
   };
 
-  // Validation: purpose + needed date + at least one item with description, amount > 0, and category selected
-  const isValid = purpose.trim() && neededDate && items.some((item) => 
-    item.description.trim() && item.amount > 0 && item.category_id
-  );
+  // Validation: purpose + needed date + at least one valid item
+  const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
+  const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
+  const isValid = purpose.trim() && neededDate && allItemsHaveCategory;
 
   const handleSave = async () => {
     if (!isValid) return;
@@ -269,9 +285,9 @@ const CashAdvanceForm = () => {
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>{t("common.division")}</Label>
+                  <Label>{t("requests.division")}</Label>
                   <Input
-                    value={profile?.division_id ? (categories?.length ? `${t("common.division")}` : t("common.loading")) : t("common.notAssigned")}
+                    value={userDivision ? userDivision.name : (divisionId ? t("common.loading") : t("common.notAssigned"))}
                     disabled
                     className="bg-muted"
                   />

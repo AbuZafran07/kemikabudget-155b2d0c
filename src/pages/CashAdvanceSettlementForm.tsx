@@ -44,6 +44,8 @@ import { format } from "date-fns";
 interface SettlementItemRow {
   id: string;
   description: string;
+  category_id: string;
+  category_name: string;
   quantity: number;
   unit_price: number;
   amount: number;
@@ -63,6 +65,8 @@ const CashAdvanceSettlementForm = () => {
     {
       id: "1",
       description: "",
+      category_id: "",
+      category_name: "",
       quantity: 1,
       unit_price: 0,
       amount: 0,
@@ -85,6 +89,8 @@ const CashAdvanceSettlementForm = () => {
         caItems.map((item, index) => ({
           id: String(index + 1),
           description: item.description,
+          category_id: item.category_id || "",
+          category_name: (item as any).category?.name || "",
           quantity: item.quantity,
           unit_price: 0,
           amount: 0,
@@ -102,6 +108,8 @@ const CashAdvanceSettlementForm = () => {
       {
         id: String(Date.now()),
         description: "",
+        category_id: "",
+        category_name: "",
         quantity: 1,
         unit_price: 0,
         amount: 0,
@@ -253,18 +261,24 @@ const CashAdvanceSettlementForm = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[30%]">{t("cashAdvance.itemDescription")}</TableHead>
-                      <TableHead className="w-[10%] text-right">{t("cashAdvance.quantity")}</TableHead>
-                      <TableHead className="w-[15%] text-right">{t("cashAdvance.unitPrice")}</TableHead>
-                      <TableHead className="w-[15%] text-right">{t("cashAdvance.amount")}</TableHead>
-                      <TableHead className="w-[15%]">{t("cashAdvance.receiptNo")}</TableHead>
-                      <TableHead className="w-[10%]">{t("cashAdvance.receiptDate")}</TableHead>
-                      <TableHead className="w-[5%]"></TableHead>
+                      <TableHead className="w-[20%]">{t("common.category")}</TableHead>
+                      <TableHead className="w-[25%]">{t("cashAdvance.itemDescription")}</TableHead>
+                      <TableHead className="w-[8%] text-right">{t("cashAdvance.quantity")}</TableHead>
+                      <TableHead className="w-[12%] text-right">{t("cashAdvance.unitPrice")}</TableHead>
+                      <TableHead className="w-[12%] text-right">{t("cashAdvance.amount")}</TableHead>
+                      <TableHead className="w-[12%]">{t("cashAdvance.receiptNo")}</TableHead>
+                      <TableHead className="w-[8%]">{t("cashAdvance.receiptDate")}</TableHead>
+                      <TableHead className="w-[3%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {item.category_name || "-"}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           <Input
                             placeholder={t("cashAdvance.itemDescPlaceholder")}
@@ -322,7 +336,7 @@ const CashAdvanceSettlementForm = () => {
                   </TableBody>
                   <TableFooter>
                     <TableRow>
-                      <TableCell colSpan={3} className="text-right font-semibold">
+                      <TableCell colSpan={4} className="text-right font-semibold">
                         {t("cashAdvance.totalRealized")}
                       </TableCell>
                       <TableCell className="text-right font-bold text-lg">
