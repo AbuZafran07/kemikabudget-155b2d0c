@@ -6,11 +6,13 @@ import {
   CheckCircle,
   XCircle,
   CreditCard,
-  Download,
+  FileText,
   Plus,
   Clock,
   AlertTriangle,
 } from "lucide-react";
+import { CashAdvancePDFPreviewDialog } from "@/components/cashadvance/CashAdvancePDFPreviewDialog";
+import type { CashAdvancePDFData } from "@/lib/generateCashAdvancePDF";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +74,7 @@ const CashAdvanceDetail = () => {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [approvalNote, setApprovalNote] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedFundingSource, setSelectedFundingSource] = useState("");
@@ -213,9 +216,9 @@ const CashAdvanceDetail = () => {
               {t("cashAdvance.addRealization")}
             </Button>
           )}
-          {(ca.status === "approved" || ca.status === "paid" || ca.status === "settled") && (
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
+          {(ca.status === "approved" || ca.status === "paid" || ca.status === "partially_settled" || ca.status === "settled") && (
+            <Button variant="outline" onClick={() => setShowPdfPreview(true)}>
+              <FileText className="h-4 w-4 mr-2" />
               {t("action.printPdf")}
             </Button>
           )}
@@ -563,6 +566,33 @@ const CashAdvanceDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Preview Dialog */}
+      <CashAdvancePDFPreviewDialog
+        open={showPdfPreview}
+        onOpenChange={setShowPdfPreview}
+        data={ca && items ? {
+          ca_number: ca.ca_number,
+          purpose: ca.purpose,
+          total_amount: ca.total_amount,
+          needed_date: ca.needed_date,
+          created_at: ca.created_at,
+          approved_at: ca.approved_at,
+          status: ca.status,
+          notes: ca.notes,
+          division: ca.division ? { name: ca.division.name, code: ca.division.code } : undefined,
+          requester: ca.requester ? { full_name: ca.requester.full_name } : undefined,
+          approver: ca.approver ? { full_name: ca.approver.full_name } : null,
+          funding_source: ca.funding_source ? { name: ca.funding_source.name, type: 'petty_cash' } : null,
+          items: items.map(item => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            amount: item.amount,
+            category: item.category ? { name: item.category.name, code: item.category.code } : null,
+          })),
+        } as CashAdvancePDFData : null}
+      />
     </div>
   );
 };
