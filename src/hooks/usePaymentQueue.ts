@@ -33,6 +33,10 @@ export interface PaymentRequest {
   hasReceipt?: boolean;
   daysSinceApproval?: number;
   isOverdue?: boolean;
+  // Medical claim specific
+  type: 'request' | 'medical_claim';
+  claim_type?: string;
+  patient_name?: string;
 }
 
 const PAYMENT_SLA_DAYS = 3;
@@ -43,11 +47,12 @@ export function usePaymentQueue() {
   const { notifyPaid } = useNotifications();
   const { logRequestEvent } = useAuditLog();
 
-  // Fetch approved requests pending payment
+  // Fetch approved requests pending payment (requests + medical claims)
   const { data: payments, isLoading, refetch } = useQuery({
     queryKey: ['payment-queue'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch regular requests
+      const { data: requestsData, error: reqError } = await supabase
         .from('requests')
         .select(`
           *,
@@ -58,30 +63,51 @@ export function usePaymentQueue() {
         .eq('status', 'approved')
         .order('approved_at', { ascending: true });
 
-      if (error) throw error;
+      if (reqError) throw reqError;
       
       // Map funding_source_options back to funding_sources key for compatibility
-      const mappedData = (data || []).map(req => ({
+      const mappedRequests = (requestsData || []).map(req => ({
         ...req,
         funding_sources: req.funding_source_options,
+        type: 'request' as const,
       }));
 
-      // Get requester profiles - use profiles_secure view for data masking
-      const requesterIds = mappedData?.map(r => r.requester_id) || [];
+      // Fetch medical claims with status 'approved'
+      const { data: medicalData, error: medError } = await supabase
+        .from('medical_claims')
+        .select('*')
+        .eq('status', 'approved')
+        .order('approved_at', { ascending: true });
+
+      if (medError) throw medError;
+
+      // Get all profile IDs
+      const requesterIds = mappedRequests?.map(r => r.requester_id) || [];
+      const employeeIds = medicalData?.map(m => m.employee_id) || [];
+      const allProfileIds = [...new Set([...requesterIds, ...employeeIds])];
+
+      // Fetch profiles
       const { data: profiles } = await supabase
         .from('profiles_secure')
-        .select('id, full_name, email')
-        .in('id', requesterIds);
+        .select('id, full_name, email, division_id')
+        .in('id', allProfileIds);
 
-      // Get attachments to check for invoice/quotation
-      const requestIds = mappedData?.map(r => r.id) || [];
+      // Get divisions for medical claims
+      const divisionIds = profiles?.map(p => p.division_id).filter(Boolean) as string[] || [];
+      const { data: divisions } = await supabase
+        .from('divisions')
+        .select('id, code, name')
+        .in('id', divisionIds);
+
+      // Get attachments for requests
+      const requestIds = mappedRequests?.map(r => r.id) || [];
       const { data: attachments } = await supabase
         .from('request_attachments')
         .select('request_id, attachment_type')
         .in('request_id', requestIds);
 
-      // Merge and enrich data
-      const enrichedData = mappedData?.map(request => {
+      // Enrich requests
+      const enrichedRequests = mappedRequests?.map(request => {
         const approvedDate = request.approved_at ? new Date(request.approved_at) : new Date();
         const daysSinceApproval = differenceInDays(new Date(), approvedDate);
         const isOverdue = daysSinceApproval > PAYMENT_SLA_DAYS;
@@ -99,10 +125,59 @@ export function usePaymentQueue() {
           hasReceipt,
           daysSinceApproval,
           isOverdue,
+          type: 'request' as const,
         };
       }) || [];
 
-      return enrichedData as PaymentRequest[];
+      // Enrich medical claims
+      const enrichedMedical = medicalData?.map(claim => {
+        const approvedDate = claim.approved_at ? new Date(claim.approved_at) : new Date();
+        const daysSinceApproval = differenceInDays(new Date(), approvedDate);
+        const isOverdue = daysSinceApproval > PAYMENT_SLA_DAYS;
+        const employee = profiles?.find(p => p.id === claim.employee_id);
+        const division = divisions?.find(d => d.id === employee?.division_id);
+
+        return {
+          id: claim.id,
+          request_number: claim.claim_number,
+          division_id: employee?.division_id || '',
+          category_id: '',
+          requester_id: claim.employee_id,
+          description: `${claim.claim_type} - ${claim.patient_name}`,
+          vendor: claim.hospital_clinic,
+          amount: claim.claim_amount,
+          approved_amount: claim.approved_amount,
+          needed_date: claim.treatment_date,
+          status: claim.status,
+          funding_source_id: null,
+          payment_method: null,
+          beneficiary_name: employee?.full_name || null,
+          beneficiary_bank: null,
+          beneficiary_account: null,
+          approved_at: claim.approved_at,
+          created_at: claim.created_at,
+          divisions: division ? { code: division.code, name: division.name } : undefined,
+          cost_categories: { code: 'MEDICAL', name: 'Medical Reimbursement' },
+          profiles: employee ? { full_name: employee.full_name || '', email: employee.email || '' } : undefined,
+          hasInvoice: false,
+          hasQuotation: false,
+          hasReceipt: false,
+          daysSinceApproval,
+          isOverdue,
+          type: 'medical_claim' as const,
+          claim_type: claim.claim_type,
+          patient_name: claim.patient_name,
+        };
+      }) || [];
+
+      // Combine and sort
+      const combined = [...enrichedRequests, ...enrichedMedical].sort((a, b) => {
+        const dateA = a.approved_at ? new Date(a.approved_at).getTime() : 0;
+        const dateB = b.approved_at ? new Date(b.approved_at).getTime() : 0;
+        return dateA - dateB;
+      });
+
+      return combined as PaymentRequest[];
     },
   });
 
@@ -123,8 +198,27 @@ export function usePaymentQueue() {
 
   // Pay request mutation
   const payRequest = useMutation({
-    mutationFn: async ({ requestId, note }: { requestId: string; note?: string }) => {
-      // Get request details first
+    mutationFn: async ({ requestId, note, type = 'request' }: { requestId: string; note?: string; type?: 'request' | 'medical_claim' }) => {
+      if (type === 'medical_claim') {
+        // Pay medical claim
+        const { data: claimData } = await supabase
+          .from('medical_claims')
+          .select('id, claim_number, employee_id, claim_amount, approved_amount, patient_name')
+          .eq('id', requestId)
+          .single();
+
+        const { data, error } = await supabase.rpc('pay_medical_claim', {
+          p_claim_id: requestId,
+        });
+
+        if (error) throw error;
+        const result = data as { success: boolean; error?: string };
+        if (!result.success) throw new Error(result.error || 'Failed to pay medical claim');
+
+        return { result: { success: true, message: 'Medical claim paid' }, requestData: claimData, type: 'medical_claim' };
+      }
+
+      // Regular request payment
       const { data: requestData } = await supabase
         .from('requests')
         .select('id, request_number, requester_id, amount, description')
@@ -143,20 +237,21 @@ export function usePaymentQueue() {
         throw new Error(result.error || 'Failed to process payment');
       }
 
-      return { result, requestData };
+      return { result, requestData, type: 'request' };
     },
-    onSuccess: ({ result, requestData }) => {
+    onSuccess: ({ result, requestData, type }) => {
       queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['medical-claims'] });
       queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
         title: 'Pembayaran Berhasil',
-        description: result.message || 'Pembayaran telah diproses dan dana telah dikurangi',
+        description: result.message || 'Pembayaran telah diproses',
       });
 
-      // Log audit event
-      if (requestData) {
+      // Log audit event and notify - only for regular requests
+      if (requestData && type === 'request' && 'request_number' in requestData) {
         logRequestEvent('paid', requestData.id, requestData.request_number);
         
         // Send email notification to requester
@@ -215,7 +310,7 @@ export function usePaymentQueue() {
   // Get statistics
   const overdueCount = payments?.filter(p => p.isOverdue).length || 0;
   const totalPending = payments?.length || 0;
-  const totalAmount = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+  const totalAmount = payments?.reduce((sum, p) => sum + (p.approved_amount || p.amount), 0) || 0;
 
   return {
     payments,

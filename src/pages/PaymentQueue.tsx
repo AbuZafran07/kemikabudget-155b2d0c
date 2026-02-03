@@ -15,6 +15,7 @@ import {
   Package,
   Eye,
   Printer,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,7 +162,23 @@ const PaymentQueue = () => {
   const confirmPay = async () => {
     if (!selectedPayment) return;
 
-    // Check if funding source is selected
+    // For medical claims, no funding source required
+    if (selectedPayment.type === 'medical_claim') {
+      await payRequest.mutateAsync({
+        requestId: selectedPayment.id,
+        note: paymentNote || undefined,
+        type: 'medical_claim',
+      });
+
+      setLastPaidPayment(selectedPayment);
+      setIsPayDialogOpen(false);
+      setSelectedPayment(null);
+      setSelectedFundingSourceId(null);
+      setSelectedItems(prev => prev.filter(id => id !== selectedPayment.id));
+      return;
+    }
+
+    // Check if funding source is selected for regular requests
     const fundingSourceToUse = selectedFundingSourceId || selectedPayment.funding_source_id;
     if (!fundingSourceToUse) {
       toast({
@@ -197,6 +214,7 @@ const PaymentQueue = () => {
     await payRequest.mutateAsync({
       requestId: selectedPayment.id,
       note: paymentNote || undefined,
+      type: 'request',
     });
 
     setLastPaidPayment(selectedPayment);
@@ -253,8 +271,16 @@ const PaymentQueue = () => {
     }
   };
 
-  // Generate PDF preview for a payment
+  // Generate PDF preview for a payment (only for regular requests)
   const handlePreviewPDF = async (payment: PaymentRequest) => {
+    if (payment.type === 'medical_claim') {
+      toast({
+        title: language === 'id' ? 'PDF tidak tersedia' : 'PDF not available',
+        description: language === 'id' ? 'Lihat detail klaim di halaman Medical Reimbursement' : 'View claim details on Medical Reimbursement page',
+      });
+      return;
+    }
+
     const { data, error } = await supabase
       .from('requests')
       .select(`
@@ -432,9 +458,13 @@ const PaymentQueue = () => {
     }
   };
 
-  // Check if selected payment needs funding source
-  const needsFundingSource = selectedPayment && !selectedPayment.funding_source_id;
-  const canProcessPayment = selectedPayment && (selectedPayment.funding_source_id || selectedFundingSourceId);
+  // Check if selected payment needs funding source (not for medical claims)
+  const needsFundingSource = selectedPayment && selectedPayment.type === 'request' && !selectedPayment.funding_source_id;
+  const canProcessPayment = selectedPayment && (
+    selectedPayment.type === 'medical_claim' || 
+    selectedPayment.funding_source_id || 
+    selectedFundingSourceId
+  );
 
   if (isLoading) {
     return (
@@ -582,22 +612,29 @@ const PaymentQueue = () => {
                     <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
                       {item.request_number}
                     </code>
-                    <Badge variant="outline" className="text-xs">
-                      {item.divisions?.code || 'N/A'}
-                    </Badge>
-                    {hasFundingSource ? (
+                    {item.type === 'medical_claim' ? (
+                      <Badge variant="outline" className="text-xs gap-1 bg-destructive/10 text-destructive border-destructive/30">
+                        <Heart className="h-3 w-3" />
+                        Medical
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        {item.divisions?.code || 'N/A'}
+                      </Badge>
+                    )}
+                    {item.type === 'request' && hasFundingSource ? (
                       <div className={`flex items-center gap-1 ${sourceConfig.color}`}>
                         <SourceIcon className="h-3.5 w-3.5" />
                         <span className="text-xs font-medium">
                           {item.funding_sources?.name || sourceConfig.label}
                         </span>
                       </div>
-                    ) : (
+                    ) : item.type === 'request' ? (
                       <Badge variant="outline" className="text-xs text-warning border-warning">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         {language === 'id' ? 'Belum ada sumber dana' : 'No funding source'}
                       </Badge>
-                    )}
+                    ) : null}
                     {item.isOverdue && (
                       <Badge variant="destructive" className="text-xs gap-1">
                         <AlertTriangle className="h-3 w-3" />
@@ -617,38 +654,46 @@ const PaymentQueue = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-4 mt-3">
-                    <div
-                      className={`flex items-center gap-1.5 text-xs ${
-                        item.hasInvoice ? "text-success" : "text-warning"
-                      }`}
-                    >
-                      {item.hasInvoice ? (
-                        <CheckCircle className="h-3.5 w-3.5" />
-                      ) : (
-                        <Clock className="h-3.5 w-3.5" />
-                      )}
-                      {t('paymentQueue.invoice')}
-                    </div>
-                    <div
-                      className={`flex items-center gap-1.5 text-xs ${
-                        item.hasQuotation ? "text-success" : "text-warning"
-                      }`}
-                    >
-                      {item.hasQuotation ? (
-                        <CheckCircle className="h-3.5 w-3.5" />
-                      ) : (
-                        <Clock className="h-3.5 w-3.5" />
-                      )}
-                      Quotation
-                    </div>
-                    {item.beneficiary_name && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Building2 className="h-3.5 w-3.5" />
-                        {item.beneficiary_bank} • {item.beneficiary_account?.slice(-4).padStart(item.beneficiary_account.length, '•')}
+                  {item.type === 'request' && (
+                    <div className="flex items-center gap-4 mt-3">
+                      <div
+                        className={`flex items-center gap-1.5 text-xs ${
+                          item.hasInvoice ? "text-success" : "text-warning"
+                        }`}
+                      >
+                        {item.hasInvoice ? (
+                          <CheckCircle className="h-3.5 w-3.5" />
+                        ) : (
+                          <Clock className="h-3.5 w-3.5" />
+                        )}
+                        {t('paymentQueue.invoice')}
                       </div>
-                    )}
-                  </div>
+                      <div
+                        className={`flex items-center gap-1.5 text-xs ${
+                          item.hasQuotation ? "text-success" : "text-warning"
+                        }`}
+                      >
+                        {item.hasQuotation ? (
+                          <CheckCircle className="h-3.5 w-3.5" />
+                        ) : (
+                          <Clock className="h-3.5 w-3.5" />
+                        )}
+                        Quotation
+                      </div>
+                      {item.beneficiary_name && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Building2 className="h-3.5 w-3.5" />
+                          {item.beneficiary_bank} • {item.beneficiary_account?.slice(-4).padStart(item.beneficiary_account.length, '•')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {item.type === 'medical_claim' && (
+                    <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+                      <Heart className="h-3.5 w-3.5" />
+                      <span>{item.claim_type} • {item.patient_name}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-right lg:min-w-[180px]">
@@ -669,17 +714,19 @@ const PaymentQueue = () => {
                 </div>
 
                 <div className="flex items-center gap-2 lg:border-l lg:border-border lg:pl-4">
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    className="gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePreviewPDF(item);
-                    }}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  {item.type === 'request' && (
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePreviewPDF(item);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button 
                     className="gap-2"
                     onClick={(e) => {
@@ -745,8 +792,19 @@ const PaymentQueue = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Funding Source Selector - show if no funding source */}
-            {needsFundingSource && (
+            {/* Medical claim info */}
+            {selectedPayment?.type === 'medical_claim' && (
+              <div className="bg-destructive/10 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium flex items-center gap-2 text-destructive">
+                  <Heart className="h-4 w-4" />
+                  Medical Reimbursement
+                </h4>
+                <p className="text-sm">{selectedPayment.claim_type} • {selectedPayment.patient_name}</p>
+              </div>
+            )}
+
+            {/* Funding Source Selector - show if no funding source (only for requests) */}
+            {selectedPayment?.type === 'request' && needsFundingSource && (
               <PaymentFundingSourceSelector
                 fundingSources={fundingSources}
                 selectedFundingSourceId={selectedFundingSourceId}
@@ -755,8 +813,8 @@ const PaymentQueue = () => {
               />
             )}
 
-            {/* Show existing funding source info */}
-            {selectedPayment?.funding_source_id && selectedPayment.funding_sources && (
+            {/* Show existing funding source info (only for requests) */}
+            {selectedPayment?.type === 'request' && selectedPayment?.funding_source_id && selectedPayment.funding_sources && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <h4 className="font-medium flex items-center gap-2">
                   {selectedPayment.funding_sources.type === 'petty_cash' ? (
@@ -770,7 +828,7 @@ const PaymentQueue = () => {
               </div>
             )}
 
-            {selectedPayment?.beneficiary_name && (
+            {selectedPayment?.type === 'request' && selectedPayment?.beneficiary_name && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <h4 className="font-medium flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
@@ -784,30 +842,32 @@ const PaymentQueue = () => {
               </div>
             )}
 
-            <div className="space-y-2">
-              <h4 className="font-medium flex items-center gap-2">
-                <FileCheck className="h-4 w-4" />
-                {language === 'id' ? 'Kelengkapan Dokumen' : 'Document Checklist'}
-              </h4>
-              <div className="flex gap-4">
-                <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasInvoice ? "text-success" : "text-warning"}`}>
-                  {selectedPayment?.hasInvoice ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                  {t('paymentQueue.invoice')}
+            {selectedPayment?.type === 'request' && (
+              <div className="space-y-2">
+                <h4 className="font-medium flex items-center gap-2">
+                  <FileCheck className="h-4 w-4" />
+                  {language === 'id' ? 'Kelengkapan Dokumen' : 'Document Checklist'}
+                </h4>
+                <div className="flex gap-4">
+                  <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasInvoice ? "text-success" : "text-warning"}`}>
+                    {selectedPayment?.hasInvoice ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                    {t('paymentQueue.invoice')}
+                  </div>
+                  <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasQuotation ? "text-success" : "text-warning"}`}>
+                    {selectedPayment?.hasQuotation ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                    Quotation
+                  </div>
                 </div>
-                <div className={`flex items-center gap-1.5 text-sm ${selectedPayment?.hasQuotation ? "text-success" : "text-warning"}`}>
-                  {selectedPayment?.hasQuotation ? <CheckCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                  Quotation
-                </div>
+                {(!selectedPayment?.hasInvoice && !selectedPayment?.hasQuotation) && (
+                  <p className="text-xs text-warning">
+                    {language === 'id' 
+                      ? 'Perhatian: Tidak ada invoice atau quotation. Pembayaran tetap dapat diproses dengan catatan.'
+                      : 'Warning: No invoice or quotation attached. Payment can still be processed with a note.'
+                    }
+                  </p>
+                )}
               </div>
-              {(!selectedPayment?.hasInvoice && !selectedPayment?.hasQuotation) && (
-                <p className="text-xs text-warning">
-                  {language === 'id' 
-                    ? 'Perhatian: Tidak ada invoice atau quotation. Pembayaran tetap dapat diproses dengan catatan.'
-                    : 'Warning: No invoice or quotation attached. Payment can still be processed with a note.'
-                  }
-                </p>
-              )}
-            </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="paymentNote">{t('paymentQueue.paymentNote')}</Label>

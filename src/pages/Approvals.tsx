@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ChevronRight,
   MessageSquare,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,8 +98,8 @@ const Approvals = () => {
       return; // Invalid amount
     }
 
-    // Check if amount > 50M requires note
-    if (parsedAmount > 50000000 && !approvalNote.trim()) {
+    // Check if amount > 50M requires note (only for regular requests)
+    if (selectedRequest.type === 'request' && parsedAmount > 50000000 && !approvalNote.trim()) {
       return; // Will show error in the UI
     }
 
@@ -106,6 +107,7 @@ const Approvals = () => {
       requestId: selectedRequest.id,
       note: approvalNote || undefined,
       approvedAmount: parsedAmount,
+      type: selectedRequest.type,
     });
 
     setIsApproveDialogOpen(false);
@@ -118,6 +120,7 @@ const Approvals = () => {
     await rejectRequest.mutateAsync({
       requestId: selectedRequest.id,
       reason: rejectionReason,
+      type: selectedRequest.type,
     });
 
     setIsRejectDialogOpen(false);
@@ -206,16 +209,23 @@ const Approvals = () => {
                   <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
                     {item.request_number}
                   </code>
-                  <Badge variant="outline" className="text-xs">
-                    {item.divisions?.code || 'N/A'}
-                  </Badge>
+                  {item.type === 'medical_claim' ? (
+                    <Badge variant="outline" className="text-xs gap-1 bg-pink-500/10 text-pink-600 border-pink-500/30">
+                      <Heart className="h-3 w-3" />
+                      Medical
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs">
+                      {item.divisions?.code || 'N/A'}
+                    </Badge>
+                  )}
                   {item.isOverdue && (
                     <Badge variant="destructive" className="text-xs gap-1">
                       <AlertTriangle className="h-3 w-3" />
                       {t('paymentQueue.overdue')}
                     </Badge>
                   )}
-                  {item.amount > 50000000 && (
+                  {item.type === 'request' && item.amount > 50000000 && (
                     <Badge variant="secondary" className="text-xs gap-1 bg-warning/10 text-warning">
                       <MessageSquare className="h-3 w-3" />
                       {t('approvals.noteRequired')}
@@ -359,7 +369,7 @@ const Approvals = () => {
                 onChange={(e) => setApprovalNote(e.target.value)}
                 rows={3}
               />
-              {selectedRequest && parseFloat(approvedAmount) > 50000000 && !approvalNote.trim() && (
+              {selectedRequest && parseFloat(approvedAmount) > 50000000 && selectedRequest.type === 'request' && !approvalNote.trim() && (
                 <p className="text-xs text-destructive">
                   {t('approvals.noteRequiredOver50M')}
                 </p>
@@ -385,7 +395,7 @@ const Approvals = () => {
                 approveRequest.isPending ||
                 !approvedAmount ||
                 parseFloat(approvedAmount) <= 0 ||
-                (parseFloat(approvedAmount) > 50000000 && !approvalNote.trim()) ||
+                (selectedRequest?.type === 'request' && parseFloat(approvedAmount) > 50000000 && !approvalNote.trim()) ||
                 (selectedRequest && parseFloat(approvedAmount) !== selectedRequest.amount && !approvalNote.trim())
               }
               className="gap-2"
