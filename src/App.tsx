@@ -33,6 +33,7 @@ import CashAdvanceSettlementForm from "./pages/CashAdvanceSettlementForm";
 import MedicalReimbursement from "./pages/MedicalReimbursement";
 import MedicalReimbursementForm from "./pages/MedicalReimbursementForm";
 import MedicalReimbursementDetail from "./pages/MedicalReimbursementDetail";
+import EmployeeMedicalBudgets from "./pages/EmployeeMedicalBudgets";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -154,6 +155,11 @@ const App = () => (
                 <Route path="/session-management" element={
                   <ProtectedRoute requiredRole="super_admin">
                     <SessionManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/employee-medical-budgets" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <EmployeeMedicalBudgets />
                   </ProtectedRoute>
                 } />
               </Route>
