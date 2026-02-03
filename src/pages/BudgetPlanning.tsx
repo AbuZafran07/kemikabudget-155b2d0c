@@ -97,7 +97,6 @@ const BudgetPlanning = () => {
   const [formCategoryId, setFormCategoryId] = useState("");
   const [formAmount, setFormAmount] = useState("");
   const [formStatus, setFormStatus] = useState("draft");
-  const [formCarryOver, setFormCarryOver] = useState("hangus");
 
   // Get unique years from periods
   const years = [...new Set(periods?.map(p => p.year) || [])].sort((a, b) => b - a);
@@ -199,7 +198,6 @@ const BudgetPlanning = () => {
     setFormCategoryId("");
     setFormAmount("");
     setFormStatus("draft");
-    setFormCarryOver("hangus");
   };
 
   const openCreateDialog = () => {
@@ -345,10 +343,10 @@ const BudgetPlanning = () => {
                 <TableRow>
                   <TableHead>{language === 'id' ? 'Divisi' : 'Division'}</TableHead>
                   <TableHead>{language === 'id' ? 'Kategori' : 'Category'}</TableHead>
-                  <TableHead>Limit</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">{language === 'id' ? 'Alokasi' : 'Allocated'}</TableHead>
+                  <TableHead className="text-right">{language === 'id' ? 'Terpakai' : 'Used'}</TableHead>
+                  <TableHead className="text-right">{language === 'id' ? 'Sisa' : 'Remaining'}</TableHead>
                   <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-center">Carry Over</TableHead>
                   <TableHead className="text-right">{language === 'id' ? 'Aksi' : 'Action'}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -360,54 +358,57 @@ const BudgetPlanning = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedBudgets.map((budget) => (
-                    <TableRow key={budget.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {budget.divisions?.code}
+                  paginatedBudgets.map((budget) => {
+                    const remaining = budget.allocated_amount - budget.used_amount;
+                    return (
+                      <TableRow key={budget.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {budget.divisions?.code}
+                            </Badge>
+                            <span>{budget.divisions?.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{budget.cost_categories?.name}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(budget.allocated_amount)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {formatCurrency(budget.used_amount)}
+                        </TableCell>
+                        <TableCell className={`text-right font-medium ${remaining < 0 ? 'text-destructive' : remaining > 0 ? 'text-success' : ''}`}>
+                          {formatCurrency(remaining)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="text-xs">
+                            {language === 'id' ? 'Aktif' : 'Active'}
                           </Badge>
-                          <span>{budget.divisions?.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{budget.cost_categories?.name}</TableCell>
-                      <TableCell className="text-muted-foreground">-</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(budget.allocated_amount)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary" className="text-xs">
-                          approved
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-primary text-sm cursor-pointer hover:underline">
-                          Rollover
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(budget)}
-                            title={language === 'id' ? 'Edit' : 'Edit'}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteClick(budget)}
-                            title={language === 'id' ? 'Hapus' : 'Delete'}
-                            disabled={budget.used_amount > 0}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(budget)}
+                              title={language === 'id' ? 'Edit' : 'Edit'}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(budget)}
+                              title={language === 'id' ? 'Hapus' : 'Delete'}
+                              disabled={budget.used_amount > 0}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -587,31 +588,17 @@ const BudgetPlanning = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={formStatus} onValueChange={setFormStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Carry Over</Label>
-                <Select value={formCarryOver} onValueChange={setFormCarryOver}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hangus">Hangus</SelectItem>
-                    <SelectItem value="rollover">Rollover</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={formStatus} onValueChange={setFormStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

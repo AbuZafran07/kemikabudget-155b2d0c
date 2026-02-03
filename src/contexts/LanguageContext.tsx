@@ -938,6 +938,8 @@ const translations: Translations = {
   'medicalBudget.createSuccessDesc': { id: 'Budget medical karyawan telah ditambahkan', en: 'Employee medical budget has been added' },
   'medicalBudget.updateSuccess': { id: 'Budget Berhasil Diperbarui', en: 'Budget Updated Successfully' },
   'medicalBudget.updateSuccessDesc': { id: 'Budget medical karyawan telah diperbarui', en: 'Employee medical budget has been updated' },
+  'medicalBudget.deductedFromHRGA': { id: 'Dipotong dari budget HRGA Kesejahteraan:', en: 'Deducted from HRGA Welfare budget:' },
+  'medicalBudget.insufficientBudget': { id: 'Budget HRGA Kesejahteraan tidak mencukupi', en: 'Insufficient HRGA Welfare budget' },
   
   // Medical Dashboard Cards
   'medicalDashboard.pendingHRGA': { id: 'Klaim Medical - Review HRGA', en: 'Medical Claims - HRGA Review' },
