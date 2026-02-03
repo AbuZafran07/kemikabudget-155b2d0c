@@ -104,49 +104,40 @@ const EmployeeMedicalBudgets = () => {
     },
   });
   
-  // Create/Update mutation
+  // Create/Update mutation - uses RPC to deduct from HRGA welfare budget
   const saveBudget = useMutation({
     mutationFn: async ({ isEdit, budgetId }: { isEdit: boolean; budgetId?: string }) => {
-      const budgetData = {
-        employee_id: selectedEmployeeId,
-        year: parseInt(budgetYear),
-        total_entitlement: parseFloat(entitlement),
-        status: "active",
-      };
+      // Use the allocate_medical_budget RPC function which:
+      // 1. Validates HRGA welfare budget availability
+      // 2. Deducts from HRGA welfare budget
+      // 3. Creates/updates employee medical budget
+      const { data, error } = await supabase.rpc("allocate_medical_budget", {
+        p_employee_id: selectedEmployeeId,
+        p_year: parseInt(budgetYear),
+        p_entitlement: parseFloat(entitlement),
+      });
+
+      if (error) throw error;
       
-      if (isEdit && budgetId) {
-        const { error } = await supabase
-          .from("employee_medical_budgets")
-          .update({ 
-            total_entitlement: budgetData.total_entitlement,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", budgetId);
-        if (error) throw error;
-      } else {
-        // Check if budget already exists
-        const { data: existing } = await supabase
-          .from("employee_medical_budgets")
-          .select("id")
-          .eq("employee_id", selectedEmployeeId)
-          .eq("year", parseInt(budgetYear))
-          .maybeSingle();
-        
-        if (existing) {
-          throw new Error(t("medicalBudget.alreadyExists"));
-        }
-        
-        const { error } = await supabase
-          .from("employee_medical_budgets")
-          .insert(budgetData);
-        if (error) throw error;
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || t("common.error"));
       }
+      
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["employee-medical-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["division_budgets"] }); // Refresh budget planning too
+      
+      const result = data as { deducted_from_hrga?: number; remaining_hrga_budget?: number };
+      const deducted = result.deducted_from_hrga || 0;
+      
       toast({
         title: editingBudget ? t("medicalBudget.updateSuccess") : t("medicalBudget.createSuccess"),
-        description: editingBudget ? t("medicalBudget.updateSuccessDesc") : t("medicalBudget.createSuccessDesc"),
+        description: deducted > 0 
+          ? `${t("medicalBudget.deductedFromHRGA")} ${formatCurrency(deducted)}`
+          : t("medicalBudget.updateSuccessDesc"),
       });
       handleCloseDialog();
     },

@@ -906,6 +906,7 @@ export type Database = {
           employee_id: string
           id: string
           remaining_amount: number | null
+          source_division_budget_id: string | null
           status: string
           total_entitlement: number
           updated_at: string
@@ -917,6 +918,7 @@ export type Database = {
           employee_id: string
           id?: string
           remaining_amount?: number | null
+          source_division_budget_id?: string | null
           status?: string
           total_entitlement?: number
           updated_at?: string
@@ -928,6 +930,7 @@ export type Database = {
           employee_id?: string
           id?: string
           remaining_amount?: number | null
+          source_division_budget_id?: string | null
           status?: string
           total_entitlement?: number
           updated_at?: string
@@ -947,6 +950,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "profiles_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_medical_budgets_source_division_budget_id_fkey"
+            columns: ["source_division_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
             referencedColumns: ["id"]
           },
         ]
@@ -1953,6 +1963,15 @@ export type Database = {
         Returns: Json
       }
       admin_unlock_otp: { Args: { p_user_id: string }; Returns: Json }
+      allocate_medical_budget: {
+        Args: {
+          p_employee_id: string
+          p_entitlement: number
+          p_performed_by?: string
+          p_year: number
+        }
+        Returns: Json
+      }
       approve_budget_transfer: {
         Args: { p_transfer_id: string }
         Returns: Json
