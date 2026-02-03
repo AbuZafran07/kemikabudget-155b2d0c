@@ -7,6 +7,7 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import BudgetChart from "@/components/dashboard/BudgetChart";
 import ExpenseByCategory from "@/components/dashboard/ExpenseByCategory";
 import TransactionDetailDialog from "@/components/dashboard/TransactionDetailDialog";
+import PendingMedicalClaimsCard from "@/components/dashboard/PendingMedicalClaimsCard";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -279,7 +280,7 @@ const Dashboard = () => {
 
       {/* Activity Lists - Only for Super Admin and Finance */}
       {(isSuperAdmin || isFinance) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {isSuperAdmin && (
             <RecentActivity
               title={t('dashboard.waitingYourApproval')}
@@ -292,6 +293,7 @@ const Dashboard = () => {
             items={pendingPaymentItems}
             emptyMessage={t('dashboard.noPaymentsPending')}
           />
+          <PendingMedicalClaimsCard />
         </div>
       )}
 
