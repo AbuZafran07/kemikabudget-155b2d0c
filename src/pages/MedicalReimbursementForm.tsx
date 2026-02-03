@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Save, Send, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import MedicalAttachmentUpload from "@/components/medical/MedicalAttachmentUpload";
 import {
   useMedicalBudget,
   useMedicalClaim,
@@ -24,12 +27,29 @@ const MedicalReimbursementForm = () => {
   const isEdit = !!id;
   const { t } = useLanguage();
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: budget, isLoading: budgetLoading } = useMedicalBudget();
   const { data: existingClaim, isLoading: claimLoading } = useMedicalClaim(id);
   const createMutation = useCreateMedicalClaim();
   const updateMutation = useUpdateMedicalClaim();
   const submitMutation = useSubmitMedicalClaim();
+
+  // Query for attachments when editing
+  const { data: attachments = [], refetch: refetchAttachments } = useQuery({
+    queryKey: ["medical-claim-attachments", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data, error } = await supabase
+        .from("medical_claim_attachments")
+        .select("*")
+        .eq("claim_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id,
+  });
 
   const [treatmentDate, setTreatmentDate] = useState("");
   const [claimAmount, setClaimAmount] = useState("");
@@ -313,6 +333,16 @@ const MedicalReimbursementForm = () => {
               rows={3}
             />
           </div>
+
+          {/* Attachments - Only show when editing an existing claim */}
+          {isEdit && id && (
+            <MedicalAttachmentUpload
+              claimId={id}
+              attachments={attachments}
+              onAttachmentsChange={() => refetchAttachments()}
+              disabled={existingClaim?.status !== "draft"}
+            />
+          )}
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">

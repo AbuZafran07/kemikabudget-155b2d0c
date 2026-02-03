@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, FileText, Send, CheckCircle, XCircle, CreditCard, Lock, Printer } from "lucide-react";
+import { ArrowLeft, Heart, FileText, Send, CheckCircle, XCircle, CreditCard, Lock, Printer, Image, File, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   useMedicalClaim,
   useMedicalClaimEvents,
@@ -396,28 +398,74 @@ const MedicalReimbursementDetail = () => {
                 <CardContent className="pt-6">
                   {attachments && attachments.length > 0 ? (
                     <div className="space-y-2">
-                      {attachments.map((att) => (
-                        <div key={att.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
-                          <div className="flex-1">
-                            <p className="font-medium">{att.file_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {att.attachment_type} • {(att.file_size / 1024).toFixed(1)} KB
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-8">
-                      {t("medical.noAttachments")}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+                        {attachments.map((att) => {
+                          const getFileIcon = (fileType: string) => {
+                            if (fileType.startsWith("image/")) return <Image className="h-5 w-5 text-muted-foreground" />;
+                            if (fileType === "application/pdf") return <FileText className="h-5 w-5 text-muted-foreground" />;
+                            return <File className="h-5 w-5 text-muted-foreground" />;
+                          };
+
+                          const getAttachmentTypeLabel = (type: string) => {
+                            const labels: Record<string, { id: string; en: string }> = {
+                              receipt: { id: "Kwitansi", en: "Receipt" },
+                              prescription: { id: "Resep Obat", en: "Prescription" },
+                              referral: { id: "Surat Rujukan", en: "Referral Letter" },
+                              lab_result: { id: "Hasil Lab", en: "Lab Result" },
+                              medical_report: { id: "Laporan Medis", en: "Medical Report" },
+                              other: { id: "Lainnya", en: "Other" },
+                            };
+                            return labels[type]?.[language] || type;
+                          };
+
+                          const handleViewAttachment = async () => {
+                            try {
+                              const { data, error } = await supabase.storage
+                                .from("medical-attachments")
+                                .createSignedUrl(att.file_path, 60);
+                              if (error) throw error;
+                              window.open(data.signedUrl, "_blank");
+                            } catch (error: any) {
+                              toast.error(t("medical.attachment.viewError"));
+                            }
+                          };
+
+                          return (
+                            <div key={att.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                              {getFileIcon(att.file_type)}
+                              <div className="flex-1 min-w-0">
+                                <button
+                                  type="button"
+                                  onClick={handleViewAttachment}
+                                  className="font-medium text-primary hover:underline truncate block text-left w-full"
+                                >
+                                  {att.file_name}
+                                </button>
+                                <p className="text-sm text-muted-foreground">
+                                  {getAttachmentTypeLabel(att.attachment_type)} • {(att.file_size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleViewAttachment}
+                                className="flex-shrink-0"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">
+                        {t("medical.noAttachments")}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
 
         {/* Right Column - Info */}
         <div className="space-y-6">
