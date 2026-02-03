@@ -940,6 +940,11 @@ const translations: Translations = {
   'medicalBudget.updateSuccessDesc': { id: 'Budget medical karyawan telah diperbarui', en: 'Employee medical budget has been updated' },
   'medicalBudget.deductedFromHRGA': { id: 'Dipotong dari budget HRGA Kesejahteraan:', en: 'Deducted from HRGA Welfare budget:' },
   'medicalBudget.insufficientBudget': { id: 'Budget HRGA Kesejahteraan tidak mencukupi', en: 'Insufficient HRGA Welfare budget' },
+  'medicalBudget.hrgaWelfareBudget': { id: 'Sisa Budget HRGA Kesejahteraan', en: 'Remaining HRGA Welfare Budget' },
+  'medicalBudget.noHRGABudget': { id: 'Budget HRGA Kesejahteraan belum ada untuk tahun ini', en: 'HRGA Welfare budget does not exist for this year' },
+  'medicalBudget.noHRGABudgetTitle': { id: 'Budget HRGA Tidak Ditemukan', en: 'HRGA Budget Not Found' },
+  'medicalBudget.noHRGABudgetDesc': { id: 'Buat budget HRGA > Kesejahteraan Karyawan di Budget Planning terlebih dahulu sebelum dapat mengalokasikan budget medical karyawan.', en: 'Create HRGA > Employee Welfare budget in Budget Planning first before allocating employee medical budget.' },
+  'medicalBudget.insufficientHRGABudget': { id: 'Budget HRGA Kesejahteraan tidak mencukupi untuk entitlement yang diminta', en: 'HRGA Welfare budget is insufficient for the requested entitlement' },
   
   // Medical Dashboard Cards
   'medicalDashboard.pendingHRGA': { id: 'Klaim Medical - Review HRGA', en: 'Medical Claims - HRGA Review' },
