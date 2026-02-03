@@ -24,11 +24,15 @@ export interface ApprovalRequest {
   funding_sources?: { code: string; name: string; type: string };
   daysPending?: number;
   isOverdue?: boolean;
+  // Type discriminator
+  type: 'request' | 'medical_claim' | 'cash_advance';
   // Medical claim specific fields
-  type: 'request' | 'medical_claim';
   claim_type?: string;
   patient_name?: string;
   employee?: { full_name: string; email: string };
+  // Cash advance specific fields
+  purpose?: string;
+  total_amount?: number;
 }
 
 const APPROVAL_SLA_DAYS = 3;
@@ -39,7 +43,7 @@ export function useApprovals() {
   const { notifyApproved, notifyRejected } = useNotifications();
   const { logRequestEvent } = useAuditLog();
 
-  // Fetch pending approvals (requests + medical claims)
+  // Fetch pending approvals (requests + medical claims + cash advances)
   const { data: approvals, isLoading, refetch } = useQuery({
     queryKey: ['approvals'],
     queryFn: async () => {
@@ -76,9 +80,23 @@ export function useApprovals() {
 
       if (medError) throw medError;
 
-      // Add employee IDs from medical claims
+      // Fetch cash advances with status 'submitted'
+      const { data: cashAdvanceData, error: caError } = await supabase
+        .from('cash_advances')
+        .select(`
+          *,
+          divisions (code, name),
+          cost_categories (code, name)
+        `)
+        .eq('status', 'submitted')
+        .order('submitted_at', { ascending: true });
+
+      if (caError) throw caError;
+
+      // Add employee IDs from medical claims and cash advances
       const employeeIds = medicalData?.map(m => m.employee_id) || [];
-      const allProfileIds = [...new Set([...requesterIds, ...employeeIds])];
+      const caRequesterIds = cashAdvanceData?.map(ca => ca.requester_id) || [];
+      const allProfileIds = [...new Set([...requesterIds, ...employeeIds, ...caRequesterIds])];
 
       // Fetch all profiles at once
       const { data: profiles } = await supabase
@@ -141,8 +159,39 @@ export function useApprovals() {
         };
       }) || [];
 
+      // Enrich cash advances to match ApprovalRequest structure
+      const enrichedCashAdvances = cashAdvanceData?.map(ca => {
+        const submittedDate = ca.submitted_at ? new Date(ca.submitted_at) : new Date(ca.created_at);
+        const daysPending = differenceInDays(new Date(), submittedDate);
+        const isOverdue = daysPending > APPROVAL_SLA_DAYS;
+        const requester = profiles?.find(p => p.id === ca.requester_id);
+
+        return {
+          id: ca.id,
+          request_number: ca.ca_number,
+          division_id: ca.division_id,
+          category_id: ca.category_id || '',
+          requester_id: ca.requester_id,
+          description: ca.purpose,
+          vendor: null,
+          amount: ca.total_amount,
+          needed_date: ca.needed_date,
+          status: ca.status,
+          submitted_at: ca.submitted_at,
+          created_at: ca.created_at,
+          divisions: ca.divisions,
+          cost_categories: ca.cost_categories,
+          profiles: requester ? { full_name: requester.full_name || '', email: requester.email || '' } : undefined,
+          daysPending,
+          isOverdue,
+          type: 'cash_advance' as const,
+          purpose: ca.purpose,
+          total_amount: ca.total_amount,
+        };
+      }) || [];
+
       // Combine and sort by submitted_at
-      const combined = [...enrichedRequests, ...enrichedMedical].sort((a, b) => {
+      const combined = [...enrichedRequests, ...enrichedMedical, ...enrichedCashAdvances].sort((a, b) => {
         const dateA = a.submitted_at ? new Date(a.submitted_at).getTime() : new Date(a.created_at).getTime();
         const dateB = b.submitted_at ? new Date(b.submitted_at).getTime() : new Date(b.created_at).getTime();
         return dateA - dateB;
@@ -154,7 +203,27 @@ export function useApprovals() {
 
   // Approve request mutation
   const approveRequest = useMutation({
-    mutationFn: async ({ requestId, note, approvedAmount, type = 'request' }: { requestId: string; note?: string; approvedAmount?: number; type?: 'request' | 'medical_claim' }) => {
+    mutationFn: async ({ requestId, note, approvedAmount, type = 'request' }: { requestId: string; note?: string; approvedAmount?: number; type?: 'request' | 'medical_claim' | 'cash_advance' }) => {
+      if (type === 'cash_advance') {
+        // Approve cash advance
+        const { data: caData } = await supabase
+          .from('cash_advances')
+          .select('id, ca_number, requester_id, total_amount, purpose')
+          .eq('id', requestId)
+          .single();
+
+        const { data, error } = await supabase.rpc('approve_cash_advance', {
+          p_ca_id: requestId,
+          p_note: note || null,
+        });
+
+        if (error) throw error;
+        const result = data as { success: boolean; error?: string };
+        if (!result.success) throw new Error(result.error || 'Failed to approve cash advance');
+
+        return { result: { success: true, message: 'Cash advance approved' }, requestData: caData, approvedAmount: caData?.total_amount, type: 'cash_advance' as const };
+      }
+
       if (type === 'medical_claim') {
         // Approve medical claim
         const { data: claimData } = await supabase
@@ -196,12 +265,13 @@ export function useApprovals() {
         throw new Error(result.error || 'Failed to approve request');
       }
 
-      return { result, requestData, approvedAmount: result.approved_amount || approvedAmount, type: 'request' };
+      return { result, requestData, approvedAmount: result.approved_amount || approvedAmount, type: 'request' as const };
     },
     onSuccess: ({ result, requestData, approvedAmount, type }) => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['medical-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-advances'] });
       queryClient.invalidateQueries({ queryKey: ['division_budgets'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
@@ -234,7 +304,27 @@ export function useApprovals() {
 
   // Reject request mutation
   const rejectRequest = useMutation({
-    mutationFn: async ({ requestId, reason, type = 'request' }: { requestId: string; reason: string; type?: 'request' | 'medical_claim' }) => {
+    mutationFn: async ({ requestId, reason, type = 'request' }: { requestId: string; reason: string; type?: 'request' | 'medical_claim' | 'cash_advance' }) => {
+      if (type === 'cash_advance') {
+        // Reject cash advance
+        const { data: caData } = await supabase
+          .from('cash_advances')
+          .select('id, ca_number, requester_id, total_amount, purpose')
+          .eq('id', requestId)
+          .single();
+
+        const { data, error } = await supabase.rpc('reject_cash_advance', {
+          p_ca_id: requestId,
+          p_reason: reason,
+        });
+
+        if (error) throw error;
+        const result = data as { success: boolean; error?: string };
+        if (!result.success) throw new Error(result.error || 'Failed to reject cash advance');
+
+        return { result: { success: true }, requestData: caData, reason, type: 'cash_advance' as const };
+      }
+
       if (type === 'medical_claim') {
         // Reject medical claim
         const { data: claimData } = await supabase
@@ -253,7 +343,7 @@ export function useApprovals() {
         const result = data as { success: boolean; error?: string };
         if (!result.success) throw new Error(result.error || 'Failed to reject medical claim');
 
-        return { result: { success: true }, requestData: claimData, reason, type: 'medical_claim' };
+        return { result: { success: true }, requestData: claimData, reason, type: 'medical_claim' as const };
       }
 
       // Regular request rejection
@@ -275,12 +365,13 @@ export function useApprovals() {
         throw new Error(result.error || 'Failed to reject request');
       }
 
-      return { result, requestData, reason, type: 'request' };
+      return { result, requestData, reason, type: 'request' as const };
     },
     onSuccess: ({ requestData, reason, type }) => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['medical-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-advances'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
         title: 'Ditolak',
