@@ -86,12 +86,12 @@ export function usePaymentQueue() {
       if (medError) throw medError;
 
       // Fetch cash advances with status 'approved'
+      // Note: cash_advances.category_id is optional, categories are in cash_advance_items
       const { data: cashAdvanceData, error: caError } = await supabase
         .from('cash_advances')
         .select(`
           *,
           divisions (code, name),
-          cost_categories (code, name),
           funding_source_options (code, name, type)
         `)
         .eq('status', 'approved')
@@ -223,7 +223,7 @@ export function usePaymentQueue() {
           approved_at: ca.approved_at,
           created_at: ca.created_at,
           divisions: ca.divisions,
-          cost_categories: ca.cost_categories,
+          cost_categories: undefined, // CA uses item-level categories, not header-level
           profiles: requester ? { full_name: requester.full_name || '', email: requester.email || '' } : undefined,
           funding_sources: ca.funding_sources,
           hasInvoice: false,
