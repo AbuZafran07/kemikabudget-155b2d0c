@@ -81,12 +81,12 @@ export function useApprovals() {
       if (medError) throw medError;
 
       // Fetch cash advances with status 'submitted'
+      // Note: cash_advances.category_id is optional, categories are in cash_advance_items
       const { data: cashAdvanceData, error: caError } = await supabase
         .from('cash_advances')
         .select(`
           *,
-          divisions (code, name),
-          cost_categories (code, name)
+          divisions (code, name)
         `)
         .eq('status', 'submitted')
         .order('submitted_at', { ascending: true });
@@ -180,7 +180,7 @@ export function useApprovals() {
           submitted_at: ca.submitted_at,
           created_at: ca.created_at,
           divisions: ca.divisions,
-          cost_categories: ca.cost_categories,
+          cost_categories: undefined, // CA uses item-level categories, not header-level
           profiles: requester ? { full_name: requester.full_name || '', email: requester.email || '' } : undefined,
           daysPending,
           isOverdue,
