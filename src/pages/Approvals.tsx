@@ -8,6 +8,7 @@ import {
   ChevronRight,
   MessageSquare,
   Heart,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -188,6 +189,7 @@ const Approvals = () => {
               <SelectItem value="all">{language === 'id' ? 'Semua Tipe' : 'All Types'}</SelectItem>
               <SelectItem value="request">{language === 'id' ? 'Request' : 'Request'}</SelectItem>
               <SelectItem value="medical_claim">{language === 'id' ? 'Medical' : 'Medical'}</SelectItem>
+              <SelectItem value="cash_advance">{language === 'id' ? 'Cash Advance' : 'Cash Advance'}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={divisionFilter} onValueChange={setDivisionFilter}>
@@ -226,6 +228,11 @@ const Approvals = () => {
                     <Badge variant="outline" className="text-xs gap-1 bg-pink-500/10 text-pink-600 border-pink-500/30">
                       <Heart className="h-3 w-3" />
                       Medical
+                    </Badge>
+                  ) : item.type === 'cash_advance' ? (
+                    <Badge variant="outline" className="text-xs gap-1 bg-blue-500/10 text-blue-600 border-blue-500/30">
+                      <Wallet className="h-3 w-3" />
+                      Cash Advance
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs">

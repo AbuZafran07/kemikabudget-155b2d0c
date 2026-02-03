@@ -181,6 +181,35 @@ const PaymentQueue = () => {
       return;
     }
 
+    // For cash advances, funding source is required
+    if (selectedPayment.type === 'cash_advance') {
+      const fundingSourceToUse = selectedFundingSourceId || selectedPayment.funding_source_id;
+      if (!fundingSourceToUse) {
+        toast({
+          title: language === 'id' ? 'Sumber Dana Diperlukan' : 'Funding Source Required',
+          description: language === 'id' 
+            ? 'Pilih sumber dana sebelum memproses pembayaran Cash Advance' 
+            : 'Select a funding source before processing Cash Advance payment',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await payRequest.mutateAsync({
+        requestId: selectedPayment.id,
+        note: paymentNote || undefined,
+        fundingSourceId: fundingSourceToUse,
+        type: 'cash_advance',
+      });
+
+      setLastPaidPayment(selectedPayment);
+      setIsPayDialogOpen(false);
+      setSelectedPayment(null);
+      setSelectedFundingSourceId(null);
+      setSelectedItems(prev => prev.filter(id => id !== selectedPayment.id));
+      return;
+    }
+
     // Check if funding source is selected for regular requests
     const fundingSourceToUse = selectedFundingSourceId || selectedPayment.funding_source_id;
     if (!fundingSourceToUse) {
@@ -462,9 +491,12 @@ const PaymentQueue = () => {
   };
 
   // Check if selected payment needs funding source (not for medical claims)
-  const needsFundingSource = selectedPayment && selectedPayment.type === 'request' && !selectedPayment.funding_source_id;
+  const needsFundingSource = selectedPayment && 
+    (selectedPayment.type === 'request' || selectedPayment.type === 'cash_advance') && 
+    !selectedPayment.funding_source_id;
   const canProcessPayment = selectedPayment && (
     selectedPayment.type === 'medical_claim' || 
+    selectedPayment.type === 'cash_advance' ||
     selectedPayment.funding_source_id || 
     selectedFundingSourceId
   );
@@ -552,6 +584,7 @@ const PaymentQueue = () => {
               <SelectItem value="all">{language === 'id' ? 'Semua Tipe' : 'All Types'}</SelectItem>
               <SelectItem value="request">{language === 'id' ? 'Request' : 'Request'}</SelectItem>
               <SelectItem value="medical_claim">{language === 'id' ? 'Medical' : 'Medical'}</SelectItem>
+              <SelectItem value="cash_advance">{language === 'id' ? 'Cash Advance' : 'Cash Advance'}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
@@ -630,6 +663,11 @@ const PaymentQueue = () => {
                         <Heart className="h-3 w-3" />
                         Medical
                       </Badge>
+                    ) : item.type === 'cash_advance' ? (
+                      <Badge variant="outline" className="text-xs gap-1 bg-primary/10 text-primary border-primary/30">
+                        <Wallet className="h-3 w-3" />
+                        Cash Advance
+                      </Badge>
                     ) : (
                       <Badge variant="outline" className="text-xs">
                         {item.divisions?.code || 'N/A'}
@@ -646,6 +684,18 @@ const PaymentQueue = () => {
                       <Badge variant="outline" className="text-xs text-warning border-warning">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         {language === 'id' ? 'Belum ada sumber dana' : 'No funding source'}
+                      </Badge>
+                    ) : item.type === 'cash_advance' && hasFundingSource ? (
+                      <div className={`flex items-center gap-1 ${sourceConfig.color}`}>
+                        <SourceIcon className="h-3.5 w-3.5" />
+                        <span className="text-xs font-medium">
+                          {item.funding_sources?.name || sourceConfig.label}
+                        </span>
+                      </div>
+                    ) : item.type === 'cash_advance' ? (
+                      <Badge variant="outline" className="text-xs text-warning border-warning">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        {language === 'id' ? 'Pilih sumber dana' : 'Select funding source'}
                       </Badge>
                     ) : null}
                     {item.isOverdue && (
@@ -705,6 +755,12 @@ const PaymentQueue = () => {
                     <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
                       <Heart className="h-3.5 w-3.5" />
                       <span>{item.claim_type} • {item.patient_name}</span>
+                    </div>
+                  )}
+                  {item.type === 'cash_advance' && (
+                    <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+                      <Wallet className="h-3.5 w-3.5" />
+                      <span>{item.purpose}</span>
                     </div>
                   )}
                 </div>
@@ -816,8 +872,19 @@ const PaymentQueue = () => {
               </div>
             )}
 
-            {/* Funding Source Selector - show if no funding source (only for requests) */}
-            {selectedPayment?.type === 'request' && needsFundingSource && (
+            {/* Cash advance info */}
+            {selectedPayment?.type === 'cash_advance' && (
+              <div className="bg-primary/10 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium flex items-center gap-2 text-primary">
+                  <Wallet className="h-4 w-4" />
+                  Cash Advance
+                </h4>
+                <p className="text-sm">{selectedPayment.purpose}</p>
+              </div>
+            )}
+
+            {/* Funding Source Selector - show if no funding source (for requests and cash advances) */}
+            {(selectedPayment?.type === 'request' || selectedPayment?.type === 'cash_advance') && needsFundingSource && (
               <PaymentFundingSourceSelector
                 fundingSources={fundingSources}
                 selectedFundingSourceId={selectedFundingSourceId}
@@ -826,8 +893,8 @@ const PaymentQueue = () => {
               />
             )}
 
-            {/* Show existing funding source info (only for requests) */}
-            {selectedPayment?.type === 'request' && selectedPayment?.funding_source_id && selectedPayment.funding_sources && (
+            {/* Show existing funding source info (for requests and cash advances) */}
+            {(selectedPayment?.type === 'request' || selectedPayment?.type === 'cash_advance') && selectedPayment?.funding_source_id && selectedPayment.funding_sources && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <h4 className="font-medium flex items-center gap-2">
                   {selectedPayment.funding_sources.type === 'petty_cash' ? (

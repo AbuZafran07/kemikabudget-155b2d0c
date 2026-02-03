@@ -33,10 +33,14 @@ export interface PaymentRequest {
   hasReceipt?: boolean;
   daysSinceApproval?: number;
   isOverdue?: boolean;
+  // Type discriminator
+  type: 'request' | 'medical_claim' | 'cash_advance';
   // Medical claim specific
-  type: 'request' | 'medical_claim';
   claim_type?: string;
   patient_name?: string;
+  // Cash advance specific
+  purpose?: string;
+  total_amount?: number;
 }
 
 const PAYMENT_SLA_DAYS = 3;
@@ -47,7 +51,7 @@ export function usePaymentQueue() {
   const { notifyPaid } = useNotifications();
   const { logRequestEvent } = useAuditLog();
 
-  // Fetch approved requests pending payment (requests + medical claims)
+  // Fetch approved requests pending payment (requests + medical claims + cash advances)
   const { data: payments, isLoading, refetch } = useQuery({
     queryKey: ['payment-queue'],
     queryFn: async () => {
@@ -81,10 +85,32 @@ export function usePaymentQueue() {
 
       if (medError) throw medError;
 
+      // Fetch cash advances with status 'approved'
+      const { data: cashAdvanceData, error: caError } = await supabase
+        .from('cash_advances')
+        .select(`
+          *,
+          divisions (code, name),
+          cost_categories (code, name),
+          funding_source_options (code, name, type)
+        `)
+        .eq('status', 'approved')
+        .order('approved_at', { ascending: true });
+
+      if (caError) throw caError;
+
+      // Map cash advances
+      const mappedCashAdvances = (cashAdvanceData || []).map(ca => ({
+        ...ca,
+        funding_sources: ca.funding_source_options,
+        type: 'cash_advance' as const,
+      }));
+
       // Get all profile IDs
       const requesterIds = mappedRequests?.map(r => r.requester_id) || [];
       const employeeIds = medicalData?.map(m => m.employee_id) || [];
-      const allProfileIds = [...new Set([...requesterIds, ...employeeIds])];
+      const caRequesterIds = mappedCashAdvances?.map(ca => ca.requester_id) || [];
+      const allProfileIds = [...new Set([...requesterIds, ...employeeIds, ...caRequesterIds])];
 
       // Fetch profiles
       const { data: profiles } = await supabase
@@ -170,8 +196,49 @@ export function usePaymentQueue() {
         };
       }) || [];
 
+      // Enrich cash advances
+      const enrichedCashAdvances = mappedCashAdvances?.map(ca => {
+        const approvedDate = ca.approved_at ? new Date(ca.approved_at) : new Date();
+        const daysSinceApproval = differenceInDays(new Date(), approvedDate);
+        const isOverdue = daysSinceApproval > PAYMENT_SLA_DAYS;
+        const requester = profiles?.find(p => p.id === ca.requester_id);
+
+        return {
+          id: ca.id,
+          request_number: ca.ca_number,
+          division_id: ca.division_id,
+          category_id: ca.category_id || '',
+          requester_id: ca.requester_id,
+          description: ca.purpose,
+          vendor: null,
+          amount: ca.total_amount,
+          approved_amount: ca.total_amount,
+          needed_date: ca.needed_date,
+          status: ca.status,
+          funding_source_id: ca.funding_source_id,
+          payment_method: null,
+          beneficiary_name: requester?.full_name || null,
+          beneficiary_bank: null,
+          beneficiary_account: null,
+          approved_at: ca.approved_at,
+          created_at: ca.created_at,
+          divisions: ca.divisions,
+          cost_categories: ca.cost_categories,
+          profiles: requester ? { full_name: requester.full_name || '', email: requester.email || '' } : undefined,
+          funding_sources: ca.funding_sources,
+          hasInvoice: false,
+          hasQuotation: false,
+          hasReceipt: false,
+          daysSinceApproval,
+          isOverdue,
+          type: 'cash_advance' as const,
+          purpose: ca.purpose,
+          total_amount: ca.total_amount,
+        };
+      }) || [];
+
       // Combine and sort
-      const combined = [...enrichedRequests, ...enrichedMedical].sort((a, b) => {
+      const combined = [...enrichedRequests, ...enrichedMedical, ...enrichedCashAdvances].sort((a, b) => {
         const dateA = a.approved_at ? new Date(a.approved_at).getTime() : 0;
         const dateB = b.approved_at ? new Date(b.approved_at).getTime() : 0;
         return dateA - dateB;
@@ -198,7 +265,27 @@ export function usePaymentQueue() {
 
   // Pay request mutation
   const payRequest = useMutation({
-    mutationFn: async ({ requestId, note, type = 'request' }: { requestId: string; note?: string; type?: 'request' | 'medical_claim' }) => {
+    mutationFn: async ({ requestId, note, fundingSourceId, type = 'request' }: { requestId: string; note?: string; fundingSourceId?: string; type?: 'request' | 'medical_claim' | 'cash_advance' }) => {
+      if (type === 'cash_advance') {
+        // Pay cash advance
+        const { data: caData } = await supabase
+          .from('cash_advances')
+          .select('id, ca_number, requester_id, total_amount, purpose')
+          .eq('id', requestId)
+          .single();
+
+        const { data, error } = await supabase.rpc('pay_cash_advance', {
+          p_ca_id: requestId,
+          p_funding_source_id: fundingSourceId || '',
+        });
+
+        if (error) throw error;
+        const result = data as { success: boolean; error?: string };
+        if (!result.success) throw new Error(result.error || 'Failed to pay cash advance');
+
+        return { result: { success: true, message: 'Cash advance paid' }, requestData: caData, type: 'cash_advance' as const };
+      }
+
       if (type === 'medical_claim') {
         // Pay medical claim
         const { data: claimData } = await supabase
@@ -215,7 +302,7 @@ export function usePaymentQueue() {
         const result = data as { success: boolean; error?: string };
         if (!result.success) throw new Error(result.error || 'Failed to pay medical claim');
 
-        return { result: { success: true, message: 'Medical claim paid' }, requestData: claimData, type: 'medical_claim' };
+        return { result: { success: true, message: 'Medical claim paid' }, requestData: claimData, type: 'medical_claim' as const };
       }
 
       // Regular request payment
@@ -237,12 +324,13 @@ export function usePaymentQueue() {
         throw new Error(result.error || 'Failed to process payment');
       }
 
-      return { result, requestData, type: 'request' };
+      return { result, requestData, type: 'request' as const };
     },
     onSuccess: ({ result, requestData, type }) => {
       queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       queryClient.invalidateQueries({ queryKey: ['medical-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-advances'] });
       queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
       toast({
