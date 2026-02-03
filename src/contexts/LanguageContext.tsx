@@ -883,6 +883,26 @@ const translations: Translations = {
   'medical.closeSuccess': { id: 'Klaim Ditutup', en: 'Claim Closed' },
   'medical.closeSuccessDesc': { id: 'Klaim telah ditutup.', en: 'Claim has been closed.' },
   'medical.pdfPreview': { id: 'Preview PDF', en: 'PDF Preview' },
+  
+  // Medical Attachments
+  'medical.attachment.receipt': { id: 'Kwitansi', en: 'Receipt' },
+  'medical.attachment.prescription': { id: 'Resep Obat', en: 'Prescription' },
+  'medical.attachment.referral': { id: 'Surat Rujukan', en: 'Referral Letter' },
+  'medical.attachment.labResult': { id: 'Hasil Lab', en: 'Lab Result' },
+  'medical.attachment.medicalReport': { id: 'Laporan Medis', en: 'Medical Report' },
+  'medical.attachment.other': { id: 'Lainnya', en: 'Other' },
+  'medical.attachment.type': { id: 'Jenis Lampiran', en: 'Attachment Type' },
+  'medical.attachment.upload': { id: 'Upload File', en: 'Upload File' },
+  'medical.attachment.hint': { id: 'Format: JPG, PNG, WebP, PDF. Maks 5MB', en: 'Format: JPG, PNG, WebP, PDF. Max 5MB' },
+  'medical.attachment.invalidType': { id: 'Format file tidak didukung. Gunakan JPG, PNG, WebP atau PDF', en: 'File format not supported. Use JPG, PNG, WebP or PDF' },
+  'medical.attachment.fileTooLarge': { id: 'Ukuran file terlalu besar. Maksimal 5MB', en: 'File size too large. Maximum 5MB' },
+  'medical.attachment.uploadSuccess': { id: 'File berhasil diupload', en: 'File uploaded successfully' },
+  'medical.attachment.uploadError': { id: 'Gagal mengupload file', en: 'Failed to upload file' },
+  'medical.attachment.deleteSuccess': { id: 'File berhasil dihapus', en: 'File deleted successfully' },
+  'medical.attachment.deleteError': { id: 'Gagal menghapus file', en: 'Failed to delete file' },
+  'medical.attachment.viewError': { id: 'Gagal membuka file', en: 'Failed to open file' },
+  'medical.attachment.noAttachments': { id: 'Belum ada lampiran', en: 'No attachments yet' },
+  'common.uploading': { id: 'Mengupload...', en: 'Uploading...' },
 };
 
 interface LanguageContextType {
