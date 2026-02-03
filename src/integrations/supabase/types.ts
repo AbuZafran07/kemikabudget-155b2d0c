@@ -146,6 +146,13 @@ export type Database = {
             referencedRelation: "requests"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "budget_movements_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests_secure"
+            referencedColumns: ["id"]
+          },
         ]
       }
       budget_periods: {
@@ -1311,6 +1318,13 @@ export type Database = {
             referencedRelation: "requests"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notification_logs_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests_secure"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notification_preferences: {
@@ -1499,6 +1513,13 @@ export type Database = {
             referencedRelation: "requests"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "petty_cash_transactions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests_secure"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -1590,6 +1611,13 @@ export type Database = {
             referencedRelation: "requests"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "request_attachments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests_secure"
+            referencedColumns: ["id"]
+          },
         ]
       }
       request_events: {
@@ -1626,6 +1654,13 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests_secure"
             referencedColumns: ["id"]
           },
         ]
@@ -1946,6 +1981,160 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requests_secure: {
+        Row: {
+          amount: number | null
+          approved_amount: number | null
+          approved_at: string | null
+          approved_by: string | null
+          beneficiary_account: string | null
+          beneficiary_bank: string | null
+          beneficiary_email: string | null
+          beneficiary_name: string | null
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          division_id: string | null
+          funding_source_id: string | null
+          id: string | null
+          is_locked: boolean | null
+          locked_at: string | null
+          locked_by: string | null
+          needed_date: string | null
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_method: string | null
+          period_id: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          request_number: string | null
+          requester_id: string | null
+          settled_at: string | null
+          settled_by: string | null
+          status: Database["public"]["Enums"]["request_status"] | null
+          submitted_at: string | null
+          updated_at: string | null
+          vendor: string | null
+        }
+        Insert: {
+          amount?: number | null
+          approved_amount?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_account?: never
+          beneficiary_bank?: never
+          beneficiary_email?: never
+          beneficiary_name?: never
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          division_id?: string | null
+          funding_source_id?: string | null
+          id?: string | null
+          is_locked?: boolean | null
+          locked_at?: string | null
+          locked_by?: string | null
+          needed_date?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          period_id?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_number?: string | null
+          requester_id?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: Database["public"]["Enums"]["request_status"] | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number | null
+          approved_amount?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_account?: never
+          beneficiary_bank?: never
+          beneficiary_email?: never
+          beneficiary_name?: never
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          division_id?: string | null
+          funding_source_id?: string | null
+          id?: string | null
+          is_locked?: boolean | null
+          locked_at?: string | null
+          locked_by?: string | null
+          needed_date?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          period_id?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_number?: string | null
+          requester_id?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: Database["public"]["Enums"]["request_status"] | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requests_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_source_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requests_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "budget_periods"
             referencedColumns: ["id"]
           },
         ]
