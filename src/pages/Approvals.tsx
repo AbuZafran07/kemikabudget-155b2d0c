@@ -56,6 +56,7 @@ const Approvals = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   
   // Dialog states
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
@@ -71,7 +72,9 @@ const Approvals = () => {
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDivision =
       divisionFilter === "all" || item.divisions?.code === divisionFilter;
-    return matchesSearch && matchesDivision;
+    const matchesType =
+      typeFilter === "all" || item.type === typeFilter;
+    return matchesSearch && matchesDivision && matchesType;
   }) || [];
 
   // Get unique divisions from approvals
@@ -177,6 +180,16 @@ const Approvals = () => {
               className="pl-9"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder={language === 'id' ? 'Tipe' : 'Type'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{language === 'id' ? 'Semua Tipe' : 'All Types'}</SelectItem>
+              <SelectItem value="request">{language === 'id' ? 'Request' : 'Request'}</SelectItem>
+              <SelectItem value="medical_claim">{language === 'id' ? 'Medical' : 'Medical'}</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={divisionFilter} onValueChange={setDivisionFilter}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder={t('users.division')} />

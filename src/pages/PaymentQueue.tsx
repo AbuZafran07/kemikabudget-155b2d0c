@@ -86,6 +86,7 @@ const PaymentQueue = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -118,14 +119,16 @@ const PaymentQueue = () => {
         (sourceFilter === "petty_cash" && item.funding_sources?.type === "petty_cash") ||
         (sourceFilter === "bank" && item.funding_sources?.type === "bank");
       
-      return matchesSearch && matchesSource;
+      const matchesType = typeFilter === "all" || item.type === typeFilter;
+      
+      return matchesSearch && matchesSource && matchesType;
     }) || [];
-  }, [payments, searchQuery, sourceFilter]);
+  }, [payments, searchQuery, sourceFilter, typeFilter]);
 
   // Reset to page 1 when filter changes
   useMemo(() => {
     setCurrentPage(1);
-  }, [searchQuery, sourceFilter]);
+  }, [searchQuery, sourceFilter, typeFilter]);
 
   // Paginated payments
   const paginatedPayments = useMemo(() => {
@@ -541,6 +544,16 @@ const PaymentQueue = () => {
               className="pl-9"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder={language === 'id' ? 'Tipe' : 'Type'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{language === 'id' ? 'Semua Tipe' : 'All Types'}</SelectItem>
+              <SelectItem value="request">{language === 'id' ? 'Request' : 'Request'}</SelectItem>
+              <SelectItem value="medical_claim">{language === 'id' ? 'Medical' : 'Medical'}</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder={t('requests.fundingSource')} />
