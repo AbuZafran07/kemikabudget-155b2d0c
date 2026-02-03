@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Heart, Users, Edit, Loader2 } from "lucide-react";
+import { Plus, Search, Heart, Users, Edit, Loader2, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,13 @@ interface Employee {
   division_id: string | null;
 }
 
+interface HRGAWelfareBudget {
+  allocated_amount: number;
+  used_amount: number;
+  remaining_amount: number;
+  exists: boolean;
+}
+
 const EmployeeMedicalBudgets = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
@@ -54,6 +62,62 @@ const EmployeeMedicalBudgets = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [entitlement, setEntitlement] = useState("");
   const [budgetYear, setBudgetYear] = useState(currentYear.toString());
+  
+  // Fetch HRGA Welfare budget for selected year
+  const { data: hrgaWelfareBudget, isLoading: isLoadingWelfare } = useQuery({
+    queryKey: ["hrga-welfare-budget", budgetYear],
+    queryFn: async () => {
+      // Get HRGA division and Welfare category
+      const { data: hrga } = await supabase
+        .from("divisions")
+        .select("id")
+        .eq("code", "HRGA")
+        .maybeSingle();
+      
+      const { data: welfare } = await supabase
+        .from("cost_categories")
+        .select("id")
+        .eq("code", "WELFARE")
+        .maybeSingle();
+      
+      if (!hrga || !welfare) {
+        return { allocated_amount: 0, used_amount: 0, remaining_amount: 0, exists: false } as HRGAWelfareBudget;
+      }
+      
+      // Get active period for the year
+      const { data: period } = await supabase
+        .from("budget_periods")
+        .select("id")
+        .eq("year", parseInt(budgetYear))
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (!period) {
+        return { allocated_amount: 0, used_amount: 0, remaining_amount: 0, exists: false } as HRGAWelfareBudget;
+      }
+      
+      // Get division budget
+      const { data: budget } = await supabase
+        .from("division_budgets")
+        .select("allocated_amount, used_amount")
+        .eq("division_id", hrga.id)
+        .eq("category_id", welfare.id)
+        .eq("period_id", period.id)
+        .maybeSingle();
+      
+      if (!budget) {
+        return { allocated_amount: 0, used_amount: 0, remaining_amount: 0, exists: false } as HRGAWelfareBudget;
+      }
+      
+      return {
+        allocated_amount: budget.allocated_amount,
+        used_amount: budget.used_amount,
+        remaining_amount: budget.allocated_amount - budget.used_amount,
+        exists: true
+      } as HRGAWelfareBudget;
+    },
+    enabled: dialogOpen, // Only fetch when dialog is open
+  });
   
   // Fetch budgets
   const { data: budgets, isLoading } = useQuery({
@@ -197,6 +261,30 @@ const EmployeeMedicalBudgets = () => {
       });
       return;
     }
+    
+    // Validate HRGA Welfare budget exists and has sufficient funds
+    if (!hrgaWelfareBudget?.exists) {
+      toast({
+        title: t("common.error"),
+        description: t("medicalBudget.noHRGABudget"),
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const entitlementAmount = parseFloat(entitlement);
+    const currentEntitlement = editingBudget?.total_entitlement || 0;
+    const additionalNeeded = entitlementAmount - currentEntitlement;
+    
+    if (additionalNeeded > 0 && additionalNeeded > hrgaWelfareBudget.remaining_amount) {
+      toast({
+        title: t("common.error"),
+        description: t("medicalBudget.insufficientHRGABudget"),
+        variant: "destructive",
+      });
+      return;
+    }
+    
     saveBudget.mutate({ isEdit: !!editingBudget, budgetId: editingBudget?.id });
   };
   
@@ -384,6 +472,40 @@ const EmployeeMedicalBudgets = () => {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {/* HRGA Welfare Budget Info */}
+            {isLoadingWelfare ? (
+              <Skeleton className="h-20 w-full" />
+            ) : hrgaWelfareBudget?.exists ? (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>{t("medicalBudget.hrgaWelfareBudget")}</AlertTitle>
+                <AlertDescription>
+                  <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">{t("budget.allocated")}:</span>
+                      <p className="font-medium">{formatCurrency(hrgaWelfareBudget.allocated_amount)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t("budget.used")}:</span>
+                      <p className="font-medium text-warning">{formatCurrency(hrgaWelfareBudget.used_amount)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t("budget.remaining")}:</span>
+                      <p className="font-medium text-success">{formatCurrency(hrgaWelfareBudget.remaining_amount)}</p>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>{t("medicalBudget.noHRGABudgetTitle")}</AlertTitle>
+                <AlertDescription>
+                  {t("medicalBudget.noHRGABudgetDesc")}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div className="space-y-2">
               <Label>{t("medicalBudget.employee")}</Label>
               <Select

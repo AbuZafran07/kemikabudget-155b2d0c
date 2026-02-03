@@ -126,8 +126,10 @@ const MedicalReimbursementDetail = () => {
   const isFinance = role === "finance" || role === "super_admin";
   const canEdit = isOwner && claim.status === "draft";
   const canSubmit = isOwner && claim.status === "draft";
+  // HRGA now directly approves/rejects (no finance review step)
   const canHRGAReview = isHRGA && (claim.status === "submitted" || claim.status === "review_hrga");
-  const canFinanceReview = isFinance && claim.status === "review_finance";
+  // Finance step removed - HRGA directly approves
+  const canFinanceReview = false; // Disabled - no longer needed
   const canPay = isFinance && claim.status === "approved";
   const canClose = isFinance && claim.status === "paid";
   const canPrintPDF = ["approved", "paid", "closed"].includes(claim.status);
@@ -226,7 +228,7 @@ const MedicalReimbursementDetail = () => {
               </Button>
               <Button onClick={() => setShowHRGAApproveDialog(true)}>
                 <CheckCircle className="h-4 w-4 mr-2" />
-                {t("medical.forwardToFinance")}
+                {t("action.approve")}
               </Button>
             </>
           )}
