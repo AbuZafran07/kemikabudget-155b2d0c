@@ -23,6 +23,7 @@ import {
   PanelLeft,
   Shield,
   FileType,
+  Heart,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ const getMenuSections = (): MenuSection[] => [
           { titleKey: "nav.cashAdvance", icon: Wallet, href: "/cash-advance" },
         ]
       },
+      { titleKey: "nav.medicalReimbursement", icon: Heart, href: "/medical-reimbursement" },
       { titleKey: "nav.approvals", icon: CheckSquare, href: "/approvals", badgeKey: "pendingApprovals", roles: ["super_admin"] },
     ],
   },

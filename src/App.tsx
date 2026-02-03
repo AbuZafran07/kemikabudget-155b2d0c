@@ -30,6 +30,9 @@ import CashAdvance from "./pages/CashAdvance";
 import CashAdvanceForm from "./pages/CashAdvanceForm";
 import CashAdvanceDetail from "./pages/CashAdvanceDetail";
 import CashAdvanceSettlementForm from "./pages/CashAdvanceSettlementForm";
+import MedicalReimbursement from "./pages/MedicalReimbursement";
+import MedicalReimbursementForm from "./pages/MedicalReimbursementForm";
+import MedicalReimbursementDetail from "./pages/MedicalReimbursementDetail";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -58,6 +61,10 @@ const App = () => (
                 <Route path="/cash-advance/new" element={<CashAdvanceForm />} />
                 <Route path="/cash-advance/:id" element={<CashAdvanceDetail />} />
                 <Route path="/cash-advance/:id/settlement/new" element={<CashAdvanceSettlementForm />} />
+                <Route path="/medical-reimbursement" element={<MedicalReimbursement />} />
+                <Route path="/medical-reimbursement/new" element={<MedicalReimbursementForm />} />
+                <Route path="/medical-reimbursement/:id" element={<MedicalReimbursementDetail />} />
+                <Route path="/medical-reimbursement/:id/edit" element={<MedicalReimbursementForm />} />
                 <Route
                   path="/approvals"
                   element={

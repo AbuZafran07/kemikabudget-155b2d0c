@@ -900,6 +900,57 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_medical_budgets: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          remaining_amount: number | null
+          status: string
+          total_entitlement: number
+          updated_at: string
+          used_amount: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          remaining_amount?: number | null
+          status?: string
+          total_entitlement?: number
+          updated_at?: string
+          used_amount?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          remaining_amount?: number | null
+          status?: string
+          total_entitlement?: number
+          updated_at?: string
+          used_amount?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_medical_budgets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_medical_budgets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funding_sources: {
         Row: {
           account_holder: string | null
@@ -941,6 +992,272 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      medical_claim_attachments: {
+        Row: {
+          attachment_type: string
+          claim_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          uploaded_by: string
+        }
+        Insert: {
+          attachment_type: string
+          claim_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          uploaded_by: string
+        }
+        Update: {
+          attachment_type?: string
+          claim_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_claim_attachments_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "medical_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medical_claim_events: {
+        Row: {
+          claim_id: string
+          created_at: string
+          description: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          performed_by: string
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          description: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          performed_by: string
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          description?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_claim_events_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "medical_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medical_claims: {
+        Row: {
+          approved_amount: number | null
+          approved_at: string | null
+          approved_by: string | null
+          claim_amount: number
+          claim_date: string
+          claim_number: string
+          claim_type: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          diagnosis: string | null
+          doctor_name: string | null
+          employee_id: string
+          hospital_clinic: string | null
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
+          medical_budget_id: string | null
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          patient_name: string
+          patient_relationship: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          reviewed_finance_at: string | null
+          reviewed_finance_by: string | null
+          reviewed_hrga_at: string | null
+          reviewed_hrga_by: string | null
+          status: Database["public"]["Enums"]["medical_claim_status"]
+          submitted_at: string | null
+          treatment_date: string
+          updated_at: string
+        }
+        Insert: {
+          approved_amount?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          claim_amount: number
+          claim_date?: string
+          claim_number: string
+          claim_type: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          doctor_name?: string | null
+          employee_id: string
+          hospital_clinic?: string | null
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          medical_budget_id?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          patient_name: string
+          patient_relationship: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          reviewed_finance_at?: string | null
+          reviewed_finance_by?: string | null
+          reviewed_hrga_at?: string | null
+          reviewed_hrga_by?: string | null
+          status?: Database["public"]["Enums"]["medical_claim_status"]
+          submitted_at?: string | null
+          treatment_date: string
+          updated_at?: string
+        }
+        Update: {
+          approved_amount?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          claim_amount?: number
+          claim_date?: string
+          claim_number?: string
+          claim_type?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          diagnosis?: string | null
+          doctor_name?: string | null
+          employee_id?: string
+          hospital_clinic?: string | null
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          medical_budget_id?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          patient_name?: string
+          patient_relationship?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          reviewed_finance_at?: string | null
+          reviewed_finance_by?: string | null
+          reviewed_hrga_at?: string | null
+          reviewed_hrga_by?: string | null
+          status?: Database["public"]["Enums"]["medical_claim_status"]
+          submitted_at?: string | null
+          treatment_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_claims_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_claims_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_claims_medical_budget_id_fkey"
+            columns: ["medical_budget_id"]
+            isOneToOne: false
+            referencedRelation: "employee_medical_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medical_ledger: {
+        Row: {
+          amount: number
+          claim_id: string | null
+          created_at: string
+          description: string | null
+          employee_medical_budget_id: string
+          entry_type: Database["public"]["Enums"]["medical_ledger_type"]
+          id: string
+          performed_by: string
+        }
+        Insert: {
+          amount: number
+          claim_id?: string | null
+          created_at?: string
+          description?: string | null
+          employee_medical_budget_id: string
+          entry_type: Database["public"]["Enums"]["medical_ledger_type"]
+          id?: string
+          performed_by: string
+        }
+        Update: {
+          amount?: number
+          claim_id?: string | null
+          created_at?: string
+          description?: string | null
+          employee_medical_budget_id?: string
+          entry_type?: Database["public"]["Enums"]["medical_ledger_type"]
+          id?: string
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_ledger_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "medical_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_ledger_employee_medical_budget_id_fkey"
+            columns: ["employee_medical_budget_id"]
+            isOneToOne: false
+            referencedRelation: "employee_medical_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_logs: {
         Row: {
@@ -1667,6 +1984,7 @@ export type Database = {
       }
       check_otp_rate_limit: { Args: { p_user_id: string }; Returns: Json }
       check_session_valid: { Args: never; Returns: boolean }
+      close_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
       create_reconciliation: {
         Args: {
           p_funding_source_id: string
@@ -1697,6 +2015,7 @@ export type Database = {
         Args: { p_division_id: string; p_template_type: string }
         Returns: string
       }
+      get_next_medical_claim_number: { Args: never; Returns: string }
       get_user_division_id: { Args: { _user_id: string }; Returns: string }
       get_user_otp_secret: { Args: { p_user_id: string }; Returns: string }
       get_user_role: {
@@ -1714,6 +2033,7 @@ export type Database = {
         Args: { p_ca_id: string; p_funding_source_id: string }
         Returns: Json
       }
+      pay_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
       pay_request: {
         Args: { p_payment_note?: string; p_request_id: string }
         Returns: Json
@@ -1732,12 +2052,26 @@ export type Database = {
         Returns: Json
       }
       reset_otp_rate_limit: { Args: { p_user_id: string }; Returns: undefined }
+      review_medical_claim_finance: {
+        Args: {
+          p_action: string
+          p_approved_amount?: number
+          p_claim_id: string
+          p_note?: string
+        }
+        Returns: Json
+      }
+      review_medical_claim_hrga: {
+        Args: { p_action: string; p_claim_id: string; p_note?: string }
+        Returns: Json
+      }
       set_user_otp_secret: {
         Args: { p_secret: string; p_user_id: string }
         Returns: boolean
       }
       settle_request: { Args: { p_request_id: string }; Returns: Json }
       submit_cash_advance: { Args: { p_ca_id: string }; Returns: Json }
+      submit_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
       topup_petty_cash: {
         Args: {
           p_amount: number
@@ -1771,6 +2105,21 @@ export type Database = {
         | "partially_settled"
         | "settled"
         | "cancelled"
+      medical_claim_status:
+        | "draft"
+        | "submitted"
+        | "review_hrga"
+        | "review_finance"
+        | "approved"
+        | "rejected"
+        | "paid"
+        | "closed"
+        | "cancelled"
+      medical_ledger_type:
+        | "commitment_add"
+        | "commitment_release"
+        | "actual_add"
+        | "adjustment"
       request_status:
         | "draft"
         | "submitted"
@@ -1927,6 +2276,23 @@ export const Constants = {
         "partially_settled",
         "settled",
         "cancelled",
+      ],
+      medical_claim_status: [
+        "draft",
+        "submitted",
+        "review_hrga",
+        "review_finance",
+        "approved",
+        "rejected",
+        "paid",
+        "closed",
+        "cancelled",
+      ],
+      medical_ledger_type: [
+        "commitment_add",
+        "commitment_release",
+        "actual_add",
+        "adjustment",
       ],
       request_status: [
         "draft",
