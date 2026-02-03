@@ -945,6 +945,14 @@ const translations: Translations = {
   'medicalBudget.noHRGABudgetTitle': { id: 'Budget HRGA Tidak Ditemukan', en: 'HRGA Budget Not Found' },
   'medicalBudget.noHRGABudgetDesc': { id: 'Buat budget HRGA > Kesejahteraan Karyawan di Budget Planning terlebih dahulu sebelum dapat mengalokasikan budget medical karyawan.', en: 'Create HRGA > Employee Welfare budget in Budget Planning first before allocating employee medical budget.' },
   'medicalBudget.insufficientHRGABudget': { id: 'Budget HRGA Kesejahteraan tidak mencukupi untuk entitlement yang diminta', en: 'HRGA Welfare budget is insufficient for the requested entitlement' },
+  'medicalBudget.budgetDetails': { id: 'Detail Budget Medical', en: 'Medical Budget Details' },
+  'medicalBudget.budgetSummary': { id: 'Ringkasan Budget', en: 'Budget Summary' },
+  'medicalBudget.utilizationRate': { id: 'Tingkat Pemanfaatan', en: 'Utilization Rate' },
+  'medicalBudget.confirmDelete': { id: 'Hapus Budget Medical?', en: 'Delete Medical Budget?' },
+  'medicalBudget.confirmDeleteDesc': { id: 'Anda yakin ingin menghapus budget medical untuk', en: 'Are you sure you want to delete the medical budget for' },
+  'medicalBudget.deleteSuccess': { id: 'Budget Berhasil Dihapus', en: 'Budget Deleted Successfully' },
+  'medicalBudget.deleteSuccessDesc': { id: 'Budget medical karyawan telah dihapus', en: 'Employee medical budget has been deleted' },
+  'medicalBudget.cannotDeleteHasClaims': { id: 'Tidak dapat menghapus budget karena sudah ada klaim medical yang terkait', en: 'Cannot delete budget because there are associated medical claims' },
   
   // Medical Dashboard Cards
   'medicalDashboard.pendingHRGA': { id: 'Klaim Medical - Review HRGA', en: 'Medical Claims - HRGA Review' },
