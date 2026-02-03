@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Heart, Users, Edit, Loader2, AlertCircle, Info } from "lucide-react";
+import { Plus, Search, Heart, Users, Edit, Loader2, AlertCircle, Info, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -62,6 +63,14 @@ const EmployeeMedicalBudgets = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [entitlement, setEntitlement] = useState("");
   const [budgetYear, setBudgetYear] = useState(currentYear.toString());
+  
+  // View dialog state
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingBudget, setViewingBudget] = useState<EmployeeBudget | null>(null);
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingBudget, setDeletingBudget] = useState<EmployeeBudget | null>(null);
   
   // Fetch HRGA Welfare budget for selected year
   const { data: hrgaWelfareBudget, isLoading: isLoadingWelfare } = useQuery({
@@ -288,6 +297,67 @@ const EmployeeMedicalBudgets = () => {
     saveBudget.mutate({ isEdit: !!editingBudget, budgetId: editingBudget?.id });
   };
   
+  // View budget handler
+  const handleOpenView = (budget: EmployeeBudget) => {
+    setViewingBudget(budget);
+    setViewDialogOpen(true);
+  };
+  
+  // Delete handlers
+  const handleOpenDelete = (budget: EmployeeBudget) => {
+    setDeletingBudget(budget);
+    setDeleteDialogOpen(true);
+  };
+  
+  // Delete mutation
+  const deleteBudget = useMutation({
+    mutationFn: async (budgetId: string) => {
+      // First check if there are any claims for this budget
+      const { data: claims, error: claimsError } = await supabase
+        .from("medical_claims")
+        .select("id")
+        .eq("medical_budget_id", budgetId)
+        .limit(1);
+      
+      if (claimsError) throw claimsError;
+      
+      if (claims && claims.length > 0) {
+        throw new Error(t("medicalBudget.cannotDeleteHasClaims"));
+      }
+      
+      // Delete the budget
+      const { error } = await supabase
+        .from("employee_medical_budgets")
+        .delete()
+        .eq("id", budgetId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee-medical-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["division_budgets"] });
+      toast({
+        title: t("medicalBudget.deleteSuccess"),
+        description: t("medicalBudget.deleteSuccessDesc"),
+      });
+      setDeleteDialogOpen(false);
+      setDeletingBudget(null);
+    },
+    onError: (error) => {
+      toast({
+        title: t("common.error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleConfirmDelete = () => {
+    if (deletingBudget) {
+      deleteBudget.mutate(deletingBudget.id);
+    }
+  };
+  
   // Get employees without budget for selected year
   const employeesWithoutBudget = allEmployees?.filter(emp => 
     !budgets?.some(b => b.employee_id === emp.id)
@@ -434,13 +504,33 @@ const EmployeeMedicalBudgets = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenEdit(budget)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenView(budget)}
+                              title={t("action.view")}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEdit(budget)}
+                              title={t("action.edit")}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDelete(budget)}
+                              title={t("action.delete")}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -575,6 +665,114 @@ const EmployeeMedicalBudgets = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* View Detail Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-primary" />
+              {t("medicalBudget.budgetDetails")}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {viewingBudget && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("medicalBudget.employeeName")}</p>
+                  <p className="font-medium">{viewingBudget.employee?.full_name || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("medicalBudget.email")}</p>
+                  <p className="font-medium">{viewingBudget.employee?.email || "-"}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("medicalBudget.year")}</p>
+                  <p className="font-medium">{viewingBudget.year}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("common.status")}</p>
+                  <Badge variant={viewingBudget.status === "active" ? "default" : "secondary"}>
+                    {viewingBudget.status === "active" ? t("status.active") : t("status.inactive")}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3">{t("medicalBudget.budgetSummary")}</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t("medicalBudget.entitlement")}</p>
+                    <p className="font-bold text-primary">{formatCurrency(viewingBudget.total_entitlement)}</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t("medicalBudget.used")}</p>
+                    <p className="font-bold text-warning">{formatCurrency(viewingBudget.used_amount)}</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t("medicalBudget.remaining")}</p>
+                    <p className="font-bold text-success">{formatCurrency(viewingBudget.remaining_amount)}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <p className="text-sm text-muted-foreground">{t("medicalBudget.utilizationRate")}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-primary rounded-full h-2 transition-all"
+                      style={{ 
+                        width: `${viewingBudget.total_entitlement > 0 
+                          ? Math.min((viewingBudget.used_amount / viewingBudget.total_entitlement) * 100, 100) 
+                          : 0}%` 
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium">
+                    {viewingBudget.total_entitlement > 0 
+                      ? Math.round((viewingBudget.used_amount / viewingBudget.total_entitlement) * 100) 
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+              {t("action.close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("medicalBudget.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("medicalBudget.confirmDeleteDesc")} <strong>{deletingBudget?.employee?.full_name || "-"}</strong> ({deletingBudget?.year || "-"})
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteBudget.isPending}
+            >
+              {deleteBudget.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t("action.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
