@@ -104,11 +104,7 @@ const App = () => (
                     <Divisions />
                   </ProtectedRoute>
                 } />
-                <Route path="/categories" element={
-                  <ProtectedRoute requiredRole="super_admin">
-                    <Categories />
-                  </ProtectedRoute>
-                } />
+                <Route path="/categories" element={<Categories />} />
                 <Route path="/funding-sources" element={
                   <ProtectedRoute requiredRole="super_admin">
                     <FundingSources />
