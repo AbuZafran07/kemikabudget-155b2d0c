@@ -44,6 +44,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TablePagination } from '@/components/common/TablePagination';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Category {
   id: string;
@@ -59,6 +60,8 @@ const Categories = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const isSuperAdmin = role === 'super_admin';
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -75,15 +78,22 @@ const Categories = () => {
   });
 
   const { data: categories = [], isLoading } = useQuery({
-    queryKey: ['categories-management'],
+    queryKey: ['categories-management', role],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('cost_categories')
-        .select('*')
-        .order('name');
+        .select('*');
+
+      // Non-super_admin can only see public categories
+      if (role !== 'super_admin') {
+        query = query.eq('is_public', true);
+      }
+
+      const { data, error } = await query.order('name');
       if (error) throw error;
       return data as Category[];
     },
+    enabled: role !== undefined, // Wait for role to load
   });
 
   const createMutation = useMutation({
@@ -197,10 +207,12 @@ const Categories = () => {
           <h1 className="text-2xl font-bold text-foreground">{t('categories.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('categories.description')}</p>
         </div>
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t('categories.addCategory')}
-        </Button>
+        {isSuperAdmin && (
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            {t('categories.addCategory')}
+          </Button>
+        )}
       </div>
 
       <div className="relative max-w-md">
@@ -221,20 +233,20 @@ const Categories = () => {
               <TableHead>{t('common.name')}</TableHead>
               <TableHead>{t('common.description')}</TableHead>
               <TableHead>{t('common.status')}</TableHead>
-              <TableHead>{t('categories.public') || 'Publik'}</TableHead>
-              <TableHead className="text-right">{t('common.actions')}</TableHead>
+              {isSuperAdmin && <TableHead>{t('categories.public') || 'Publik'}</TableHead>}
+              {isSuperAdmin && <TableHead className="text-right">{t('common.actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12">
+                <TableCell colSpan={isSuperAdmin ? 6 : 4} className="text-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                 </TableCell>
               </TableRow>
             ) : paginatedCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12">
+                <TableCell colSpan={isSuperAdmin ? 6 : 4} className="text-center py-12">
                   <Tag className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-muted-foreground">{t('categories.noData')}</p>
                 </TableCell>
@@ -252,26 +264,30 @@ const Categories = () => {
                       {category.is_active ? t('common.active') : t('common.inactive')}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={category.is_public ? 'default' : 'outline'}>
-                      {category.is_public ? (t('common.yes') || 'Ya') : (t('common.no') || 'Tidak')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleEdit(category)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(category)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {isSuperAdmin && (
+                    <TableCell>
+                      <Badge variant={category.is_public ? 'default' : 'outline'}>
+                        {category.is_public ? (t('common.yes') || 'Ya') : (t('common.no') || 'Tidak')}
+                      </Badge>
+                    </TableCell>
+                  )}
+                  {isSuperAdmin && (
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(category)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(category)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}

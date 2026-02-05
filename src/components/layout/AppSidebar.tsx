@@ -95,7 +95,7 @@ const getMenuSections = (): MenuSection[] => [
     titleKey: "nav.masterData",
     items: [
       { titleKey: "nav.divisions", icon: Building2, href: "/divisions", roles: ["super_admin"] },
-      { titleKey: "nav.categories", icon: Tags, href: "/categories", roles: ["super_admin"] },
+      { titleKey: "nav.categories", icon: Tags, href: "/categories" },
       { titleKey: "nav.fundingSources", icon: Landmark, href: "/funding-sources", roles: ["super_admin"] },
       { titleKey: "nav.employeeMedicalBudgets", icon: Heart, href: "/employee-medical-budgets", roles: ["super_admin"] },
       { titleKey: "nav.users", icon: Users, href: "/users", roles: ["super_admin"] },

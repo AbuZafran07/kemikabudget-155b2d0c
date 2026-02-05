@@ -129,6 +129,7 @@ export function useRequests() {
       if (error) throw error;
       return data;
     },
+    enabled: role !== undefined, // Wait for role to load before fetching
   });
 
   // Fetch funding sources - uses secure function for non-privileged users
