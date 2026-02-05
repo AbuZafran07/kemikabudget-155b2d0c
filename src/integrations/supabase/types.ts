@@ -2280,15 +2280,26 @@ export type Database = {
       settle_request: { Args: { p_request_id: string }; Returns: Json }
       submit_cash_advance: { Args: { p_ca_id: string }; Returns: Json }
       submit_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
-      topup_petty_cash: {
-        Args: {
-          p_amount: number
-          p_description?: string
-          p_funding_source_id: string
-          p_reference_number?: string
-        }
-        Returns: Json
-      }
+      topup_petty_cash:
+        | {
+            Args: {
+              p_amount: number
+              p_description?: string
+              p_funding_source_id: string
+              p_reference_number?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_description?: string
+              p_funding_source_id: string
+              p_reference_number?: string
+              p_source_bank_id?: string
+            }
+            Returns: Json
+          }
       verify_user_otp: {
         Args: { p_otp_code: string; p_user_id: string }
         Returns: boolean

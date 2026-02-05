@@ -49,6 +49,7 @@ const formatCurrency = (value: number) => {
 const PettyCash = () => {
   const {
     pettyCashAccounts,
+    bankAccounts,
     transactions,
     reconciliations,
     isLoading,
@@ -73,6 +74,7 @@ const PettyCash = () => {
   // Top-up dialog
   const [isTopUpDialogOpen, setIsTopUpDialogOpen] = useState(false);
   const [topUpAccountId, setTopUpAccountId] = useState("");
+  const [topUpSourceBankId, setTopUpSourceBankId] = useState("");
   const [topUpAmount, setTopUpAmount] = useState("");
   const [topUpDescription, setTopUpDescription] = useState("");
   const [topUpReference, setTopUpReference] = useState("");
@@ -91,6 +93,7 @@ const PettyCash = () => {
       amount: parseFloat(topUpAmount),
       description: topUpDescription || undefined,
       referenceNumber: topUpReference || undefined,
+      sourceBankId: topUpSourceBankId || undefined,
     });
 
     setIsTopUpDialogOpen(false);
@@ -112,6 +115,7 @@ const PettyCash = () => {
 
   const resetTopUpForm = () => {
     setTopUpAccountId("");
+    setTopUpSourceBankId("");
     setTopUpAmount("");
     setTopUpDescription("");
     setTopUpReference("");
@@ -378,6 +382,30 @@ const PettyCash = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{language === 'id' ? 'Sumber Dana (Bank)' : 'Source Bank'}</Label>
+              <Select value={topUpSourceBankId} onValueChange={setTopUpSourceBankId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={language === 'id' ? 'Pilih bank sumber' : 'Select source bank'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">
+                    {language === 'id' ? '-- Tanpa sumber bank --' : '-- No source bank --'}
+                  </SelectItem>
+                  {bankAccounts?.map((bank) => (
+                    <SelectItem key={bank.id} value={bank.id}>
+                      {bank.name} ({formatCurrency(bank.balance || 0)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {language === 'id' 
+                  ? 'Jika dipilih, saldo bank akan dikurangi sebesar jumlah top-up' 
+                  : 'If selected, bank balance will be reduced by the top-up amount'}
+              </p>
             </div>
 
             <div className="space-y-2">
