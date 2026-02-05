@@ -92,21 +92,13 @@ const App = () => (
                     <BankPayments />
                   </ProtectedRoute>
                 } />
-                <Route path="/budget-planning" element={
-                  <ProtectedRoute requiredRole="super_admin">
-                    <BudgetPlanning />
-                  </ProtectedRoute>
-                } />
+                <Route path="/budget-planning" element={<BudgetPlanning />} />
                 <Route path="/budget-periods" element={
                   <ProtectedRoute requiredRole="super_admin">
                     <BudgetPeriods />
                   </ProtectedRoute>
                 } />
-                <Route path="/budget-transfer" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <BudgetTransfer />
-                  </ProtectedRoute>
-                } />
+                <Route path="/budget-transfer" element={<BudgetTransfer />} />
                 <Route path="/divisions" element={
                   <ProtectedRoute requiredRole="super_admin">
                     <Divisions />

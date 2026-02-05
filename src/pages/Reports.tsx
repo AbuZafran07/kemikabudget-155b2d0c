@@ -108,13 +108,20 @@ const Reports = () => {
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
-    queryKey: ['cost_categories'],
+    queryKey: ['cost_categories', role],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('cost_categories')
         .select('*')
         .eq('is_active', true)
         .order('name');
+
+      // Non-super_admin can only see public categories
+      if (role !== 'super_admin') {
+        query = query.eq('is_public', true);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

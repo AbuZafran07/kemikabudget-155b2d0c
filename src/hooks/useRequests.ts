@@ -80,7 +80,7 @@ const AUTOSAVE_INTERVAL = 15000; // 15 seconds
 const DRAFT_STORAGE_KEY = 'request_draft';
 
 export function useRequests() {
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { notifySubmitted } = useNotifications();
@@ -111,13 +111,20 @@ export function useRequests() {
 
   // Fetch categories
   const { data: categories } = useQuery({
-    queryKey: ['cost_categories'],
+    queryKey: ['cost_categories', role],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('cost_categories')
         .select('*')
         .eq('is_active', true)
         .order('name');
+
+      // Non-super_admin can only see public categories
+      if (role !== 'super_admin') {
+        query = query.eq('is_public', true);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;

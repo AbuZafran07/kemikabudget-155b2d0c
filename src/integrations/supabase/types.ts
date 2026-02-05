@@ -686,6 +686,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_public: boolean
           name: string
           updated_at: string
         }
@@ -695,6 +696,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_public?: boolean
           name: string
           updated_at?: string
         }
@@ -704,6 +706,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_public?: boolean
           name?: string
           updated_at?: string
         }

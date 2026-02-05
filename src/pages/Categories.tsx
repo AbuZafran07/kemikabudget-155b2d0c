@@ -51,6 +51,7 @@ interface Category {
   name: string;
   description: string | null;
   is_active: boolean;
+  is_public: boolean;
   created_at: string;
 }
 
@@ -70,6 +71,7 @@ const Categories = () => {
     name: '',
     description: '',
     is_active: true,
+    is_public: true,
   });
 
   const { data: categories = [], isLoading } = useQuery({
@@ -131,7 +133,7 @@ const Categories = () => {
   });
 
   const resetForm = () => {
-    setFormData({ code: '', name: '', description: '', is_active: true });
+    setFormData({ code: '', name: '', description: '', is_active: true, is_public: true });
     setEditingCategory(null);
   };
 
@@ -142,6 +144,7 @@ const Categories = () => {
       name: category.name,
       description: category.description || '',
       is_active: category.is_active,
+      is_public: category.is_public,
     });
     setIsDialogOpen(true);
   };
@@ -218,19 +221,20 @@ const Categories = () => {
               <TableHead>{t('common.name')}</TableHead>
               <TableHead>{t('common.description')}</TableHead>
               <TableHead>{t('common.status')}</TableHead>
+              <TableHead>{t('categories.public') || 'Publik'}</TableHead>
               <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-12">
+                <TableCell colSpan={6} className="text-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                 </TableCell>
               </TableRow>
             ) : paginatedCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-12">
+                <TableCell colSpan={6} className="text-center py-12">
                   <Tag className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-muted-foreground">{t('categories.noData')}</p>
                 </TableCell>
@@ -246,6 +250,11 @@ const Categories = () => {
                   <TableCell>
                     <Badge variant={category.is_active ? 'default' : 'secondary'}>
                       {category.is_active ? t('common.active') : t('common.inactive')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={category.is_public ? 'default' : 'outline'}>
+                      {category.is_public ? (t('common.yes') || 'Ya') : (t('common.no') || 'Tidak')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -318,6 +327,18 @@ const Categories = () => {
               <Switch
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>{t('categories.publicVisibility') || 'Visibilitas Publik'}</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('categories.publicVisibilityDesc') || 'Jika dicentang, kategori ini dapat dilihat oleh semua user'}
+                </p>
+              </div>
+              <Switch
+                checked={formData.is_public}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })}
               />
             </div>
           </div>
