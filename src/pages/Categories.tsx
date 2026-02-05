@@ -200,6 +200,8 @@ const Categories = () => {
     return filteredCategories.slice(start, start + pageSize);
   }, [filteredCategories, currentPage, pageSize]);
 
+  const stickyThClass = 'sticky top-0 z-20 bg-card';
+
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -228,14 +230,14 @@ const Categories = () => {
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="max-h-[calc(100vh-340px)] overflow-y-auto">
         <Table>
-          <TableHeader className="sticky top-0 bg-card z-10">
+          <TableHeader className="bg-card">
             <TableRow>
-              <TableHead>{t('common.code')}</TableHead>
-              <TableHead>{t('common.name')}</TableHead>
-              <TableHead>{t('common.description')}</TableHead>
-              <TableHead>{t('common.status')}</TableHead>
-              {isSuperAdmin && <TableHead>{t('categories.public') || 'Publik'}</TableHead>}
-              {isSuperAdmin && <TableHead className="text-right">{t('common.actions')}</TableHead>}
+              <TableHead className={stickyThClass}>{t('common.code')}</TableHead>
+              <TableHead className={stickyThClass}>{t('common.name')}</TableHead>
+              <TableHead className={stickyThClass}>{t('common.description')}</TableHead>
+              <TableHead className={stickyThClass}>{t('common.status')}</TableHead>
+              {isSuperAdmin && <TableHead className={stickyThClass}>{t('categories.public') || 'Publik'}</TableHead>}
+              {isSuperAdmin && <TableHead className={`${stickyThClass} text-right`}>{t('common.actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
