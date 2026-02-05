@@ -386,12 +386,12 @@ const PettyCash = () => {
 
             <div className="space-y-2">
               <Label>{language === 'id' ? 'Sumber Dana (Bank)' : 'Source Bank'}</Label>
-              <Select value={topUpSourceBankId} onValueChange={setTopUpSourceBankId}>
+              <Select value={topUpSourceBankId} onValueChange={(val) => setTopUpSourceBankId(val === "none" ? "" : val)}>
                 <SelectTrigger>
                   <SelectValue placeholder={language === 'id' ? 'Pilih bank sumber' : 'Select source bank'} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="none">
                     {language === 'id' ? '-- Tanpa sumber bank --' : '-- No source bank --'}
                   </SelectItem>
                   {bankAccounts?.map((bank) => (
