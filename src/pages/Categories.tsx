@@ -256,7 +256,7 @@ const Categories = () => {
                 <TableRow key={category.id}>
                   <TableCell className="font-mono font-medium">{category.code}</TableCell>
                   <TableCell className="font-medium">{category.name}</TableCell>
-                  <TableCell className="text-muted-foreground max-w-48 truncate">
+                  <TableCell className="text-muted-foreground max-w-xs whitespace-normal break-words">
                     {category.description || '-'}
                   </TableCell>
                   <TableCell>
