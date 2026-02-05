@@ -225,9 +225,9 @@ const Categories = () => {
         />
       </div>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="bg-card rounded-xl border border-border max-h-[calc(100vh-300px)] overflow-y-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
             <TableRow>
               <TableHead>{t('common.code')}</TableHead>
               <TableHead>{t('common.name')}</TableHead>
