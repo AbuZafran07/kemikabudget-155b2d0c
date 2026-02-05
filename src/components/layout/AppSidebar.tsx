@@ -103,7 +103,6 @@ const getMenuSections = (): MenuSection[] => [
       { titleKey: "nav.documentTemplates", icon: FileType, href: "/document-templates", roles: ["super_admin"] },
       { titleKey: "nav.settings", icon: Settings, href: "/settings", roles: ["super_admin"] },
     ],
-    roles: ["super_admin"],
   },
   {
     titleKey: "nav.reports",
