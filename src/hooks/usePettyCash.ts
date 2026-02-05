@@ -67,6 +67,22 @@ export function usePettyCash() {
     },
   });
 
+  // Fetch bank accounts for source selection in top-up
+  const { data: bankAccounts } = useQuery({
+    queryKey: ['bank_accounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('funding_sources_secure')
+        .select('id, code, name, type, is_active, bank_name, balance')
+        .eq('type', 'bank')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data as FundingSource[];
+    },
+  });
+
   // Fetch transactions
   const { data: transactions, isLoading: transactionsLoading, refetch } = useQuery({
     queryKey: ['petty_cash_transactions'],
@@ -131,22 +147,25 @@ export function usePettyCash() {
       amount,
       description,
       referenceNumber,
+      sourceBankId,
     }: {
       fundingSourceId: string;
       amount: number;
       description?: string;
       referenceNumber?: string;
+      sourceBankId?: string;
     }) => {
       const { data, error } = await supabase.rpc('topup_petty_cash', {
         p_funding_source_id: fundingSourceId,
         p_amount: amount,
+        p_source_bank_id: sourceBankId || null,
         p_description: description || null,
         p_reference_number: referenceNumber || null,
       });
 
       if (error) throw error;
       
-      const result = data as { success: boolean; error?: string; new_balance?: number };
+      const result = data as { success: boolean; error?: string; new_petty_balance?: number; new_bank_balance?: number; source_bank_name?: string };
       if (!result.success) {
         throw new Error(result.error || 'Failed to top up');
       }
@@ -157,9 +176,15 @@ export function usePettyCash() {
       queryClient.invalidateQueries({ queryKey: ['petty_cash_accounts'] });
       queryClient.invalidateQueries({ queryKey: ['petty_cash_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
+      
+      const message = result.source_bank_name
+        ? `Saldo kas kecil: Rp ${result.new_petty_balance?.toLocaleString('id-ID')}. Dikurangi dari ${result.source_bank_name}.`
+        : `Saldo baru: Rp ${result.new_petty_balance?.toLocaleString('id-ID')}`;
+      
       toast({
         title: 'Top-up Berhasil',
-        description: `Saldo baru: Rp ${result.new_balance?.toLocaleString('id-ID')}`,
+        description: message,
       });
     },
     onError: (error: Error) => {
@@ -227,6 +252,7 @@ export function usePettyCash() {
 
   return {
     pettyCashAccounts,
+    bankAccounts,
     transactions,
     reconciliations,
     isLoading: accountsLoading || transactionsLoading || reconciliationsLoading,
