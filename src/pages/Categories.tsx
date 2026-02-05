@@ -225,9 +225,10 @@ const Categories = () => {
         />
       </div>
 
-      <div className="bg-card rounded-xl border border-border max-h-[calc(100vh-300px)] overflow-y-auto">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="max-h-[calc(100vh-340px)] overflow-y-auto">
         <Table>
-          <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
+          <TableHeader className="sticky top-0 bg-card z-10">
             <TableRow>
               <TableHead>{t('common.code')}</TableHead>
               <TableHead>{t('common.name')}</TableHead>
@@ -293,6 +294,7 @@ const Categories = () => {
             )}
           </TableBody>
         </Table>
+        </div>
         <TablePagination
           currentPage={currentPage}
           totalItems={filteredCategories.length}
