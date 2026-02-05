@@ -200,9 +200,7 @@ const Categories = () => {
     return filteredCategories.slice(start, start + pageSize);
   }, [filteredCategories, currentPage, pageSize]);
 
-  // AppHeader height is h-16, so keep table header visible under it while scrolling page.
-  // Sticky works more reliably on <th> than on <thead> across browsers.
-  const stickyThClass = "sticky top-16 z-30 bg-card/95 backdrop-blur-sm";
+  const stickyThClass = 'sticky top-0 z-20 bg-card';
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -229,7 +227,8 @@ const Categories = () => {
         />
       </div>
 
-      <div className="bg-card rounded-xl border border-border">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="max-h-[calc(100vh-340px)] overflow-y-auto">
         <Table>
           <TableHeader className="bg-card">
             <TableRow>
@@ -297,6 +296,7 @@ const Categories = () => {
             )}
           </TableBody>
         </Table>
+        </div>
         <TablePagination
           currentPage={currentPage}
           totalItems={filteredCategories.length}

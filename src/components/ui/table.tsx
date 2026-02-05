@@ -4,9 +4,7 @@ import { cn } from "@/lib/utils";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    // NOTE: Avoid overflow wrappers here because they can break `position: sticky` headers
-    // when the vertical scroll container is higher up the tree.
-    <div className="relative w-full">
+    <div className="relative w-full overflow-x-auto">
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   ),
