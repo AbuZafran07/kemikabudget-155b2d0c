@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface DivisionBudget {
   id: string;
@@ -29,6 +30,8 @@ export interface BudgetPeriod {
 export function useBudgetPlanning() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role, profile } = useAuth();
+  const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
 
   // Fetch budget periods
   const { data: periods, isLoading: periodsLoading } = useQuery({
@@ -46,9 +49,9 @@ export function useBudgetPlanning() {
 
   // Fetch division budgets with relations
   const { data: budgets, isLoading: budgetsLoading, refetch } = useQuery({
-    queryKey: ['division_budgets'],
+    queryKey: ['division_budgets', role, profile?.division_id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('division_budgets')
         .select(`
           *,
@@ -57,6 +60,13 @@ export function useBudgetPlanning() {
           budget_periods (name, year)
         `)
         .order('divisions(name)', { ascending: true });
+
+      // Filter by division for non-super_admin/finance users
+      if (!isSuperAdminOrFinance && profile?.division_id) {
+        query = query.eq('division_id', profile.division_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as unknown as DivisionBudget[];
@@ -80,13 +90,20 @@ export function useBudgetPlanning() {
 
   // Fetch categories
   const { data: categories } = useQuery({
-    queryKey: ['cost_categories'],
+    queryKey: ['cost_categories', role],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('cost_categories')
         .select('*')
         .eq('is_active', true)
         .order('name');
+
+      // Non-super_admin can only see public categories
+      if (role !== 'super_admin') {
+        query = query.eq('is_public', true);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data;
@@ -222,5 +239,6 @@ export function useBudgetPlanning() {
     totalAllocated,
     totalUsed,
     totalRemaining,
+    isSuperAdminOrFinance,
   };
 }

@@ -54,6 +54,7 @@ import { useBudgetPlanning, DivisionBudget } from "@/hooks/useBudgetPlanning";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { TablePagination } from "@/components/common/TablePagination";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -76,9 +77,12 @@ const BudgetPlanning = () => {
     updateBudget,
     deleteBudget,
     totalAllocated,
+    isSuperAdminOrFinance,
   } = useBudgetPlanning();
 
   const { t, language } = useLanguage();
+  const { role } = useAuth();
+  const isSuperAdmin = role === 'super_admin';
 
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>(activePeriod?.id || "active");
@@ -230,65 +234,72 @@ const BudgetPlanning = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Budget Planning</h1>
           <p className="text-muted-foreground mt-1">
-            {language === 'id' ? 'Kelola anggaran per divisi dan kategori' : 'Manage budget by division and category'}
+            {language === 'id' 
+              ? (isSuperAdminOrFinance ? 'Kelola anggaran per divisi dan kategori' : 'Lihat anggaran divisi Anda')
+              : (isSuperAdminOrFinance ? 'Manage budget by division and category' : 'View your division budget')
+            }
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Import
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-          <Button className="gap-2" onClick={openCreateDialog}>
-            <Plus className="h-4 w-4" />
-            {language === 'id' ? 'Buat Budget' : 'Create Budget'}
-          </Button>
-        </div>
+        {isSuperAdmin && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-2">
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+            <Button variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            <Button className="gap-2" onClick={openCreateDialog}>
+              <Plus className="h-4 w-4" />
+              {language === 'id' ? 'Buat Budget' : 'Create Budget'}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select 
-            value={yearFilter} 
-            onValueChange={(val) => setYearFilter(val)}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">
-                {activePeriod?.year || (language === 'id' ? 'Aktif' : 'Active')}
-              </SelectItem>
-              {periods?.map((period) => (
-                <SelectItem key={period.id} value={period.id}>
-                  {period.year}
+      {isSuperAdminOrFinance && (
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select 
+              value={yearFilter} 
+              onValueChange={(val) => setYearFilter(val)}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Tahun" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">
+                  {activePeriod?.year || (language === 'id' ? 'Aktif' : 'Active')}
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                {periods?.map((period) => (
+                  <SelectItem key={period.id} value={period.id}>
+                    {period.year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder={language === 'id' ? 'Semua Divisi' : 'All Divisions'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'id' ? 'Semua Divisi' : 'All Divisions'}</SelectItem>
+                {divisions?.map((div) => (
+                  <SelectItem key={div.id} value={div.id}>
+                    {div.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={divisionFilter} onValueChange={setDivisionFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder={language === 'id' ? 'Semua Divisi' : 'All Divisions'} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{language === 'id' ? 'Semua Divisi' : 'All Divisions'}</SelectItem>
-              {divisions?.map((div) => (
-                <SelectItem key={div.id} value={div.id}>
-                  {div.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -386,6 +397,7 @@ const BudgetPlanning = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
+                          {isSuperAdmin ? (
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
@@ -405,6 +417,9 @@ const BudgetPlanning = () => {
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -464,6 +479,7 @@ const BudgetPlanning = () => {
                             {formatCurrency(remaining)}
                           </TableCell>
                           <TableCell className="text-right">
+                            {isSuperAdmin ? (
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="ghost"
@@ -481,6 +497,9 @@ const BudgetPlanning = () => {
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -501,10 +520,12 @@ const BudgetPlanning = () => {
                     : 'Start by adding budget allocations.'
                   }
                 </p>
-                <Button onClick={openCreateDialog} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  {language === 'id' ? 'Buat Budget' : 'Create Budget'}
-                </Button>
+                {isSuperAdmin && (
+                  <Button onClick={openCreateDialog} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    {language === 'id' ? 'Buat Budget' : 'Create Budget'}
+                  </Button>
+                )}
               </div>
             )}
           </div>

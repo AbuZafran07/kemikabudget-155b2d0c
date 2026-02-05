@@ -67,6 +67,11 @@ export function useBudgetTransfer() {
         `)
         .order('created_at', { ascending: false });
 
+      // Filter by division for non-super_admin/finance users
+      if (role !== 'super_admin' && role !== 'finance' && profile?.division_id) {
+        query = query.eq('division_id', profile.division_id);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       return data as BudgetTransfer[];

@@ -86,7 +86,7 @@ const getMenuSections = (): MenuSection[] => [
   {
     titleKey: "nav.planning",
     items: [
-      { titleKey: "nav.budgetPlanning", icon: Calculator, href: "/budget-planning", roles: ["super_admin"] },
+      { titleKey: "nav.budgetPlanning", icon: Calculator, href: "/budget-planning" },
       { titleKey: "nav.budgetPeriods", icon: CalendarDays, href: "/budget-periods", roles: ["super_admin"] },
       { titleKey: "nav.budgetTransfer", icon: ArrowRightLeft, href: "/budget-transfer" },
     ],
