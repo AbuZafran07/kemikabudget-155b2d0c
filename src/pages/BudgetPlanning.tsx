@@ -127,8 +127,9 @@ const BudgetPlanning = () => {
     return filteredBudgets.slice(start, start + pageSize);
   }, [filteredBudgets, currentPage, pageSize]);
 
-  // Calculate stats
+  // Calculate stats from filtered data
   const totalBudgets = filteredBudgets.length;
+  const filteredTotalAllocated = filteredBudgets.reduce((sum, b) => sum + b.allocated_amount, 0);
   const draftCount = 0; // These would be tracked if we add status column
   const approvedCount = totalBudgets; // Currently all budgets are "approved" when created
 
@@ -309,7 +310,7 @@ const BudgetPlanning = () => {
               Total Budget {selectedYear || activePeriod?.year || ''}
             </p>
             <p className="text-2xl font-bold text-primary mt-1">
-              {formatCurrency(totalAllocated)}
+              {formatCurrency(filteredTotalAllocated)}
             </p>
           </CardContent>
         </Card>
