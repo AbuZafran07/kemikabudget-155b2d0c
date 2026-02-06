@@ -52,6 +52,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TablePagination } from '@/components/common/TablePagination';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface FundingSource {
   id: string;
@@ -70,6 +71,7 @@ const FundingSources = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const { canManageMasterData } = usePermissions();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<FundingSource | null>(null);
@@ -253,10 +255,12 @@ const FundingSources = () => {
           <h1 className="text-2xl font-bold text-foreground">{t('fundingSources.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('fundingSources.description')}</p>
         </div>
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t('fundingSources.addSource')}
-        </Button>
+        {canManageMasterData() && (
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            {t('fundingSources.addSource')}
+          </Button>
+        )}
       </div>
 
       <div className="relative max-w-md">

@@ -2172,19 +2172,14 @@ export type Database = {
         Args: { p_ca_id: string; p_note?: string }
         Returns: Json
       }
-      approve_request:
-        | {
-            Args: { p_approval_note?: string; p_request_id: string }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_approval_note?: string
-              p_approved_amount?: number
-              p_request_id: string
-            }
-            Returns: Json
-          }
+      approve_request: {
+        Args: {
+          p_approval_note?: string
+          p_approved_amount?: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
       approve_settlement: {
         Args: { p_note?: string; p_settlement_id: string }
         Returns: Json

@@ -45,6 +45,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TablePagination } from '@/components/common/TablePagination';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Category {
   id: string;
@@ -61,7 +62,8 @@ const Categories = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { role } = useAuth();
-  const isSuperAdmin = role === 'super_admin';
+  const { canManageMasterData, isSuperAdmin } = usePermissions();
+  const canEdit = isSuperAdmin; // Only super_admin can edit categories
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
