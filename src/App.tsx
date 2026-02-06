@@ -69,7 +69,7 @@ const App = () => (
                 <Route
                   path="/approvals"
                   element={
-                    <ProtectedRoute requiredRole="super_admin">
+                    <ProtectedRoute requiredRole="admin">
                       <Approvals />
                     </ProtectedRoute>
                   }
@@ -77,76 +77,76 @@ const App = () => (
                 <Route
                   path="/payment-queue"
                   element={
-                    <ProtectedRoute requiredRole="finance">
+                    <ProtectedRoute requiredRole="admin">
                       <PaymentQueue />
                     </ProtectedRoute>
                   }
                 />
                 <Route path="/petty-cash" element={
-                  <ProtectedRoute requiredRole="finance">
+                  <ProtectedRoute requiredRole="admin">
                     <PettyCash />
                   </ProtectedRoute>
                 } />
                 <Route path="/bank-payments" element={
-                  <ProtectedRoute requiredRole="finance">
+                  <ProtectedRoute requiredRole="admin">
                     <BankPayments />
                   </ProtectedRoute>
                 } />
                 <Route path="/budget-planning" element={<BudgetPlanning />} />
                 <Route path="/budget-periods" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <BudgetPeriods />
                   </ProtectedRoute>
                 } />
                 <Route path="/budget-transfer" element={<BudgetTransfer />} />
                 <Route path="/divisions" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <Divisions />
                   </ProtectedRoute>
                 } />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/funding-sources" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <FundingSources />
                   </ProtectedRoute>
                 } />
                 <Route path="/users" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <Users />
                   </ProtectedRoute>
                 } />
                 <Route path="/settings" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <Settings />
                   </ProtectedRoute>
                 } />
                 <Route path="/document-templates" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <DocumentTemplates />
                   </ProtectedRoute>
                 } />
                 <Route path="/reports" element={
-                  <ProtectedRoute requiredRole="finance">
+                  <ProtectedRoute requiredRole="admin">
                     <Reports />
                   </ProtectedRoute>
                 } />
                 <Route path="/audit-logs" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <AuditLogs />
                   </ProtectedRoute>
                 } />
                 <Route path="/notification-history" element={
-                  <ProtectedRoute requiredRole="finance">
+                  <ProtectedRoute requiredRole="admin">
                     <NotificationHistory />
                   </ProtectedRoute>
                 } />
                 <Route path="/session-management" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <SessionManagement />
                   </ProtectedRoute>
                 } />
                 <Route path="/employee-medical-budgets" element={
-                  <ProtectedRoute requiredRole="super_admin">
+                  <ProtectedRoute requiredRole="admin">
                     <EmployeeMedicalBudgets />
                   </ProtectedRoute>
                 } />

@@ -44,6 +44,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TablePagination } from '@/components/common/TablePagination';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Division {
   id: string;
@@ -58,6 +59,7 @@ const Divisions = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const { canEdit, canDelete, canManageMasterData } = usePermissions();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDivision, setEditingDivision] = useState<Division | null>(null);
@@ -194,10 +196,12 @@ const Divisions = () => {
           <h1 className="text-2xl font-bold text-foreground">{t('divisions.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('divisions.description')}</p>
         </div>
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t('divisions.addDivision')}
-        </Button>
+        {canManageMasterData() && (
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            {t('divisions.addDivision')}
+          </Button>
+        )}
       </div>
 
       <div className="relative max-w-md">
@@ -249,19 +253,21 @@ const Divisions = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleEdit(division)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(division)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {canManageMasterData() && (
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(division)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(division)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

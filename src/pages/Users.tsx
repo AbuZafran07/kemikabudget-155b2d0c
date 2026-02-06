@@ -49,6 +49,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const Users = () => {
   const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, deleteUser, createUser, refetch } = useUsers();
@@ -56,6 +57,7 @@ const Users = () => {
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const { t, language } = useLanguage();
   const { toast } = useToast();
+  const { canManageUsers, canEdit, canDelete } = usePermissions();
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -270,10 +272,12 @@ const Users = () => {
             {t('users.description')}
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
-          <UserPlus className="h-4 w-4" />
-          {t('users.addUser')}
-        </Button>
+        {canManageUsers() && (
+          <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
+            <UserPlus className="h-4 w-4" />
+            {t('users.addUser')}
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -376,49 +380,51 @@ const Users = () => {
                   )}
                 </div>
 
-                {/* Actions */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                      <Edit2 className="h-4 w-4 mr-2" />
-                      {t('users.editUser')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => handleResetPassword(user)}
-                      disabled={isResettingPassword}
-                    >
-                      <KeyRound className="h-4 w-4 mr-2" />
-                      {t('users.resetPassword')}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleToggleActive(user)}>
-                      {user.is_active ? (
-                        <>
-                          <X className="h-4 w-4 mr-2" />
-                          {t('users.deactivate')}
-                        </>
-                      ) : (
-                        <>
-                          <Check className="h-4 w-4 mr-2" />
-                          {t('users.activate')}
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      className="text-destructive"
-                      onClick={() => handleDeleteUser(user)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {t('action.delete')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Actions - only show for super_admin */}
+                {canManageUsers() && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        {t('users.editUser')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleResetPassword(user)}
+                        disabled={isResettingPassword}
+                      >
+                        <KeyRound className="h-4 w-4 mr-2" />
+                        {t('users.resetPassword')}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleToggleActive(user)}>
+                        {user.is_active ? (
+                          <>
+                            <X className="h-4 w-4 mr-2" />
+                            {t('users.deactivate')}
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            {t('users.activate')}
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => handleDeleteUser(user)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {t('action.delete')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
           );

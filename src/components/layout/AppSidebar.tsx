@@ -71,47 +71,47 @@ const getMenuSections = (): MenuSection[] => [
         ]
       },
       { titleKey: "nav.medicalReimbursement", icon: Heart, href: "/medical-reimbursement" },
-      { titleKey: "nav.approvals", icon: CheckSquare, href: "/approvals", badgeKey: "pendingApprovals", roles: ["super_admin"] },
+      { titleKey: "nav.approvals", icon: CheckSquare, href: "/approvals", badgeKey: "pendingApprovals", roles: ["super_admin", "admin"] },
     ],
   },
   {
     titleKey: "nav.finance",
     items: [
-      { titleKey: "nav.paymentQueue", icon: CreditCard, href: "/payment-queue", badgeKey: "pendingPayments", roles: ["super_admin", "finance"] },
-      { titleKey: "nav.pettyCash", icon: Wallet, href: "/petty-cash", roles: ["super_admin", "finance"] },
-      { titleKey: "nav.bankPayments", icon: Building2, href: "/bank-payments", roles: ["super_admin", "finance"] },
+      { titleKey: "nav.paymentQueue", icon: CreditCard, href: "/payment-queue", badgeKey: "pendingPayments", roles: ["super_admin", "finance", "admin"] },
+      { titleKey: "nav.pettyCash", icon: Wallet, href: "/petty-cash", roles: ["super_admin", "finance", "admin"] },
+      { titleKey: "nav.bankPayments", icon: Building2, href: "/bank-payments", roles: ["super_admin", "finance", "admin"] },
     ],
-    roles: ["super_admin", "finance"],
+    roles: ["super_admin", "finance", "admin"],
   },
   {
     titleKey: "nav.planning",
     items: [
       { titleKey: "nav.budgetPlanning", icon: Calculator, href: "/budget-planning" },
-      { titleKey: "nav.budgetPeriods", icon: CalendarDays, href: "/budget-periods", roles: ["super_admin"] },
+      { titleKey: "nav.budgetPeriods", icon: CalendarDays, href: "/budget-periods", roles: ["super_admin", "admin"] },
       { titleKey: "nav.budgetTransfer", icon: ArrowRightLeft, href: "/budget-transfer" },
     ],
   },
   {
     titleKey: "nav.masterData",
     items: [
-      { titleKey: "nav.divisions", icon: Building2, href: "/divisions", roles: ["super_admin"] },
+      { titleKey: "nav.divisions", icon: Building2, href: "/divisions", roles: ["super_admin", "admin"] },
       { titleKey: "nav.categories", icon: Tags, href: "/categories" },
-      { titleKey: "nav.fundingSources", icon: Landmark, href: "/funding-sources", roles: ["super_admin"] },
-      { titleKey: "nav.employeeMedicalBudgets", icon: Heart, href: "/employee-medical-budgets", roles: ["super_admin"] },
-      { titleKey: "nav.users", icon: Users, href: "/users", roles: ["super_admin"] },
-      { titleKey: "nav.sessionManagement", icon: Shield, href: "/session-management", roles: ["super_admin"] },
-      { titleKey: "nav.documentTemplates", icon: FileType, href: "/document-templates", roles: ["super_admin"] },
-      { titleKey: "nav.settings", icon: Settings, href: "/settings", roles: ["super_admin"] },
+      { titleKey: "nav.fundingSources", icon: Landmark, href: "/funding-sources", roles: ["super_admin", "admin"] },
+      { titleKey: "nav.employeeMedicalBudgets", icon: Heart, href: "/employee-medical-budgets", roles: ["super_admin", "admin"] },
+      { titleKey: "nav.users", icon: Users, href: "/users", roles: ["super_admin", "admin"] },
+      { titleKey: "nav.sessionManagement", icon: Shield, href: "/session-management", roles: ["super_admin", "admin"] },
+      { titleKey: "nav.documentTemplates", icon: FileType, href: "/document-templates", roles: ["super_admin", "admin"] },
+      { titleKey: "nav.settings", icon: Settings, href: "/settings", roles: ["super_admin", "admin"] },
     ],
   },
   {
     titleKey: "nav.reports",
     items: [
-      { titleKey: "nav.report", icon: BarChart3, href: "/reports", roles: ["super_admin", "finance"] },
-      { titleKey: "nav.auditLogs", icon: FileSearch, href: "/audit-logs", roles: ["super_admin"] },
-      { titleKey: "nav.notifications", icon: Mail, href: "/notification-history", roles: ["super_admin", "finance"] },
+      { titleKey: "nav.report", icon: BarChart3, href: "/reports", roles: ["super_admin", "finance", "admin"] },
+      { titleKey: "nav.auditLogs", icon: FileSearch, href: "/audit-logs", roles: ["super_admin", "admin"] },
+      { titleKey: "nav.notifications", icon: Mail, href: "/notification-history", roles: ["super_admin", "finance", "admin"] },
     ],
-    roles: ["super_admin", "finance"],
+    roles: ["super_admin", "finance", "admin"],
   },
 ];
 
@@ -147,13 +147,13 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
         pendingPayments: pendingPayments || 0,
       };
     },
-    enabled: !!user?.id && (role === 'super_admin' || role === 'finance'),
+    enabled: !!user?.id && (role === 'super_admin' || role === 'finance' || role === 'admin'),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Subscribe to real-time updates for badge counts
   useEffect(() => {
-    if (!user?.id || (role !== 'super_admin' && role !== 'finance')) return;
+    if (!user?.id || (role !== 'super_admin' && role !== 'finance' && role !== 'admin')) return;
 
     const channel = supabase
       .channel('sidebar-badge-realtime')
