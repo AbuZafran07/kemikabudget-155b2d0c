@@ -146,7 +146,7 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/employee-medical-budgets" element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRoute requiredRole="super_admin">
                     <EmployeeMedicalBudgets />
                   </ProtectedRoute>
                 } />
