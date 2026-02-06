@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDocumentTemplates, DocumentTemplate } from "@/hooks/useDocumentTemplates";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ const NUMBER_PLACEHOLDERS = [
 
 export default function DocumentTemplates() {
   const { t } = useLanguage();
+  const { canEdit } = usePermissions();
   const { 
     templates, 
     sequences, 
@@ -159,13 +161,15 @@ export default function DocumentTemplates() {
             Konfigurasi header, footer, dan format nomor dokumen PDF
           </p>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={!hasChanges || updateTemplate.isPending}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          Simpan Perubahan
-        </Button>
+        {canEdit() && (
+          <Button 
+            onClick={handleSave} 
+            disabled={!hasChanges || updateTemplate.isPending}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Simpan Perubahan
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-4 items-center">

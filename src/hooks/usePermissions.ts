@@ -35,12 +35,15 @@ export function usePermissions() {
   };
 
   /**
-   * Check if user can create new records
+   * Check if user can create new records in master data
+   * Admin CANNOT create master data
    */
   const canCreate = (): boolean => {
     if (!role) return false;
-    // All authenticated users can create (their own requests, etc.)
-    return true;
+    // Admin cannot create master data
+    if (hasRoleExact('admin')) return false;
+    // Only super_admin and finance can create
+    return role === 'super_admin' || role === 'finance';
   };
 
   /**
