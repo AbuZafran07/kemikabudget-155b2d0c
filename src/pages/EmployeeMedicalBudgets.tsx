@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { TablePagination } from "@/components/common/TablePagination";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface EmployeeBudget {
   id: string;
@@ -52,6 +53,7 @@ const EmployeeMedicalBudgets = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
+  const { canEdit, canDelete, canCreate } = usePermissions();
   
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState(currentYear.toString());
@@ -376,10 +378,12 @@ const EmployeeMedicalBudgets = () => {
           </h1>
           <p className="text-muted-foreground">{t("medicalBudget.description")}</p>
         </div>
-        <Button onClick={handleOpenCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t("medicalBudget.addBudget")}
-        </Button>
+        {canCreate() && (
+          <Button onClick={handleOpenCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t("medicalBudget.addBudget")}
+          </Button>
+        )}
       </div>
       
       {/* Summary Cards */}
@@ -460,10 +464,12 @@ const EmployeeMedicalBudgets = () => {
               <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">{t("medicalBudget.noData")}</h3>
               <p className="text-muted-foreground mb-4">{t("medicalBudget.noDataDesc")}</p>
-              <Button onClick={handleOpenCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t("medicalBudget.addFirst")}
-              </Button>
+              {canCreate() && (
+                <Button onClick={handleOpenCreate}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("medicalBudget.addFirst")}
+                </Button>
+              )}
             </div>
           ) : (
             <>
@@ -513,23 +519,27 @@ const EmployeeMedicalBudgets = () => {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenEdit(budget)}
-                              title={t("action.edit")}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenDelete(budget)}
-                              title={t("action.delete")}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canEdit() && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenEdit(budget)}
+                                title={t("action.edit")}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDelete() && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenDelete(budget)}
+                                title={t("action.delete")}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
