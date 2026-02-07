@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["favicon.ico", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
         name: "Expense Budget & Approval System - PT. Kemika Karya Pratama",
-        short_name: "Kemika Budget",
+        short_name: "Kemika Expense",
         description: "Internal Expense Budget & Approval System untuk PT. Kemika Karya Pratama",
         theme_color: "#166534",
         background_color: "#0a0a0a",
