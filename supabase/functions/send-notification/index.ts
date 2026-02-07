@@ -232,10 +232,14 @@ const sendWithResend = async (
 const handler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
+  const requestedHeaders = req.headers.get('access-control-request-headers');
+  if (requestedHeaders) {
+    corsHeaders['Access-Control-Allow-Headers'] = requestedHeaders;
+  }
 
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   // Initialize Supabase client for logging
