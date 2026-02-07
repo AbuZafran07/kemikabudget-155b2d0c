@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   UserPlus,
@@ -50,6 +50,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
+import { TablePagination } from "@/components/common/TablePagination";
 
 const Users = () => {
   const { users, divisions, isLoading, updateUser, updateUserRole, toggleUserActive, deleteUser, createUser, refetch } = useUsers();
@@ -62,6 +63,10 @@ const Users = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   // Edit dialog state
   const [editUser, setEditUser] = useState<UserWithRole | null>(null);
@@ -92,14 +97,44 @@ const Users = () => {
     user: { label: t('role.user'), icon: UserIcon, color: "text-muted-foreground" },
   };
 
-  const filteredUsers = users?.filter((user) => {
-    const matchesSearch =
-      user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const matchesDivision = divisionFilter === "all" || user.division_id === divisionFilter;
-    return matchesSearch && matchesRole && matchesDivision;
-  }) || [];
+  const filteredUsers = useMemo(() => {
+    const filtered = users?.filter((user) => {
+      const matchesSearch =
+        user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      const matchesDivision = divisionFilter === "all" || user.division_id === divisionFilter;
+      return matchesSearch && matchesRole && matchesDivision;
+    }) || [];
+    return filtered;
+  }, [users, searchQuery, roleFilter, divisionFilter]);
+
+  // Paginated users
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(startIndex, startIndex + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
+
+  // Reset page when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleRoleFilterChange = (value: string) => {
+    setRoleFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleDivisionFilterChange = (value: string) => {
+    setDivisionFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
 
   const handleEditUser = (user: UserWithRole) => {
     setEditUser(user);
@@ -288,11 +323,11 @@ const Users = () => {
             <Input
               placeholder={t('users.searchPlaceholder')}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
             />
           </div>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Role" />
             </SelectTrigger>
@@ -304,7 +339,7 @@ const Users = () => {
               <SelectItem value="user">{t('role.user')}</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+          <Select value={divisionFilter} onValueChange={handleDivisionFilterChange}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder={t('users.division')} />
             </SelectTrigger>
@@ -322,7 +357,7 @@ const Users = () => {
 
       {/* User Cards */}
       <div className="grid gap-4">
-        {filteredUsers.map((user) => {
+        {paginatedUsers.map((user) => {
           const roleInfo = user.role ? roleConfig[user.role] : roleConfig.user;
           const RoleIcon = roleInfo.icon;
 
@@ -430,6 +465,17 @@ const Users = () => {
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {filteredUsers.length > 0 && (
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredUsers.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+        />
+      )}
 
       {filteredUsers.length === 0 && (
         <div className="bg-card rounded-xl border border-border p-12 text-center">
