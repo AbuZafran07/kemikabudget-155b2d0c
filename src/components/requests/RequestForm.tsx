@@ -107,6 +107,7 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   });
 
   // Fetch division_budgets for the selected division (with active period)
+  // This query also fetches the category data directly to avoid is_public filtering issues
   const { data: divisionBudgets } = useQuery({
     queryKey: ['division-budgets-for-request', selectedBudgetDivisionId, activePeriod?.id],
     queryFn: async () => {
@@ -129,16 +130,17 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
     enabled: !!selectedBudgetDivisionId && !!activePeriod?.id,
   });
 
-  // Filter categories based on the division's budget allocations
+  // Extract categories directly from division budgets
+  // This bypasses the is_public filter and shows only categories with budget allocated for this division
   const filteredCategories = useMemo(() => {
     if (!selectedBudgetDivisionId || !divisionBudgets || divisionBudgets.length === 0) {
-      // If no division selected, show all categories (fallback)
-      return categories || [];
+      return [];
     }
-    // Only show categories that have budget allocated for this division
-    const budgetCategoryIds = new Set(divisionBudgets.map((db: any) => db.category_id));
-    return (categories || []).filter((cat: any) => budgetCategoryIds.has(cat.id));
-  }, [selectedBudgetDivisionId, divisionBudgets, categories]);
+    // Extract categories from budget allocations - this includes private categories assigned to this division
+    return divisionBudgets
+      .filter((db: any) => db.cost_categories)
+      .map((db: any) => db.cost_categories);
+  }, [selectedBudgetDivisionId, divisionBudgets]);
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
