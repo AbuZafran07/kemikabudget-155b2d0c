@@ -293,201 +293,206 @@ const Users = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{t('users.title')}</h1>
-            <Badge className="bg-primary text-primary-foreground">
-              {users?.length || 0}
-            </Badge>
+    <div className="h-full flex flex-col animate-fade-in">
+      {/* Sticky Header Section */}
+      <div className="sticky top-0 z-20 bg-background p-6 pb-4 space-y-4 border-b border-border">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-foreground">{t('users.title')}</h1>
+              <Badge className="bg-primary text-primary-foreground">
+                {users?.length || 0}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground mt-1">
+              {t('users.description')}
+            </p>
           </div>
-          <p className="text-muted-foreground mt-1">
-            {t('users.description')}
-          </p>
+          {canManageUsers() && (
+            <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              {t('users.addUser')}
+            </Button>
+          )}
         </div>
-        {canManageUsers() && (
-          <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
-            <UserPlus className="h-4 w-4" />
-            {t('users.addUser')}
-          </Button>
-        )}
-      </div>
 
-      {/* Filters */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('users.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9"
-            />
+        {/* Filters */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t('users.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('users.allRoles')}</SelectItem>
+                <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                <SelectItem value="finance">{t('role.finance')}</SelectItem>
+                <SelectItem value="admin">{t('role.admin')}</SelectItem>
+                <SelectItem value="user">{t('role.user')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={divisionFilter} onValueChange={handleDivisionFilterChange}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder={t('users.division')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('users.allDivisions')}</SelectItem>
+                {divisions?.map((div) => (
+                  <SelectItem key={div.id} value={div.id}>
+                    {div.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('users.allRoles')}</SelectItem>
-              <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
-              <SelectItem value="finance">{t('role.finance')}</SelectItem>
-              <SelectItem value="admin">{t('role.admin')}</SelectItem>
-              <SelectItem value="user">{t('role.user')}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={divisionFilter} onValueChange={handleDivisionFilterChange}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder={t('users.division')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('users.allDivisions')}</SelectItem>
-              {divisions?.map((div) => (
-                <SelectItem key={div.id} value={div.id}>
-                  {div.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-4">
+        {/* User Cards */}
+        <div className="grid gap-4">
+          {paginatedUsers.map((user) => {
+            const roleInfo = user.role ? roleConfig[user.role] : roleConfig.user;
+            const RoleIcon = roleInfo.icon;
 
-      {/* User Cards */}
-      <div className="grid gap-4">
-        {paginatedUsers.map((user) => {
-          const roleInfo = user.role ? roleConfig[user.role] : roleConfig.user;
-          const RoleIcon = roleInfo.icon;
-
-          return (
-            <div
-              key={user.id}
-              className={`bg-card rounded-xl border p-5 transition-all hover:shadow-card-hover ${
-                !user.is_active ? "opacity-60 border-muted" : "border-border"
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                {/* Avatar & Info */}
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg font-semibold text-primary">
-                      {user.full_name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-foreground truncate">
-                        {user.full_name}
-                      </h3>
-                      {!user.is_active && (
-                        <Badge variant="secondary" className="text-xs">
-                          {t('users.inactive')}
-                        </Badge>
+            return (
+              <div
+                key={user.id}
+                className={`bg-card rounded-xl border p-5 transition-all hover:shadow-card-hover ${
+                  !user.is_active ? "opacity-60 border-muted" : "border-border"
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  {/* Avatar & Info */}
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg font-semibold text-primary">
+                        {user.full_name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-foreground truncate">
+                          {user.full_name}
+                        </h3>
+                        {!user.is_active && (
+                          <Badge variant="secondary" className="text-xs">
+                            {t('users.inactive')}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {user.email}
+                      </p>
+                      {user.phone && (
+                        <p className="text-xs text-muted-foreground">{user.phone}</p>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {user.email}
-                    </p>
-                    {user.phone && (
-                      <p className="text-xs text-muted-foreground">{user.phone}</p>
+                  </div>
+
+                  {/* Role & Division */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <RoleIcon className={`h-4 w-4 ${roleInfo.color}`} />
+                      <span className="text-sm font-medium">{roleInfo.label}</span>
+                    </div>
+                    {user.division && (
+                      <Badge variant="outline" className="gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {user.division.code}
+                      </Badge>
                     )}
                   </div>
-                </div>
 
-                {/* Role & Division */}
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <RoleIcon className={`h-4 w-4 ${roleInfo.color}`} />
-                    <span className="text-sm font-medium">{roleInfo.label}</span>
-                  </div>
-                  {user.division && (
-                    <Badge variant="outline" className="gap-1">
-                      <Building2 className="h-3 w-3" />
-                      {user.division.code}
-                    </Badge>
+                  {/* Actions - only show for super_admin */}
+                  {canManageUsers() && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          {t('users.editUser')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleResetPassword(user)}
+                          disabled={isResettingPassword}
+                        >
+                          <KeyRound className="h-4 w-4 mr-2" />
+                          {t('users.resetPassword')}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleToggleActive(user)}>
+                          {user.is_active ? (
+                            <>
+                              <X className="h-4 w-4 mr-2" />
+                              {t('users.deactivate')}
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              {t('users.activate')}
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDeleteUser(user)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {t('action.delete')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
-
-                {/* Actions - only show for super_admin */}
-                {canManageUsers() && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        {t('users.editUser')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleResetPassword(user)}
-                        disabled={isResettingPassword}
-                      >
-                        <KeyRound className="h-4 w-4 mr-2" />
-                        {t('users.resetPassword')}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleToggleActive(user)}>
-                        {user.is_active ? (
-                          <>
-                            <X className="h-4 w-4 mr-2" />
-                            {t('users.deactivate')}
-                          </>
-                        ) : (
-                          <>
-                            <Check className="h-4 w-4 mr-2" />
-                            {t('users.activate')}
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => handleDeleteUser(user)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        {t('action.delete')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Pagination */}
-      {filteredUsers.length > 0 && (
-        <TablePagination
-          currentPage={currentPage}
-          pageSize={pageSize}
-          totalItems={filteredUsers.length}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={handlePageSizeChange}
-        />
-      )}
-
-      {filteredUsers.length === 0 && (
-        <div className="bg-card rounded-xl border border-border p-12 text-center">
-          <UserIcon className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            {t('users.noUsers')}
-          </h3>
-          <p className="text-muted-foreground">
-            {t('users.noUsersDesc')}
-          </p>
+            );
+          })}
         </div>
-      )}
+
+        {/* Pagination */}
+        {filteredUsers.length > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredUsers.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        )}
+
+        {filteredUsers.length === 0 && (
+          <div className="bg-card rounded-xl border border-border p-12 text-center">
+            <UserIcon className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {t('users.noUsers')}
+            </h3>
+            <p className="text-muted-foreground">
+              {t('users.noUsersDesc')}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Create User Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
