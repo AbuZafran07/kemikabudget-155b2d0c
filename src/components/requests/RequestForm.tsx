@@ -56,7 +56,7 @@ interface Attachment {
 }
 
 export function RequestForm({ requestId, initialData, onSuccess, onCancel, isSheet = false }: RequestFormProps) {
-  const { profile } = useAuth();
+  const { profile, hasRoleOrHigher } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const {
@@ -77,10 +77,25 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   const [selectedFundingSource, setSelectedFundingSource] = useState<any>(null);
   const [selectedBudgetDivisionId, setSelectedBudgetDivisionId] = useState<string>("");
 
+  // Check if user can select other divisions (admin and super_admin only)
+  const canSelectOtherDivisions = hasRoleOrHigher('admin');
+
   // Fetch all active divisions
   const { data: divisions } = useQuery({
-    queryKey: ['divisions-for-request'],
+    queryKey: ['divisions-for-request', profile?.division_id, canSelectOtherDivisions],
     queryFn: async () => {
+      // If user cannot select other divisions, only return their own division
+      if (!canSelectOtherDivisions && profile?.division_id) {
+        const { data, error } = await supabase
+          .from('divisions')
+          .select('id, code, name')
+          .eq('id', profile.division_id)
+          .eq('is_active', true);
+        if (error) throw error;
+        return data;
+      }
+      
+      // Admin and Super Admin can see all divisions
       const { data, error } = await supabase
         .from('divisions')
         .select('id, code, name')
@@ -205,6 +220,13 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
       });
     }
   }, [requestId, existingRequest, reset]);
+
+  // Auto-select division for regular users (who only have one division)
+  useEffect(() => {
+    if (!requestId && !existingRequest && !selectedBudgetDivisionId && divisions && divisions.length === 1) {
+      setSelectedBudgetDivisionId(divisions[0].id);
+    }
+  }, [requestId, existingRequest, selectedBudgetDivisionId, divisions]);
 
   // Load draft or initial data on mount (only for new requests)
   useEffect(() => {
