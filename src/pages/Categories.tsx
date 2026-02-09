@@ -183,10 +183,12 @@ const Categories = () => {
   };
 
   const filteredCategories = useMemo(() => {
+    const searchLower = search.toLowerCase();
     const filtered = categories.filter(
       (c) =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.code.toLowerCase().includes(search.toLowerCase())
+        c.name.toLowerCase().includes(searchLower) ||
+        c.code.toLowerCase().includes(searchLower) ||
+        (c.description && c.description.toLowerCase().includes(searchLower))
     );
     return filtered;
   }, [categories, search]);
