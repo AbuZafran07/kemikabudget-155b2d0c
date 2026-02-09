@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { useApprovals, ApprovalRequest } from "@/hooks/useApprovals";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -44,6 +45,12 @@ const formatCurrency = (value: number) => {
 };
 
 const Approvals = () => {
+  // Enable realtime updates
+  useRealtimeSubscription({
+    tables: ['requests', 'cash_advances', 'medical_claims'],
+    queryKeys: [['approvals'], ['pending-approvals'], ['dashboard-stats']],
+  });
+
   const {
     approvals,
     isLoading,

@@ -54,6 +54,7 @@ import { PaymentFundingSourceSelector } from "@/components/payments/PaymentFundi
 import { PDFPreviewDialog } from "@/components/payments/PDFPreviewDialog";
 import { PengajuanDanaData } from "@/lib/generatePengajuanDanaPDF";
 import { TablePagination } from "@/components/common/TablePagination";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -65,6 +66,12 @@ const formatCurrency = (value: number) => {
 };
 
 const PaymentQueue = () => {
+  // Enable realtime updates
+  useRealtimeSubscription({
+    tables: ['requests', 'cash_advances', 'medical_claims', 'funding_sources', 'petty_cash_transactions'],
+    queryKeys: [['payment-queue'], ['pending-payments'], ['dashboard-stats'], ['funding-sources']],
+  });
+
   const {
     payments,
     fundingSources,

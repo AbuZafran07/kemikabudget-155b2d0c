@@ -36,6 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { id as idLocale, enUS } from "date-fns/locale";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useFinanceRealtime } from "@/hooks/useRealtimeSubscription";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -47,6 +48,9 @@ const formatCurrency = (value: number) => {
 };
 
 const PettyCash = () => {
+  // Enable realtime updates
+  useFinanceRealtime();
+
   const {
     pettyCashAccounts,
     bankAccounts,

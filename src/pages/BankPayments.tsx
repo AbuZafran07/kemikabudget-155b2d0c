@@ -34,6 +34,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TablePagination } from '@/components/common/TablePagination';
+import { useFinanceRealtime } from '@/hooks/useRealtimeSubscription';
 
 interface BankPayment {
   id: string;
@@ -54,6 +55,9 @@ const BankPayments = () => {
   const { toast } = useToast();
   const { t, language } = useLanguage();
   const queryClient = useQueryClient();
+  
+  // Enable realtime updates
+  useFinanceRealtime();
   const [search, setSearch] = useState('');
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
