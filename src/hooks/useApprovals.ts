@@ -71,11 +71,11 @@ export function useApprovals() {
       // Get requester profiles for requests
       const requesterIds = mappedRequests?.map(r => r.requester_id) || [];
       
-      // Fetch medical claims with status 'submitted'
+      // Fetch medical claims with status 'submitted' or 'review_hrga'
       const { data: medicalData, error: medError } = await supabase
         .from('medical_claims')
         .select('*')
-        .eq('status', 'submitted')
+        .in('status', ['submitted', 'review_hrga'])
         .order('submitted_at', { ascending: true });
 
       if (medError) throw medError;
