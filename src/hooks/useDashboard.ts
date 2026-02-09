@@ -85,6 +85,30 @@ export function useDashboard() {
         {
           event: '*',
           schema: 'public',
+          table: 'cash_advances',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-pending-payments'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'medical_claims',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-pending-payments'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'division_budgets',
         },
         () => {
@@ -130,7 +154,7 @@ export function useDashboard() {
 
       const { count: pendingApprovals, data: pendingApprovalsData } = await approvalsQuery;
 
-      // Get pending payments (approved requests not yet paid)
+      // Get pending payments (approved requests not yet paid) - includes all 3 types
       let paymentsQuery = supabase
         .from('requests')
         .select('id, approved_at', { count: 'exact' })
@@ -140,7 +164,21 @@ export function useDashboard() {
         paymentsQuery = paymentsQuery.eq('division_id', profile.division_id);
       }
 
-      const { count: pendingPayments, data: pendingPaymentsData } = await paymentsQuery;
+      const { count: pendingRequestPayments, data: pendingPaymentsData } = await paymentsQuery;
+
+      // Also count Cash Advances ready to pay
+      const { count: pendingCAPayments } = await supabase
+        .from('cash_advances')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'approved');
+
+      // Also count Medical Claims ready to pay
+      const { count: pendingMedicalPayments } = await supabase
+        .from('medical_claims')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'approved');
+
+      const pendingPayments = (pendingRequestPayments || 0) + (pendingCAPayments || 0) + (pendingMedicalPayments || 0);
 
       // Calculate overdue (SLA = 3 days)
       const threeDaysAgo = new Date();
@@ -254,11 +292,14 @@ export function useDashboard() {
     enabled: !!user && role === 'super_admin',
   });
 
-  // Get pending payment items
+  // Get pending payment items - includes Requests, Cash Advances, and Medical Claims
   const { data: pendingPaymentItems = [] } = useQuery({
     queryKey: ['dashboard-pending-payments', role],
     queryFn: async (): Promise<PendingItem[]> => {
-      const { data } = await supabase
+      const items: PendingItem[] = [];
+
+      // 1. Approved Requests
+      const { data: requests } = await supabase
         .from('requests')
         .select(`
           id,
@@ -271,17 +312,94 @@ export function useDashboard() {
         `)
         .eq('status', 'approved')
         .order('approved_at', { ascending: false })
-        .limit(10);
+        .limit(5);
 
-      return (data || []).map(r => ({
-        id: r.id,
-        title: r.description.substring(0, 50) + (r.description.length > 50 ? '...' : ''),
-        description: `${(r.division as any)?.name || 'Unknown'} - Rp ${Number(r.amount).toLocaleString('id-ID')}`,
-        status: r.status as any,
-        requestNumber: r.request_number,
-        time: r.approved_at ? formatTimeAgo(r.approved_at) : 'Baru',
-        amount: Number(r.amount),
-      }));
+      requests?.forEach(r => {
+        items.push({
+          id: r.id,
+          title: r.description.substring(0, 50) + (r.description.length > 50 ? '...' : ''),
+          description: `${(r.division as any)?.name || 'Unknown'} - Rp ${Number(r.amount).toLocaleString('id-ID')}`,
+          status: r.status as any,
+          requestNumber: r.request_number,
+          time: r.approved_at ? formatTimeAgo(r.approved_at) : 'Baru',
+          amount: Number(r.amount),
+        });
+      });
+
+      // 2. Approved Cash Advances
+      const { data: cashAdvances } = await supabase
+        .from('cash_advances')
+        .select(`
+          id,
+          purpose,
+          total_amount,
+          ca_number,
+          status,
+          approved_at,
+          division:divisions(name)
+        `)
+        .eq('status', 'approved')
+        .order('approved_at', { ascending: false })
+        .limit(5);
+
+      cashAdvances?.forEach(ca => {
+        items.push({
+          id: ca.id,
+          title: ca.purpose.substring(0, 50) + (ca.purpose.length > 50 ? '...' : ''),
+          description: `${(ca.division as any)?.name || 'Unknown'} - Rp ${Number(ca.total_amount).toLocaleString('id-ID')}`,
+          status: ca.status as any,
+          requestNumber: ca.ca_number,
+          time: ca.approved_at ? formatTimeAgo(ca.approved_at) : 'Baru',
+          amount: Number(ca.total_amount),
+        });
+      });
+
+      // 3. Approved Medical Claims
+      const { data: medicalClaims } = await supabase
+        .from('medical_claims')
+        .select(`
+          id,
+          patient_name,
+          claim_amount,
+          approved_amount,
+          claim_number,
+          status,
+          approved_at,
+          employee:profiles_secure!medical_claims_employee_id_fkey(full_name)
+        `)
+        .eq('status', 'approved')
+        .order('approved_at', { ascending: false })
+        .limit(5);
+
+      medicalClaims?.forEach(mc => {
+        const amount = mc.approved_amount || mc.claim_amount;
+        items.push({
+          id: mc.id,
+          title: `${(mc.employee as any)?.full_name || 'Unknown'} - ${mc.patient_name}`,
+          description: `Medical - Rp ${Number(amount).toLocaleString('id-ID')}`,
+          status: mc.status as any,
+          requestNumber: mc.claim_number,
+          time: mc.approved_at ? formatTimeAgo(mc.approved_at) : 'Baru',
+          amount: Number(amount),
+        });
+      });
+
+      // Sort by time (most recent first) and limit to 10
+      return items
+        .sort((a, b) => {
+          // Extract time number for sorting
+          const getTimeValue = (time: string) => {
+            if (time === 'Baru') return 0;
+            const match = time.match(/(\d+)/);
+            if (!match) return 999;
+            const num = parseInt(match[1]);
+            if (time.includes('menit')) return num;
+            if (time.includes('jam')) return num * 60;
+            return num * 60 * 24;
+          };
+          return getTimeValue(a.time) - getTimeValue(b.time);
+        })
+        .slice(0, 10);
     },
     enabled: !!user && (role === 'super_admin' || role === 'finance'),
   });
