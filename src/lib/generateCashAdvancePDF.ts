@@ -194,42 +194,58 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
     }
     
     .signature-section {
-      display: flex;
-      border: 1px solid #333;
+      display: table;
+      width: 100%;
       margin-bottom: 15px;
+      margin-top: 50px;
+      border-collapse: collapse;
+      border: 1px solid #333;
+    }
+    .signature-row {
+      display: table-row;
     }
     .signature-box {
-      flex: 1;
+      display: table-cell;
       text-align: center;
       border-right: 1px solid #333;
+      width: 33.33%;
+      vertical-align: top;
     }
     .signature-box:last-child { border-right: none; }
     .signature-header {
-      background: #c4a000;
-      color: white;
-      padding: 6px;
+      background-color: #c4a000;
+      color: #ffffff;
+      padding: 8px 6px;
       font-weight: bold;
       border-bottom: 1px solid #333;
+      font-size: 10pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .signature-content {
-      padding: 10px;
-      min-height: 80px;
+      padding: 15px 10px;
+      min-height: 90px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
+      background: #ffffff;
     }
     .signature-name {
       font-weight: bold;
-      min-height: 20px;
+      min-height: 22px;
+      font-size: 10pt;
+      color: #000;
     }
     .signature-line {
       border-bottom: 1px solid #333;
-      width: 80%;
+      width: 85%;
       margin: 0 auto;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
     }
     .signature-date {
-      font-size: 8pt;
+      font-size: 9pt;
+      color: #555;
+      margin-top: 2px;
     }
     
     .approved-signature-section {
@@ -400,32 +416,34 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
     </div>
     ` : `
     <!-- Not yet approved: 3-column signature layout -->
-    <div class="signature-section">
-      <div class="signature-box">
-        <div class="signature-header">Pemohon</div>
-        <div class="signature-content">
-          <div class="signature-line"></div>
-          <div class="signature-name">${safeRequesterName}</div>
-          <div class="signature-date">${createdDate}</div>
-        </div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-header">Mengetahui</div>
-        <div class="signature-content">
-          <div class="signature-line"></div>
-          <div class="signature-name">&nbsp;</div>
-          <div class="signature-date">&nbsp;</div>
-        </div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-header">Menyetujui</div>
-        <div class="signature-content">
-          <div class="signature-line"></div>
-          <div class="signature-name">&nbsp;</div>
-          <div class="signature-date">&nbsp;</div>
-        </div>
-      </div>
-    </div>
+    <table class="signature-section">
+      <tr class="signature-row">
+        <td class="signature-box">
+          <div class="signature-header">Pemohon</div>
+          <div class="signature-content">
+            <div class="signature-line"></div>
+            <div class="signature-name">${safeRequesterName}</div>
+            <div class="signature-date">${createdDate}</div>
+          </div>
+        </td>
+        <td class="signature-box">
+          <div class="signature-header">Mengetahui</div>
+          <div class="signature-content">
+            <div class="signature-line"></div>
+            <div class="signature-name">&nbsp;</div>
+            <div class="signature-date">&nbsp;</div>
+          </div>
+        </td>
+        <td class="signature-box">
+          <div class="signature-header">Menyetujui</div>
+          <div class="signature-content">
+            <div class="signature-line"></div>
+            <div class="signature-name">&nbsp;</div>
+            <div class="signature-date">&nbsp;</div>
+          </div>
+        </td>
+      </tr>
+    </table>
     `}
 
     <div class="footer">

@@ -128,14 +128,15 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           .approved-box .label { font-size: 10pt; color: #15803d; margin-bottom: 5px; }
           .approved-box .value { font-size: 18pt; font-weight: bold; color: #15803d; }
           
-          .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 40px; border: 1px solid #333; }
-          .signature-box { text-align: center; border-right: 1px solid #333; }
+          .signatures { display: table; width: 100%; margin-top: 50px; border-collapse: collapse; border: 1px solid #333; }
+          .signature-row { display: table-row; }
+          .signature-box { display: table-cell; text-align: center; border-right: 1px solid #333; width: 33.33%; vertical-align: top; }
           .signature-box:last-child { border-right: none; }
-          .signature-header { background: #c4a000; color: white; padding: 6px; font-weight: bold; border-bottom: 1px solid #333; font-size: 10pt; }
-          .signature-content { padding: 10px; min-height: 80px; display: flex; flex-direction: column; justify-content: flex-end; }
-          .signature-line { border-bottom: 1px solid #333; width: 80%; margin: 0 auto; margin-bottom: 5px; }
-          .signature-name { font-weight: bold; min-height: 20px; font-size: 10pt; }
-          .signature-date { font-size: 8pt; color: #666; }
+          .signature-header { background-color: #c4a000; color: #ffffff; padding: 8px 6px; font-weight: bold; border-bottom: 1px solid #333; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .signature-content { padding: 15px 10px; min-height: 90px; display: flex; flex-direction: column; justify-content: flex-end; background: #ffffff; }
+          .signature-line { border-bottom: 1px solid #333; width: 85%; margin: 0 auto; margin-bottom: 8px; }
+          .signature-name { font-weight: bold; min-height: 22px; font-size: 10pt; color: #000; }
+          .signature-date { font-size: 9pt; color: #555; margin-top: 2px; }
           
           .footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9pt; color: #666; }
         </style>
@@ -248,32 +249,34 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               : ""
           }
           
-          <div class="signatures">
-            <div class="signature-box">
-              <div class="signature-header">${language === "id" ? "Pemohon" : "Requester"}</div>
-              <div class="signature-content">
-                <div class="signature-line"></div>
-                <div class="signature-name">${claim.employee?.full_name || ""}</div>
-                <div class="signature-date">Date: ___________</div>
-              </div>
-            </div>
-            <div class="signature-box">
-              <div class="signature-header">${language === "id" ? "Mengetahui" : "Acknowledged by"}</div>
-              <div class="signature-content">
-                <div class="signature-line"></div>
-                <div class="signature-name">${hrgaName}</div>
-                <div class="signature-date">HRGA</div>
-              </div>
-            </div>
-            <div class="signature-box">
-              <div class="signature-header">${language === "id" ? "Menyetujui" : "Approved by"}</div>
-              <div class="signature-content">
-                <div class="signature-line"></div>
-                <div class="signature-name">${ceoName}</div>
-                <div class="signature-date">CEO / Direktur</div>
-              </div>
-            </div>
-          </div>
+          <table class="signatures">
+            <tr class="signature-row">
+              <td class="signature-box">
+                <div class="signature-header">${language === "id" ? "Pemohon" : "Requester"}</div>
+                <div class="signature-content">
+                  <div class="signature-line"></div>
+                  <div class="signature-name">${claim.employee?.full_name || ""}</div>
+                  <div class="signature-date">Date: ___________</div>
+                </div>
+              </td>
+              <td class="signature-box">
+                <div class="signature-header">${language === "id" ? "Mengetahui" : "Acknowledged by"}</div>
+                <div class="signature-content">
+                  <div class="signature-line"></div>
+                  <div class="signature-name">${hrgaName}</div>
+                  <div class="signature-date">HRGA</div>
+                </div>
+              </td>
+              <td class="signature-box">
+                <div class="signature-header">${language === "id" ? "Menyetujui" : "Approved by"}</div>
+                <div class="signature-content">
+                  <div class="signature-line"></div>
+                  <div class="signature-name">${ceoName}</div>
+                  <div class="signature-date">CEO / Direktur</div>
+                </div>
+              </td>
+            </tr>
+          </table>
           
           <div class="footer">
             Dokumen ini dicetak pada ${printDate} | PT. Kemika Karya Pratama - Expense Budget & Approval System
