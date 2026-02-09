@@ -2188,6 +2188,10 @@ export type Database = {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean
       }
+      can_use_division_budget: {
+        Args: { _category_id: string; _division_id: string; _user_id: string }
+        Returns: boolean
+      }
       check_otp_rate_limit: { Args: { p_user_id: string }; Returns: Json }
       check_session_valid: { Args: never; Returns: boolean }
       close_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
