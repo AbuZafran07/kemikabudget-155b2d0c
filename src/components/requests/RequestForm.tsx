@@ -56,7 +56,7 @@ interface Attachment {
 }
 
 export function RequestForm({ requestId, initialData, onSuccess, onCancel, isSheet = false }: RequestFormProps) {
-  const { profile, hasRoleOrHigher } = useAuth();
+  const { profile, hasRoleOrHigher, user } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const {
@@ -84,8 +84,10 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   const { data: divisions } = useQuery({
     queryKey: ['divisions-for-request', profile?.division_id, canSelectOtherDivisions],
     queryFn: async () => {
-      // If user cannot select other divisions, only return their own division
-      if (!canSelectOtherDivisions && profile?.division_id) {
+      // Regular users must only ever see their own division.
+      // If profile isn't loaded yet, return empty list (prevents accidental "see all divisions" fallback).
+      if (!canSelectOtherDivisions) {
+        if (!profile?.division_id) return [];
         const { data, error } = await supabase
           .from('divisions')
           .select('id, code, name')
@@ -94,8 +96,8 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
         if (error) throw error;
         return data;
       }
-      
-      // Admin and Super Admin can see all divisions
+
+      // Admin / Finance / Super Admin can see all divisions
       const { data, error } = await supabase
         .from('divisions')
         .select('id, code, name')
@@ -381,12 +383,17 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
     const pendingUploads = attachments.filter((att) => att.file);
     if (pendingUploads.length === 0) return;
 
+    const uploaderId = user?.id;
+    if (!uploaderId) {
+      throw new Error('Sesi belum siap. Silakan tunggu sebentar lalu coba lagi.');
+    }
+
     setIsUploading(true);
     try {
       for (const attachment of pendingUploads) {
         if (!attachment.file) continue;
 
-        const filePath = `${profile?.id}/${requestId}/${Date.now()}_${attachment.name}`;
+        const filePath = `${uploaderId}/${requestId}/${Date.now()}_${attachment.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from("request-attachments")
@@ -401,7 +408,7 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           file_size: attachment.size,
           file_type: attachment.file.type,
           attachment_type: attachment.type,
-          uploaded_by: profile?.id,
+          uploaded_by: uploaderId,
         });
       }
     } catch (error: any) {

@@ -80,7 +80,7 @@ const AUTOSAVE_INTERVAL = 15000; // 15 seconds
 const DRAFT_STORAGE_KEY = 'request_draft';
 
 export function useRequests() {
-  const { profile, role } = useAuth();
+  const { profile, role, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { notifySubmitted } = useNotifications();
@@ -164,33 +164,40 @@ export function useRequests() {
   // Create request mutation
   const createRequest = useMutation({
     mutationFn: async (formData: RequestFormData) => {
+      const requesterId = user?.id;
+      if (!requesterId) {
+        throw new Error('Sesi belum siap. Silakan tunggu sebentar lalu coba lagi.');
+      }
+
       // Use division_id from form if provided, otherwise use user's division
       const divisionId = formData.division_id || profile?.division_id;
-      
+
       if (!divisionId) {
         throw new Error('User must be assigned to a division or select a budget division');
       }
 
       const { data, error } = await supabase
         .from('requests')
-        .insert([{
-          division_id: divisionId,
-          category_id: formData.category_id,
-          requester_id: profile?.id,
-          period_id: activePeriod?.id || null,
-          description: formData.description,
-          vendor: formData.vendor || null,
-          amount: formData.amount,
-          needed_date: formData.needed_date || new Date().toISOString().split('T')[0],
-          funding_source_id: formData.funding_source_id || null,
-          payment_method: formData.payment_method || null,
-          beneficiary_name: formData.beneficiary_name || null,
-          beneficiary_bank: formData.beneficiary_bank || null,
-          beneficiary_account: formData.beneficiary_account || null,
-          beneficiary_email: formData.beneficiary_email || null,
-          notes: formData.notes || null,
-          request_number: '',
-        }])
+        .insert([
+          {
+            division_id: divisionId,
+            category_id: formData.category_id,
+            requester_id: requesterId,
+            period_id: activePeriod?.id || null,
+            description: formData.description,
+            vendor: formData.vendor || null,
+            amount: formData.amount,
+            needed_date: formData.needed_date || new Date().toISOString().split('T')[0],
+            funding_source_id: formData.funding_source_id || null,
+            payment_method: formData.payment_method || null,
+            beneficiary_name: formData.beneficiary_name || null,
+            beneficiary_bank: formData.beneficiary_bank || null,
+            beneficiary_account: formData.beneficiary_account || null,
+            beneficiary_email: formData.beneficiary_email || null,
+            notes: formData.notes || null,
+            request_number: '',
+          },
+        ])
         .select()
         .single();
 
