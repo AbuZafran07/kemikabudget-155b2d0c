@@ -77,34 +77,72 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   const [selectedFundingSource, setSelectedFundingSource] = useState<any>(null);
   const [selectedBudgetDivisionId, setSelectedBudgetDivisionId] = useState<string>("");
 
-  // Check if user can select other divisions (admin and super_admin only)
-  const canSelectOtherDivisions = hasRoleOrHigher('admin');
+  // Check if user is privileged (admin, finance, super_admin)
+  const isPrivilegedUser = hasRoleOrHigher('admin');
 
-  // Fetch all active divisions
+  // Fetch divisions that user can access:
+  // - Privileged users: all divisions
+  // - Regular users: own division + divisions with public category budgets
   const { data: divisions } = useQuery({
-    queryKey: ['divisions-for-request', profile?.division_id, canSelectOtherDivisions],
+    queryKey: ['divisions-for-request', profile?.division_id, isPrivilegedUser],
     queryFn: async () => {
-      // Regular users must only ever see their own division.
-      // If profile isn't loaded yet, return empty list (prevents accidental "see all divisions" fallback).
-      if (!canSelectOtherDivisions) {
-        if (!profile?.division_id) return [];
+      if (!profile?.division_id) return [];
+
+      if (isPrivilegedUser) {
+        // Admin / Finance / Super Admin can see all divisions
         const { data, error } = await supabase
           .from('divisions')
           .select('id, code, name')
-          .eq('id', profile.division_id)
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .order('name');
         if (error) throw error;
         return data;
       }
 
-      // Admin / Finance / Super Admin can see all divisions
-      const { data, error } = await supabase
+      // Regular users: get their own division + divisions with public category budgets
+      // First get own division
+      const { data: ownDivision, error: ownError } = await supabase
         .from('divisions')
         .select('id, code, name')
+        .eq('id', profile.division_id)
         .eq('is_active', true)
-        .order('name');
-      if (error) throw error;
-      return data;
+        .single();
+      if (ownError && ownError.code !== 'PGRST116') throw ownError;
+
+      // Then get divisions that have public category budgets in active period
+      const { data: divisionsWithPublicBudget, error: publicError } = await supabase
+        .from('division_budgets')
+        .select(`
+          division_id,
+          divisions!inner(id, code, name, is_active),
+          cost_categories!inner(id, is_public, is_active),
+          budget_periods!inner(id, is_active, is_closed)
+        `)
+        .eq('divisions.is_active', true)
+        .eq('cost_categories.is_public', true)
+        .eq('cost_categories.is_active', true)
+        .eq('budget_periods.is_active', true)
+        .eq('budget_periods.is_closed', false)
+        .gt('allocated_amount', 0);
+      
+      if (publicError) throw publicError;
+
+      // Extract unique divisions
+      const publicDivisionsMap = new Map<string, any>();
+      divisionsWithPublicBudget?.forEach((db: any) => {
+        if (db.divisions && !publicDivisionsMap.has(db.divisions.id)) {
+          publicDivisionsMap.set(db.divisions.id, db.divisions);
+        }
+      });
+
+      // Combine own division with public divisions
+      const allDivisions = [...publicDivisionsMap.values()];
+      if (ownDivision && !publicDivisionsMap.has(ownDivision.id)) {
+        allDivisions.unshift(ownDivision);
+      }
+
+      // Sort by name
+      return allDivisions.sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 
@@ -123,8 +161,11 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
     },
   });
 
+  // Check if selected division is user's own division
+  const isOwnDivision = selectedBudgetDivisionId === profile?.division_id;
+
   // Fetch division_budgets for the selected division (with active period)
-  // This query also fetches the category data directly to avoid is_public filtering issues
+  // This query also fetches the category data directly including is_public flag
   const { data: divisionBudgets } = useQuery({
     queryKey: ['division-budgets-for-request', selectedBudgetDivisionId, activePeriod?.id],
     queryFn: async () => {
@@ -136,7 +177,7 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           category_id,
           allocated_amount,
           used_amount,
-          cost_categories (id, code, name)
+          cost_categories (id, code, name, is_public)
         `)
         .eq('division_id', selectedBudgetDivisionId)
         .eq('period_id', activePeriod.id)
@@ -148,16 +189,23 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   });
 
   // Extract categories directly from division budgets
-  // This bypasses the is_public filter and shows only categories with budget allocated for this division
+  // For own division: show all categories with budget allocation (including private)
+  // For other divisions: only show PUBLIC categories with budget allocation
   const filteredCategories = useMemo(() => {
     if (!selectedBudgetDivisionId || !divisionBudgets || divisionBudgets.length === 0) {
       return [];
     }
-    // Extract categories from budget allocations - this includes private categories assigned to this division
+    
     return divisionBudgets
-      .filter((db: any) => db.cost_categories)
+      .filter((db: any) => {
+        if (!db.cost_categories) return false;
+        // For own division or privileged users: show all categories
+        if (isOwnDivision || isPrivilegedUser) return true;
+        // For other divisions: only show public categories
+        return db.cost_categories.is_public === true;
+      })
       .map((db: any) => db.cost_categories);
-  }, [selectedBudgetDivisionId, divisionBudgets]);
+  }, [selectedBudgetDivisionId, divisionBudgets, isOwnDivision, isPrivilegedUser]);
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
@@ -538,10 +586,18 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
               {divisions?.map((div: any) => (
                 <SelectItem key={div.id} value={div.id}>
                   {div.name} ({div.code})
+                  {div.id === profile?.division_id && (
+                    <span className="ml-2 text-xs text-muted-foreground">- Divisi Anda</span>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {!isOwnDivision && selectedBudgetDivisionId && !isPrivilegedUser && (
+            <p className="text-xs text-muted-foreground">
+              Hanya kategori public yang tersedia untuk divisi ini
+            </p>
+          )}
         </div>
 
         {/* Category - filtered by division budget */}
