@@ -73,9 +73,10 @@ const translations: Translations = {
   // Header
   'header.search': { id: 'Cari transaksi, request...', en: 'Search transactions, requests...' },
   'header.notifications': { id: 'Notifikasi', en: 'Notifications' },
+  'header.pendingApprovals': { id: 'Menunggu Persetujuan', en: 'Pending Approvals' },
   'header.profile': { id: 'Profil Saya', en: 'My Profile' },
-  'header.viewAllNotifications': { id: 'Lihat semua notifikasi', en: 'View all notifications' },
-  'header.noNotifications': { id: 'Belum ada notifikasi', en: 'No notifications yet' },
+  'header.viewAllNotifications': { id: 'Lihat semua', en: 'View all' },
+  'header.noNotifications': { id: 'Belum ada item menunggu', en: 'No pending items' },
   
   // User Menu
   'user.myProfile': { id: 'Profil Saya', en: 'My Profile' },
