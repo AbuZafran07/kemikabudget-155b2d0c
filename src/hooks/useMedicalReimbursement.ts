@@ -132,7 +132,12 @@ export function useMedicalClaims(filters?: { status?: string; employeeId?: strin
         query = query.eq("status", filters.status as "draft" | "submitted" | "review_hrga" | "review_finance" | "approved" | "rejected" | "paid" | "closed" | "cancelled");
       }
 
-      if (filters?.employeeId) {
+      // CRITICAL: Users can only see their own claims
+      // Admin/Finance/Super Admin can see all claims
+      // This filter is applied in addition to RLS for defense in depth
+      if (!canViewAll) {
+        query = query.eq("employee_id", user?.id);
+      } else if (filters?.employeeId) {
         query = query.eq("employee_id", filters.employeeId);
       }
 
