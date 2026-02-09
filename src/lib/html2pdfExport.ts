@@ -136,7 +136,7 @@ export async function exportStyledHtmlToPdf(params: {
     await new Promise<void>((r) => setTimeout(r, 300));
     
     // Find the container element
-    const container = wrapper.querySelector(".container") as HTMLElement || wrapper;
+    const container = wrapper.querySelector(".container, .page") as HTMLElement || wrapper;
     
     const rect = container.getBoundingClientRect();
     if (!rect.width || !rect.height) {
