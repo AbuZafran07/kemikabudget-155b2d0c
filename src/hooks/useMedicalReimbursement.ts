@@ -117,11 +117,12 @@ export function useMedicalBudget() {
 }
 
 export function useMedicalClaims(filters?: { status?: string; employeeId?: string }) {
-  const { user, hasRoleOrHigher } = useAuth();
-  const canViewAll = hasRoleOrHigher("admin");
+  const { user, hasRole } = useAuth();
+  // Only Super Admin can view all claims
+  const isSuperAdmin = hasRole("super_admin");
 
   return useQuery({
-    queryKey: ["medical-claims", filters, user?.id, canViewAll],
+    queryKey: ["medical-claims", filters, user?.id, isSuperAdmin],
     queryFn: async () => {
       let query = supabase
         .from("medical_claims")
@@ -132,10 +133,10 @@ export function useMedicalClaims(filters?: { status?: string; employeeId?: strin
         query = query.eq("status", filters.status as "draft" | "submitted" | "review_hrga" | "review_finance" | "approved" | "rejected" | "paid" | "closed" | "cancelled");
       }
 
-      // CRITICAL: Users can only see their own claims
-      // Admin/Finance/Super Admin can see all claims
+      // CRITICAL: Only Super Admin can see all claims
+      // All other roles (admin, finance, user) only see their own claims
       // This filter is applied in addition to RLS for defense in depth
-      if (!canViewAll) {
+      if (!isSuperAdmin) {
         query = query.eq("employee_id", user?.id);
       } else if (filters?.employeeId) {
         query = query.eq("employee_id", filters.employeeId);
