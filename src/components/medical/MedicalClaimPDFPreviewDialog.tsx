@@ -127,11 +127,14 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           .approved-box .label { font-size: 10pt; color: #15803d; margin-bottom: 5px; }
           .approved-box .value { font-size: 18pt; font-weight: bold; color: #15803d; }
           
-          .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 50px; }
-          .signature-box { text-align: center; }
-          .signature-box .title { font-size: 10pt; color: #666; margin-bottom: 60px; }
-          .signature-box .name { font-weight: bold; border-top: 1px solid #333; padding-top: 5px; min-width: 150px; display: inline-block; }
-          .signature-box .role { font-size: 9pt; color: #666; }
+          .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 40px; border: 1px solid #333; }
+          .signature-box { text-align: center; border-right: 1px solid #333; }
+          .signature-box:last-child { border-right: none; }
+          .signature-header { background: #c4a000; color: white; padding: 6px; font-weight: bold; border-bottom: 1px solid #333; font-size: 10pt; }
+          .signature-content { padding: 10px; min-height: 80px; display: flex; flex-direction: column; justify-content: flex-end; }
+          .signature-line { border-bottom: 1px solid #333; width: 80%; margin: 0 auto; margin-bottom: 5px; }
+          .signature-name { font-weight: bold; min-height: 20px; font-size: 10pt; }
+          .signature-date { font-size: 8pt; color: #666; }
           
           .footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9pt; color: #666; }
         </style>
@@ -246,14 +249,28 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           
           <div class="signatures">
             <div class="signature-box">
-              <div class="title">${language === "id" ? "Diverifikasi oleh HRGA" : "Verified by HRGA"}</div>
-              <div class="name">${hrgaApprover || "____________________"}</div>
-              <div class="role">HRGA</div>
+              <div class="signature-header">${language === "id" ? "Pemohon" : "Requester"}</div>
+              <div class="signature-content">
+                <div class="signature-line"></div>
+                <div class="signature-name">${claim.employee?.full_name || ""}</div>
+                <div class="signature-date">Date: ___________</div>
+              </div>
             </div>
             <div class="signature-box">
-              <div class="title">${language === "id" ? "Disetujui oleh Finance" : "Approved by Finance"}</div>
-              <div class="name">${financeApprover || "____________________"}</div>
-              <div class="role">Finance</div>
+              <div class="signature-header">${language === "id" ? "Mengetahui" : "Acknowledged by"}</div>
+              <div class="signature-content">
+                <div class="signature-line"></div>
+                <div class="signature-name">${hrgaApprover || ""}</div>
+                <div class="signature-date">Date: ___________</div>
+              </div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-header">${language === "id" ? "Menyetujui" : "Approved by"}</div>
+              <div class="signature-content">
+                <div class="signature-line"></div>
+                <div class="signature-name">${financeApprover || ""}</div>
+                <div class="signature-date">Date: ___________</div>
+              </div>
             </div>
           </div>
           
