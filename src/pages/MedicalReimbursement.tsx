@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedicalClaims, useMedicalBudget } from "@/hooks/useMedicalReimbursement";
+import { useMedicalClaimsRealtime } from "@/hooks/useRealtimeSubscription";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale, enUS } from "date-fns/locale";
 import { TablePagination } from "@/components/common/TablePagination";
@@ -43,6 +44,10 @@ const MedicalReimbursement = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { hasRoleOrHigher } = useAuth();
+  
+  // Enable realtime updates
+  useMedicalClaimsRealtime();
+  
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);

@@ -55,6 +55,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { TablePagination } from "@/components/common/TablePagination";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBudgetRealtime } from "@/hooks/useRealtimeSubscription";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -66,6 +67,9 @@ const formatCurrency = (value: number) => {
 };
 
 const BudgetPlanning = () => {
+  // Enable realtime updates
+  useBudgetRealtime();
+
   const {
     budgets,
     divisions,

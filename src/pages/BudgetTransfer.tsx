@@ -31,12 +31,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { useBudgetTransfer } from "@/hooks/useBudgetTransfer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBudgetRealtime } from "@/hooks/useRealtimeSubscription";
 
 type TransferStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 
 const BudgetTransfer = () => {
   const { profile, role } = useAuth();
   const { t, language } = useLanguage();
+  
+  // Enable realtime updates
+  useBudgetRealtime();
+  
   const {
     transfers,
     divisionBudgets,
