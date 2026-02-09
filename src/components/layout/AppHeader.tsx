@@ -6,11 +6,6 @@ import {
   LogOut,
   User,
   Settings,
-  FileText,
-  CheckCircle,
-  XCircle,
-  CreditCard,
-  Mail,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
@@ -28,7 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -43,6 +38,16 @@ interface NotificationLog {
   status: string;
   created_at: string;
   request_id: string | null;
+}
+
+interface PendingItem {
+  id: string;
+  type: 'request' | 'medical' | 'cash_advance';
+  number: string;
+  description: string;
+  amount: number;
+  created_at: string;
+  status: string;
 }
 
 interface AppHeaderProps {
@@ -64,84 +69,109 @@ const AppHeader = ({ isCollapsed, onToggle }: AppHeaderProps) => {
   });
   const [showEditProfile, setShowEditProfile] = useState(false);
 
-  // Helper function moved up to be used in useEffect
-  const getEventLabel = useCallback(
-    (eventType: string) => {
-      const labels: Record<string, { id: string; en: string }> = {
-        submitted: { id: "Pengajuan Baru", en: "New Submission" },
-        approved: { id: "Pengajuan Disetujui", en: "Request Approved" },
-        rejected: { id: "Pengajuan Ditolak", en: "Request Rejected" },
-        paid: { id: "Pembayaran Selesai", en: "Payment Completed" },
-        settled: { id: "Transaksi Diselesaikan", en: "Transaction Settled" },
-      };
-      return labels[eventType]?.[language] || eventType;
-    },
-    [language],
-  );
-
-  // Fetch real notifications from database
-  const { data: notifications = [], refetch: refetchNotifications } = useQuery({
-    queryKey: ["header-notifications", user?.id],
+  // Fetch pending items that need attention (approvals)
+  const { data: pendingItems = [], refetch: refetchPendingItems } = useQuery({
+    queryKey: ["header-pending-items", user?.id, role],
     queryFn: async () => {
       if (!user?.id) return [];
+      
+      const items: PendingItem[] = [];
 
-      const { data, error } = await supabase
-        .from("notification_logs")
-        .select("id, event_type, subject, status, created_at, request_id")
+      // Fetch pending requests
+      const { data: requests } = await supabase
+        .from("requests")
+        .select("id, request_number, description, amount, created_at, status")
+        .in("status", ["submitted", "under_review"])
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(5);
 
-      if (error) {
-        if (import.meta.env.DEV) {
-          console.error("Error fetching notifications:", error);
-        }
-        return [];
+      if (requests) {
+        items.push(...requests.map(r => ({
+          id: r.id,
+          type: 'request' as const,
+          number: r.request_number,
+          description: r.description,
+          amount: r.amount,
+          created_at: r.created_at,
+          status: r.status,
+        })));
       }
 
-      return data as NotificationLog[];
+      // Fetch pending medical claims
+      const { data: medicalClaims } = await supabase
+        .from("medical_claims")
+        .select("id, claim_number, patient_name, claim_amount, created_at, status")
+        .in("status", ["submitted", "review_hrga"])
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (medicalClaims) {
+        items.push(...medicalClaims.map(m => ({
+          id: m.id,
+          type: 'medical' as const,
+          number: m.claim_number,
+          description: m.patient_name,
+          amount: m.claim_amount,
+          created_at: m.created_at,
+          status: m.status,
+        })));
+      }
+
+      // Fetch pending cash advances
+      const { data: cashAdvances } = await supabase
+        .from("cash_advances")
+        .select("id, ca_number, purpose, total_amount, created_at, status")
+        .in("status", ["submitted", "under_review"])
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (cashAdvances) {
+        items.push(...cashAdvances.map(c => ({
+          id: c.id,
+          type: 'cash_advance' as const,
+          number: c.ca_number,
+          description: c.purpose,
+          amount: c.total_amount,
+          created_at: c.created_at,
+          status: c.status,
+        })));
+      }
+
+      // Sort all items by created_at
+      return items.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ).slice(0, 10);
     },
-    enabled: !!user?.id && (role === "super_admin" || role === "finance"),
+    enabled: !!user?.id && (role === "super_admin" || role === "admin"),
+    refetchInterval: 30000,
   });
 
-  // Subscribe to real-time notification updates
+  // Subscribe to real-time updates for pending items
   useEffect(() => {
-    if (!user?.id || (role !== "super_admin" && role !== "finance")) return;
+    if (!user?.id || (role !== "super_admin" && role !== "admin")) return;
 
     const channel = supabase
-      .channel("notification-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notification_logs",
-        },
-        (payload) => {
-          if (import.meta.env.DEV) {
-            console.log("New notification received:", payload);
-          }
-          // Refetch notifications when a new one is inserted
-          refetchNotifications();
-
-          // Show toast for new notification
-          const newNotification = payload.new as NotificationLog;
-          toast({
-            title: getEventLabel(newNotification.event_type),
-            description: newNotification.subject,
-          });
-        },
-      )
+      .channel("pending-items-realtime")
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
+        refetchPendingItems();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medical_claims' }, () => {
+        refetchPendingItems();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_advances' }, () => {
+        refetchPendingItems();
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, role, refetchNotifications, toast, getEventLabel]);
+  }, [user?.id, role, refetchPendingItems]);
 
-  // Calculate unread count
-  const unreadCount = notifications.filter((n) => {
+  // Calculate unread count (items not yet seen)
+  const unreadCount = pendingItems.filter((item) => {
     if (!lastSeenAt) return true;
-    return new Date(n.created_at) > new Date(lastSeenAt);
+    return new Date(item.created_at) > new Date(lastSeenAt);
   }).length;
 
   useEffect(() => {
@@ -159,8 +189,8 @@ const AppHeader = ({ isCollapsed, onToggle }: AppHeaderProps) => {
 
   const handleNotificationOpen = (open: boolean) => {
     setNotificationOpen(open);
-    if (open && notifications.length > 0) {
-      const latestTime = notifications[0].created_at;
+    if (open && pendingItems.length > 0) {
+      const latestTime = pendingItems[0].created_at;
       setLastSeenAt(latestTime);
       localStorage.setItem("notification_last_seen", latestTime);
     }
@@ -188,23 +218,6 @@ const AppHeader = ({ isCollapsed, onToggle }: AppHeaderProps) => {
     if (!role) return t("role.user");
     const roleKey = `role.${role === "super_admin" ? "superAdmin" : role}`;
     return t(roleKey);
-  };
-
-  const getEventIcon = (eventType: string) => {
-    switch (eventType) {
-      case "submitted":
-        return <FileText className="h-4 w-4 text-blue-500" />;
-      case "approved":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "rejected":
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case "paid":
-        return <CreditCard className="h-4 w-4 text-primary" />;
-      case "settled":
-        return <CheckCircle className="h-4 w-4 text-success" />;
-      default:
-        return <Mail className="h-4 w-4 text-muted-foreground" />;
-    }
   };
 
   const formatTimeAgo = (dateStr: string) => {
@@ -308,36 +321,51 @@ const AppHeader = ({ isCollapsed, onToggle }: AppHeaderProps) => {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0 bg-popover border border-border shadow-lg">
             <div className="p-4 border-b border-border bg-popover">
-              <h3 className="font-semibold text-foreground">{t("header.notifications")}</h3>
+              <h3 className="font-semibold text-foreground">{t("header.pendingApprovals")}</h3>
             </div>
             <div className="max-h-80 overflow-y-auto bg-popover">
-              {notifications.length === 0 ? (
+              {pendingItems.length === 0 ? (
                 <div className="p-8 text-center">
                   <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
                   <p className="text-sm text-muted-foreground">{t("header.noNotifications")}</p>
                 </div>
               ) : (
-                notifications.map((notification) => {
-                  const isUnread = !lastSeenAt || new Date(notification.created_at) > new Date(lastSeenAt);
+                pendingItems.map((item) => {
+                  const isUnread = !lastSeenAt || new Date(item.created_at) > new Date(lastSeenAt);
+                  const typeLabel = item.type === 'medical' 
+                    ? (language === 'id' ? 'Klaim Medis' : 'Medical Claim')
+                    : item.type === 'cash_advance'
+                    ? (language === 'id' ? 'Kasbon' : 'Cash Advance')
+                    : (language === 'id' ? 'Pengajuan' : 'Request');
+                  const routePath = item.type === 'medical' 
+                    ? '/medical-reimbursement'
+                    : item.type === 'cash_advance'
+                    ? '/cash-advance'
+                    : '/approvals';
                   return (
                     <div
-                      key={notification.id}
-                      onClick={() => navigate("/notification-history")}
+                      key={`${item.type}-${item.id}`}
+                      onClick={() => navigate(routePath)}
                       className={`p-4 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer ${
                         isUnread ? "bg-primary/5" : ""
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         {isUnread && <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />}
-                        <div className={`flex items-start gap-2 ${isUnread ? "" : "ml-5"}`}>
-                          {getEventIcon(notification.event_type)}
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {getEventLabel(notification.event_type)}
+                        <div className={`flex-1 ${isUnread ? "" : "ml-5"}`}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {typeLabel}
+                            </Badge>
+                            <span className="text-xs font-mono text-muted-foreground">{item.number}</span>
+                          </div>
+                          <p className="text-sm text-foreground mt-1 line-clamp-1">{item.description}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-muted-foreground">
+                              {formatTimeAgo(item.created_at)}
                             </p>
-                            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{notification.subject}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatTimeAgo(notification.created_at)}
+                            <p className="text-xs font-medium text-primary">
+                              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.amount)}
                             </p>
                           </div>
                         </div>
@@ -348,7 +376,7 @@ const AppHeader = ({ isCollapsed, onToggle }: AppHeaderProps) => {
               )}
             </div>
             <div className="p-3 border-t border-border bg-popover">
-              <Button variant="ghost" className="w-full text-sm" onClick={() => navigate("/notification-history")}>
+              <Button variant="ghost" className="w-full text-sm" onClick={() => navigate("/approvals")}>
                 {t("header.viewAllNotifications")}
               </Button>
             </div>

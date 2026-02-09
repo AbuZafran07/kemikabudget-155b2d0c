@@ -126,25 +126,61 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
   const { t } = useLanguage();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  // Fetch real pending counts from database
-  const { data: badgeCounts = { pendingApprovals: 0, pendingPayments: 0 } } = useQuery({
-    queryKey: ['sidebar-badge-counts', user?.id],
+  // Fetch real pending counts from database (including requests, medical_claims, cash_advances)
+  const { data: badgeCounts = { pendingApprovals: 0, pendingPayments: 0 }, refetch: refetchBadges } = useQuery({
+    queryKey: ['sidebar-badge-counts', user?.id, role],
     queryFn: async () => {
-      // Count pending approvals (submitted or under_review)
-      const { count: pendingApprovals } = await supabase
+      // Count pending approvals from requests (submitted or under_review)
+      const { count: pendingRequestApprovals } = await supabase
         .from('requests')
         .select('id', { count: 'exact', head: true })
         .in('status', ['submitted', 'under_review']);
 
-      // Count pending payments (approved but not paid)
-      const { count: pendingPayments } = await supabase
+      // Count pending approvals from medical claims (submitted or review_hrga)
+      const { count: pendingMedicalApprovals } = await supabase
+        .from('medical_claims')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['submitted', 'review_hrga']);
+
+      // Count pending approvals from cash advances (submitted or under_review)
+      const { count: pendingCashAdvanceApprovals } = await supabase
+        .from('cash_advances')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['submitted', 'under_review']);
+
+      // Total pending approvals
+      const pendingApprovals = 
+        (pendingRequestApprovals || 0) + 
+        (pendingMedicalApprovals || 0) + 
+        (pendingCashAdvanceApprovals || 0);
+
+      // Count pending payments from requests (approved but not paid)
+      const { count: pendingRequestPayments } = await supabase
         .from('requests')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'approved');
 
+      // Count pending payments from medical claims (approved but not paid)
+      const { count: pendingMedicalPayments } = await supabase
+        .from('medical_claims')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'approved');
+
+      // Count pending payments from cash advances (approved but not paid)
+      const { count: pendingCashAdvancePayments } = await supabase
+        .from('cash_advances')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'approved');
+
+      // Total pending payments
+      const pendingPayments = 
+        (pendingRequestPayments || 0) + 
+        (pendingMedicalPayments || 0) + 
+        (pendingCashAdvancePayments || 0);
+
       return {
-        pendingApprovals: pendingApprovals || 0,
-        pendingPayments: pendingPayments || 0,
+        pendingApprovals,
+        pendingPayments,
       };
     },
     enabled: !!user?.id && (role === 'super_admin' || role === 'finance' || role === 'admin'),
@@ -157,24 +193,21 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
 
     const channel = supabase
       .channel('sidebar-badge-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'requests'
-        },
-        () => {
-          // Refetch badge counts when requests change
-          // The query will automatically refetch via queryKey invalidation
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
+        refetchBadges();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medical_claims' }, () => {
+        refetchBadges();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_advances' }, () => {
+        refetchBadges();
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, role]);
+  }, [user?.id, role, refetchBadges]);
 
   const menuSections = getMenuSections();
 
