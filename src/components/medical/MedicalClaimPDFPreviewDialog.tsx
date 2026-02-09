@@ -84,8 +84,9 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
   };
 
   const generatePdfHtml = () => {
-    const hrgaApprover = claim.reviewed_hrga_by && approvers ? approvers[claim.reviewed_hrga_by] : "";
-    const financeApprover = claim.approved_by && approvers ? approvers[claim.approved_by] : "";
+    // Fixed names for HRGA and CEO/Director
+    const hrgaName = "Ferry Ferdiansyah";
+    const ceoName = "Haris Pratama Putra";
     
     // Format print date like budget submission: "09 Februari 2026 14:31"
     const printDate = format(new Date(), "dd MMMM yyyy HH:mm", {
@@ -260,16 +261,16 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               <div class="signature-header">${language === "id" ? "Mengetahui" : "Acknowledged by"}</div>
               <div class="signature-content">
                 <div class="signature-line"></div>
-                <div class="signature-name">${hrgaApprover || ""}</div>
-                <div class="signature-date">Date: ___________</div>
+                <div class="signature-name">${hrgaName}</div>
+                <div class="signature-date">HRGA</div>
               </div>
             </div>
             <div class="signature-box">
               <div class="signature-header">${language === "id" ? "Menyetujui" : "Approved by"}</div>
               <div class="signature-content">
                 <div class="signature-line"></div>
-                <div class="signature-name">${financeApprover || ""}</div>
-                <div class="signature-date">Date: ___________</div>
+                <div class="signature-name">${ceoName}</div>
+                <div class="signature-date">CEO / Direktur</div>
               </div>
             </div>
           </div>
