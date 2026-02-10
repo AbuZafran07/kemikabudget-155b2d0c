@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
+import { compressImage, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_LABEL } from "@/lib/imageCompression";
 
 const requestSchema = z.object({
   category_id: z.string().min(1, "Kategori harus dipilih"),
@@ -374,16 +375,7 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
       if (!files) return;
 
       const newAttachments: Attachment[] = [];
-      for (const file of Array.from(files)) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast({
-            title: "File Terlalu Besar",
-            description: `${file.name} melebihi batas 10MB`,
-            variant: "destructive",
-          });
-          continue;
-        }
-
+      for (let file of Array.from(files)) {
         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
           toast({
             title: "Tipe File Tidak Diizinkan",
@@ -398,6 +390,20 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           toast({
             title: "Ekstensi File Tidak Valid",
             description: `${file.name}: Ekstensi file tidak diperbolehkan`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        // Compress images automatically (70% quality, target 1MB)
+        if (file.type.startsWith('image/')) {
+          file = await compressImage(file, 0.7, MAX_FILE_SIZE_BYTES);
+        }
+
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          toast({
+            title: "File Terlalu Besar",
+            description: `${file.name} melebihi batas ${MAX_FILE_SIZE_LABEL} setelah kompresi`,
             variant: "destructive",
           });
           continue;
