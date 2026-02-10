@@ -331,6 +331,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     requester: request.requester as any,
                     approver: (request as any).approver || null,
                     funding_source: request.funding_sources as any,
+                    attachments: attachments?.map(a => ({ attachment_type: a.attachment_type, file_name: a.file_name })),
                   });
                   setIsPDFPreviewOpen(true);
                 }}
@@ -365,6 +366,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                       requester: request.requester as any,
                       approver: (request as any).approver || null,
                       funding_source: request.funding_sources as any,
+                      attachments: attachments?.map(a => ({ attachment_type: a.attachment_type, file_name: a.file_name })),
                     };
                     
                     const html = generatePengajuanDanaHTML(pdfData, logoBase64);
