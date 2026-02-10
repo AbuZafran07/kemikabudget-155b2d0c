@@ -21,7 +21,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
   const { t, language } = useLanguage();
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Fetch approver names
+  // Fetch approver names and signatures
   const { data: approvers } = useQuery({
     queryKey: ["medical-claim-approvers", claim?.id],
     queryFn: async () => {
@@ -42,6 +42,21 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
       return map;
     },
     enabled: !!claim,
+  });
+
+  // Fetch requester signature
+  const { data: requesterProfile } = useQuery({
+    queryKey: ["requester-signature", claim?.employee_id],
+    queryFn: async () => {
+      if (!claim?.employee_id) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("signature_url")
+        .eq("id", claim.employee_id)
+        .single();
+      return data;
+    },
+    enabled: !!claim?.employee_id,
   });
 
   if (!claim) return null;
@@ -132,11 +147,13 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           .signature-row { display: table-row; }
           .signature-box { display: table-cell; text-align: center; border-right: 1px solid #333; width: 33.33%; vertical-align: top; }
           .signature-box:last-child { border-right: none; }
-          .signature-header { background-color: #c4a000; color: #ffffff; padding: 8px 6px; font-weight: bold; border-bottom: 1px solid #333; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .signature-content { padding: 15px 10px; min-height: 90px; display: flex; flex-direction: column; justify-content: flex-end; background: #ffffff; }
-          .signature-line { border-bottom: 1px solid #333; width: 85%; margin: 0 auto; margin-bottom: 8px; }
-          .signature-name { font-weight: bold; min-height: 22px; font-size: 10pt; color: #000; }
-          .signature-date { font-size: 9pt; color: #555; margin-top: 2px; }
+          .signature-header { background-color: #f5f5f5; color: #333; padding: 6px; font-weight: bold; border-bottom: 1px solid #333; font-size: 9pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .signature-header-sub { font-size: 8pt; font-weight: normal; color: #555; }
+          .signature-content { padding: 10px 8px; min-height: 90px; display: flex; flex-direction: column; justify-content: flex-end; background: #ffffff; }
+          .signature-img { max-height: 50px; object-fit: contain; margin: 0 auto 5px auto; display: block; }
+          .signature-line { border-bottom: 1px solid #333; width: 85%; margin: 0 auto; margin-bottom: 5px; }
+          .signature-name { font-weight: bold; min-height: 18px; font-size: 9pt; color: #000; }
+          .signature-date { font-size: 8pt; color: #555; margin-top: 2px; }
           
           .footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 9pt; color: #666; }
         </style>
@@ -252,15 +269,22 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           <table class="signatures">
             <tr class="signature-row">
               <td class="signature-box">
-                <div class="signature-header">${language === "id" ? "Pemohon" : "Requester"}</div>
+                <div class="signature-header">
+                  Ditandatangani oleh <strong>${claim.employee?.full_name || ""}</strong>
+                  <div class="signature-header-sub">Pemohon,</div>
+                </div>
                 <div class="signature-content">
+                  ${requesterProfile?.signature_url ? `<img src="${requesterProfile.signature_url}" class="signature-img" />` : ''}
                   <div class="signature-line"></div>
                   <div class="signature-name">${claim.employee?.full_name || ""}</div>
-                  <div class="signature-date">Date: ___________</div>
+                  <div class="signature-date">${claim.submitted_at ? format(new Date(claim.submitted_at), "dd MMM yyyy HH:mm", { locale: language === "id" ? idLocale : enUS }) : formatDate(claim.claim_date)}</div>
                 </div>
               </td>
               <td class="signature-box">
-                <div class="signature-header">${language === "id" ? "Mengetahui" : "Acknowledged by"}</div>
+                <div class="signature-header">
+                  Ditandatangani oleh <strong>${hrgaName}</strong>
+                  <div class="signature-header-sub">Mengetahui,</div>
+                </div>
                 <div class="signature-content">
                   <div class="signature-line"></div>
                   <div class="signature-name">${hrgaName}</div>
@@ -268,7 +292,10 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
                 </div>
               </td>
               <td class="signature-box">
-                <div class="signature-header">${language === "id" ? "Menyetujui" : "Approved by"}</div>
+                <div class="signature-header">
+                  Ditandatangani oleh <strong>${ceoName}</strong>
+                  <div class="signature-header-sub">Approve,</div>
+                </div>
                 <div class="signature-content">
                   <div class="signature-line"></div>
                   <div class="signature-name">${ceoName}</div>

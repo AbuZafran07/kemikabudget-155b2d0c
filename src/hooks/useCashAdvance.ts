@@ -179,10 +179,10 @@ export const useCashAdvance = (id: string) => {
       if (error) throw error;
       if (!data) return null;
 
-      // Fetch requester from profiles_secure
+      // Fetch requester from profiles (including signature_url)
       const { data: requester } = await supabase
-        .from("profiles_secure")
-        .select("id, full_name, email")
+        .from("profiles")
+        .select("id, full_name, email, signature_url")
         .eq("id", data.requester_id)
         .maybeSingle();
 
@@ -190,8 +190,8 @@ export const useCashAdvance = (id: string) => {
       let approver = null;
       if (data.approved_by) {
         const { data: approverData } = await supabase
-          .from("profiles_secure")
-          .select("id, full_name")
+          .from("profiles")
+          .select("id, full_name, signature_url")
           .eq("id", data.approved_by)
           .maybeSingle();
         approver = approverData;

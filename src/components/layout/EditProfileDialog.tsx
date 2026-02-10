@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Loader2, Camera, X, Key, Eye, EyeOff, Check } from 'lucide-react';
+import { User, Loader2, Camera, X, Key, Eye, EyeOff, Check, PenTool, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,9 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -45,7 +48,6 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-
   useEffect(() => {
     if (profile && open) {
       setFormData({
@@ -53,6 +55,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         phone: profile.phone || '',
       });
       setAvatarUrl(profile.avatar_url);
+      setSignatureUrl((profile as any).signature_url || null);
       // Reset password fields when dialog opens
       resetPasswordForm();
       setActiveTab('profile');
@@ -307,14 +310,18 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="profile" className="gap-2">
-                <User className="h-4 w-4" />
-                {t('profile.profile')}
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="profile" className="gap-1 text-xs">
+                <User className="h-3.5 w-3.5" />
+                Profil
               </TabsTrigger>
-              <TabsTrigger value="password" className="gap-2">
-                <Key className="h-4 w-4" />
-                {t('profile.changePassword')}
+              <TabsTrigger value="signature" className="gap-1 text-xs">
+                <PenTool className="h-3.5 w-3.5" />
+                Tanda Tangan
+              </TabsTrigger>
+              <TabsTrigger value="password" className="gap-1 text-xs">
+                <Key className="h-3.5 w-3.5" />
+                Password
               </TabsTrigger>
             </TabsList>
 
@@ -431,6 +438,113 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
                     t('action.save')
                   )}
                 </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="signature" className="space-y-6 py-4">
+              <div className="text-center space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Upload gambar tanda tangan Anda (PNG transparan disarankan). Tanda tangan akan muncul di dokumen PDF.
+                </p>
+                
+                {signatureUrl ? (
+                  <div className="space-y-3">
+                    <div className="border rounded-lg p-4 bg-muted/30 inline-block mx-auto">
+                      <img 
+                        src={signatureUrl} 
+                        alt="Tanda Tangan" 
+                        className="max-h-24 object-contain mx-auto"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-center">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => signatureInputRef.current?.click()}
+                        disabled={isUploadingSignature}
+                      >
+                        {isUploadingSignature ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                        Ganti TTD
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={async () => {
+                          if (!user?.id) return;
+                          setIsUploadingSignature(true);
+                          try {
+                            await supabase.storage.from('signatures').remove([`${user.id}/signature.png`]);
+                            await supabase.from('profiles').update({ signature_url: null, updated_at: new Date().toISOString() }).eq('id', user.id);
+                            setSignatureUrl(null);
+                            toast({ title: 'Tanda tangan dihapus' });
+                          } catch (err) {
+                            toast({ title: 'Gagal menghapus', variant: 'destructive' });
+                          } finally {
+                            setIsUploadingSignature(false);
+                          }
+                        }}
+                        disabled={isUploadingSignature}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-3">
+                    <PenTool className="h-10 w-10 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Belum ada tanda tangan</p>
+                    <Button 
+                      variant="outline"
+                      onClick={() => signatureInputRef.current?.click()}
+                      disabled={isUploadingSignature}
+                    >
+                      {isUploadingSignature ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                      Upload Tanda Tangan
+                    </Button>
+                  </div>
+                )}
+                
+                <input
+                  ref={signatureInputRef}
+                  type="file"
+                  accept="image/png"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !user?.id) return;
+                    if (file.type !== 'image/png') {
+                      toast({ title: 'Hanya file PNG yang diizinkan', variant: 'destructive' });
+                      return;
+                    }
+                    if (file.size > 2 * 1024 * 1024) {
+                      toast({ title: 'Ukuran file maksimal 2MB', variant: 'destructive' });
+                      return;
+                    }
+                    setIsUploadingSignature(true);
+                    try {
+                      const fileName = `${user.id}/signature.png`;
+                      const { error: uploadError } = await supabase.storage
+                        .from('signatures')
+                        .upload(fileName, file, { upsert: true });
+                      if (uploadError) throw uploadError;
+                      const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(fileName);
+                      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                      await supabase.from('profiles').update({ signature_url: newUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+                      setSignatureUrl(newUrl);
+                      toast({ title: 'Tanda tangan berhasil diupload' });
+                    } catch (err) {
+                      toast({ title: 'Gagal upload', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+                    } finally {
+                      setIsUploadingSignature(false);
+                      if (signatureInputRef.current) signatureInputRef.current.value = '';
+                    }
+                  }}
+                />
               </div>
             </TabsContent>
 
