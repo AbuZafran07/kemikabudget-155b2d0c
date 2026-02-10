@@ -16,7 +16,7 @@ const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   'text/plain': ['.txt'],
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
 
 // File magic numbers for validation
 const MAGIC_NUMBERS: Record<string, number[][]> = {
@@ -175,7 +175,7 @@ Deno.serve(async (req: Request) => {
     if (file.size > MAX_FILE_SIZE) {
       console.log(`[upload-attachment] File too large: ${file.size} bytes`);
       return new Response(
-        JSON.stringify({ success: false, error: 'File size exceeds 10MB limit' }),
+        JSON.stringify({ success: false, error: 'File size exceeds 1MB limit. Please compress your image before uploading.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }

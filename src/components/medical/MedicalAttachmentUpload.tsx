@@ -8,6 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { compressImage, MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_LABEL } from "@/lib/imageCompression";
 
 interface Attachment {
   id: string;
@@ -32,7 +33,7 @@ const ALLOWED_TYPES = [
   "application/pdf",
 ];
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = MAX_FILE_SIZE_BYTES; // 1MB (with auto-compression)
 
 const MedicalAttachmentUpload = ({
   claimId,
@@ -59,7 +60,7 @@ const MedicalAttachmentUpload = ({
     const files = e.target.files;
     if (!files || files.length === 0 || !user) return;
 
-    const file = files[0];
+    let file: File = files[0];
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -67,9 +68,14 @@ const MedicalAttachmentUpload = ({
       return;
     }
 
-    // Validate file size
+    // Compress images automatically (70% quality, target 1MB)
+    if (file.type.startsWith('image/')) {
+      file = await compressImage(file, 0.7, MAX_FILE_SIZE);
+    }
+
+    // Validate file size after compression
     if (file.size > MAX_FILE_SIZE) {
-      toast.error(t("medical.attachment.fileTooLarge"));
+      toast.error(`File melebihi batas ${MAX_FILE_SIZE_LABEL} setelah kompresi`);
       return;
     }
 
