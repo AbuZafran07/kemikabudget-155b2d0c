@@ -77,18 +77,18 @@ const App = () => (
                 <Route
                   path="/payment-queue"
                   element={
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute requiredRole="finance">
                       <PaymentQueue />
                     </ProtectedRoute>
                   }
                 />
                 <Route path="/petty-cash" element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRoute requiredRole="finance">
                     <PettyCash />
                   </ProtectedRoute>
                 } />
                 <Route path="/bank-payments" element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRoute requiredRole="finance">
                     <BankPayments />
                   </ProtectedRoute>
                 } />
