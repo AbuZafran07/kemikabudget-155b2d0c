@@ -60,7 +60,7 @@ export function usePermissions() {
    */
   const canPay = (): boolean => {
     if (!role) return false;
-    return role === 'super_admin' || role === 'finance';
+    return role === 'super_admin' || role === 'finance' || role === 'admin';
   };
 
   /**

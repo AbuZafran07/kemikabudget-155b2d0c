@@ -77,11 +77,11 @@ const getMenuSections = (): MenuSection[] => [
   {
     titleKey: "nav.finance",
     items: [
-      { titleKey: "nav.paymentQueue", icon: CreditCard, href: "/payment-queue", badgeKey: "pendingPayments", roles: ["super_admin", "finance"] },
-      { titleKey: "nav.pettyCash", icon: Wallet, href: "/petty-cash", roles: ["super_admin", "finance"] },
-      { titleKey: "nav.bankPayments", icon: Building2, href: "/bank-payments", roles: ["super_admin", "finance"] },
+      { titleKey: "nav.paymentQueue", icon: CreditCard, href: "/payment-queue", badgeKey: "pendingPayments", roles: ["super_admin", "finance", "admin"] },
+      { titleKey: "nav.pettyCash", icon: Wallet, href: "/petty-cash", roles: ["super_admin", "finance", "admin"] },
+      { titleKey: "nav.bankPayments", icon: Building2, href: "/bank-payments", roles: ["super_admin", "finance", "admin"] },
     ],
-    roles: ["super_admin", "finance"],
+    roles: ["super_admin", "finance", "admin"],
   },
   {
     titleKey: "nav.planning",
