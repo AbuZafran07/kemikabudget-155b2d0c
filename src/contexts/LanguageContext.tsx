@@ -21,6 +21,7 @@ const translations: Translations = {
   'nav.paymentQueue': { id: 'Antrian Pembayaran', en: 'Payment Queue' },
   'nav.pettyCash': { id: 'Kas Kecil', en: 'Petty Cash' },
   'nav.bankPayments': { id: 'Pembayaran Bank', en: 'Bank Payments' },
+  'nav.adjustments': { id: 'Adjustment / Koreksi', en: 'Adjustments' },
   'nav.planning': { id: 'PERENCANAAN', en: 'PLANNING' },
   'nav.budgetPlanning': { id: 'Rencana Anggaran', en: 'Budget Planning' },
   'nav.budgetTransfer': { id: 'Transfer Anggaran', en: 'Budget Transfer' },
