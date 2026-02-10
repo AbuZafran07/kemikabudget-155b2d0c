@@ -340,25 +340,24 @@ const PaymentQueue = () => {
       return;
     }
 
-    // Get requester profile - use profiles_secure view for data masking
+    // Get requester profile with signature
     const { data: profile } = await supabase
-      .from('profiles_secure')
-      .select('full_name, email')
+      .from('profiles')
+      .select('full_name, email, signature_url')
       .eq('id', data.requester_id)
       .single();
 
     // Get approver profile if approved
-    let approverProfile: { full_name: string } | null = null;
+    let approverProfile: { full_name: string; signature_url?: string | null } | null = null;
     if (data.approved_by) {
-      // Use profiles_secure view which is accessible across roles
       const { data: approver, error: approverError } = await supabase
-        .from('profiles_secure')
-        .select('full_name')
+        .from('profiles')
+        .select('full_name, signature_url')
         .eq('id', data.approved_by)
         .single();
       
       if (approver && approver.full_name) {
-        approverProfile = { full_name: approver.full_name };
+        approverProfile = { full_name: approver.full_name, signature_url: approver.signature_url };
       }
       if (approverError) {
         console.warn('Could not fetch approver profile:', approverError);
@@ -384,7 +383,8 @@ const PaymentQueue = () => {
       needed_date: data.needed_date,
       created_at: data.created_at,
       approved_at: data.approved_at,
-      status: data.status, // Add status for proper approval detection
+      submitted_at: data.submitted_at,
+      status: data.status,
       division: data.division as any,
       category: data.category as any,
       requester: profile || undefined,

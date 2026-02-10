@@ -139,20 +139,19 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
 
       if (requestError) throw requestError;
 
-      // Fetch requester profile separately - use profiles_secure view for data masking
+      // Fetch requester profile separately - include signature_url from profiles table
       const { data: requesterProfile } = await supabase
-        .from('profiles_secure')
-        .select('full_name, email')
+        .from('profiles')
+        .select('full_name, email, signature_url')
         .eq('id', requestData.requester_id)
         .single();
 
       // Fetch approver profile if exists
       let approverProfile = null;
       if (requestData.approved_by) {
-        // Use profiles_secure to avoid RLS blocking approver name for non-privileged roles
         const { data: approver } = await supabase
-          .from('profiles_secure')
-          .select('full_name')
+          .from('profiles')
+          .select('full_name, signature_url')
           .eq('id', requestData.approved_by)
           .single();
         approverProfile = approver;
@@ -360,7 +359,8 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                       needed_date: request.needed_date,
                       created_at: request.created_at,
                       approved_at: request.approved_at,
-                      status: request.status, // Add status for proper approval detection
+                      submitted_at: request.submitted_at,
+                      status: request.status,
                       division: request.divisions as any,
                       category: request.cost_categories as any,
                       requester: request.requester as any,

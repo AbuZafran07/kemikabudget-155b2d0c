@@ -1660,6 +1660,7 @@ export type Database = {
           is_active: boolean
           phone: string | null
           requires_otp: boolean
+          signature_url: string | null
           updated_at: string
         }
         Insert: {
@@ -1672,6 +1673,7 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           requires_otp?: boolean
+          signature_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -1684,6 +1686,7 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           requires_otp?: boolean
+          signature_url?: string | null
           updated_at?: string
         }
         Relationships: [

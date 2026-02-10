@@ -15,11 +15,12 @@ export interface PengajuanDanaData {
   needed_date: string;
   created_at: string;
   approved_at?: string | null;
-  status?: string; // Add status field for proper approval detection
+  submitted_at?: string | null;
+  status?: string;
   division?: { name: string; code: string };
   category?: { name: string; code: string };
-  requester?: { full_name: string; email: string };
-  approver?: { full_name: string } | null;
+  requester?: { full_name: string; email: string; signature_url?: string | null };
+  approver?: { full_name: string; signature_url?: string | null } | null;
   funding_source?: { name: string; type: string };
   attachments?: { attachment_type: string; file_name: string }[];
 }
@@ -275,70 +276,52 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     }
     .signature-box:last-child { border-right: none; }
     .signature-header {
-      background-color: #c4a000;
-      color: #ffffff;
-      padding: 8px 6px;
+      background-color: #f5f5f5;
+      color: #333;
+      padding: 6px;
       font-weight: bold;
       border-bottom: 1px solid #333;
-      font-size: 10pt;
+      font-size: 9pt;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    .signature-header-sub {
+      font-size: 8pt;
+      font-weight: normal;
+      color: #555;
+    }
     .signature-content {
-      padding: 15px 10px;
+      padding: 10px 8px;
       min-height: 90px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       background: #ffffff;
     }
+    .signature-img {
+      max-height: 50px;
+      object-fit: contain;
+      margin: 0 auto 5px auto;
+      display: block;
+    }
     .signature-name {
       font-weight: bold;
-      min-height: 22px;
-      font-size: 10pt;
+      min-height: 18px;
+      font-size: 9pt;
       color: #000;
     }
     .signature-line {
       border-bottom: 1px solid #333;
       width: 85%;
       margin: 0 auto;
-      margin-bottom: 8px;
+      margin-bottom: 5px;
     }
     .signature-date {
-      font-size: 9pt;
+      font-size: 8pt;
       color: #555;
       margin-top: 2px;
     }
     
-    /* Approved signature box - full width single box */
-    .approved-signature-section {
-      border: 1px solid #333;
-      margin-bottom: 15px;
-    }
-    .approved-signature-header {
-      background: #c4a000;
-      color: white;
-      padding: 6px;
-      font-weight: bold;
-      text-align: center;
-      border-bottom: 1px solid #333;
-    }
-    .approved-signature-content {
-      padding: 15px;
-      min-height: 80px;
-    }
-    .approved-check {
-      color: #1a5f2a;
-      font-weight: bold;
-      font-size: 11pt;
-      margin-bottom: 8px;
-    }
-    .approved-by {
-      margin-bottom: 5px;
-    }
-    .approved-at {
-      margin-bottom: 10px;
-    }
     
     .footer {
       text-align: center;
@@ -506,47 +489,46 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       </div>
     </div>
 
-    ${isApproved && safeApproverName ? `
-    <!-- Approved: Single wide box -->
-    <div class="approved-signature-section">
-      <div class="approved-signature-header">Menyetujui</div>
-      <div class="approved-signature-content">
-        <div class="approved-check">&#10004; APPROVED</div>
-        <div class="approved-by"><strong>Approved by:</strong> ${safeApproverName}</div>
-        <div class="approved-at"><strong>Approved at:</strong> ${approvedDate}</div>
-      </div>
-    </div>
-    ` : `
-    <!-- Not approved: Three boxes -->
+    <!-- Always 3-column signature layout -->
     <table class="signature-section">
       <tr class="signature-row">
         <td class="signature-box">
-          <div class="signature-header">Pemohon</div>
+          <div class="signature-header">
+            Ditandatangani oleh <strong>${safeRequesterName}</strong>
+            <div class="signature-header-sub">${safeDivisionName},</div>
+          </div>
           <div class="signature-content">
+            ${data.requester?.signature_url ? `<img src="${data.requester.signature_url}" class="signature-img" />` : ''}
             <div class="signature-line"></div>
-            <div class="signature-name">&nbsp;</div>
-            <div class="signature-date">Date: ___________</div>
+            <div class="signature-name">${safeRequesterName}</div>
+            <div class="signature-date">${data.submitted_at ? format(new Date(data.submitted_at), 'dd MMM yyyy HH:mm', { locale: localeId }) : (data.created_at ? format(new Date(data.created_at), 'dd MMM yyyy HH:mm', { locale: localeId }) : '________')}</div>
           </div>
         </td>
         <td class="signature-box">
-          <div class="signature-header">Mengetahui</div>
+          <div class="signature-header">
+            Ditandatangani oleh <strong>${isApproved && safeApproverName ? safeApproverName : '(Belum Disetujui)'}</strong>
+            <div class="signature-header-sub">Mengetahui,</div>
+          </div>
           <div class="signature-content">
+            ${isApproved && data.approver?.signature_url ? `<img src="${data.approver.signature_url}" class="signature-img" />` : ''}
             <div class="signature-line"></div>
-            <div class="signature-name">&nbsp;</div>
-            <div class="signature-date">Date: ___________</div>
+            <div class="signature-name">${isApproved && safeApproverName ? safeApproverName : '(Belum Disetujui)'}</div>
+            <div class="signature-date">${isApproved && approvedDate ? approvedDate : '________'}</div>
           </div>
         </td>
         <td class="signature-box">
-          <div class="signature-header">Menyetujui</div>
+          <div class="signature-header">
+            Ditandatangani oleh <strong>${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</strong>
+            <div class="signature-header-sub">Approve,</div>
+          </div>
           <div class="signature-content">
             <div class="signature-line"></div>
-            <div class="signature-name">&nbsp;</div>
-            <div class="signature-date">Date: ___________</div>
+            <div class="signature-name">${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</div>
+            <div class="signature-date">${isApproved && approvedDate ? approvedDate : '________'}</div>
           </div>
         </td>
       </tr>
     </table>
-    `}
 
     <div class="footer">
       Dokumen ini dicetak pada ${printDate} | PT. Kemika Karya Pratama - Expense Budget & Approval System
