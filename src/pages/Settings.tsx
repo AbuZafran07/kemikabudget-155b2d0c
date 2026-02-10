@@ -7,6 +7,7 @@ import {
   Shield,
   Save,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import { OtpSetupCard } from '@/components/settings/OtpSetupCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
 
 // Zod schema for localStorage validation
 const AppSettingsSchema = z.object({
@@ -44,6 +46,75 @@ const defaultSettings: AppSettings = {
   high_value_threshold: 50000000,
   require_invoice_before_pay: true,
   require_receipt_before_settle: true,
+};
+
+const StorageCleanupCard = () => {
+  const { toast } = useToast();
+  const [isRunning, setIsRunning] = useState(false);
+  const [result, setResult] = useState<{ request_attachments: number; medical_attachments: number } | null>(null);
+
+  const runCleanup = async () => {
+    setIsRunning(true);
+    setResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sesi tidak valid');
+
+      const { data, error } = await supabase.functions.invoke('cleanup-attachments', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      setResult(data.deleted);
+      toast({
+        title: 'Cleanup Selesai',
+        description: `${data.deleted.request_attachments} file request & ${data.deleted.medical_attachments} file medical dihapus`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Cleanup Gagal',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Trash2 className="h-5 w-5 text-primary" />
+          Pembersihan File Lampiran
+        </CardTitle>
+        <CardDescription>
+          Hapus otomatis file lampiran dari pengajuan yang sudah settled/closed lebih dari 60 hari untuk menghemat ruang penyimpanan.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="bg-muted rounded-lg p-4 text-sm text-muted-foreground space-y-1">
+          <p>• Hanya file dari pengajuan <strong>settled/cancelled</strong> &gt; 60 hari yang dihapus</p>
+          <p>• File medical claim <strong>closed/cancelled</strong> &gt; 60 hari juga dihapus</p>
+          <p>• Setiap eksekusi tercatat di audit log</p>
+          <p>• Max 500 file per eksekusi</p>
+        </div>
+        {result && (
+          <div className="bg-primary/10 rounded-lg p-4 text-sm">
+            <p className="font-medium">Hasil Cleanup Terakhir:</p>
+            <p>Request attachments dihapus: <strong>{result.request_attachments}</strong></p>
+            <p>Medical attachments dihapus: <strong>{result.medical_attachments}</strong></p>
+          </div>
+        )}
+        <Button onClick={runCleanup} disabled={isRunning} variant="destructive" className="gap-2">
+          {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          {isRunning ? 'Membersihkan...' : 'Jalankan Cleanup Sekarang'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 };
 
 const Settings = () => {
@@ -259,6 +330,10 @@ const Settings = () => {
 
         {/* User Notification Preferences */}
         <NotificationPreferencesCard />
+
+        {/* Storage Cleanup - Super Admin only */}
+        {isSuperAdmin && <StorageCleanupCard />}
+
 
         {/* System Info */}
         <Card>
