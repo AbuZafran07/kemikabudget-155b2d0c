@@ -10,6 +10,7 @@ import {
   FileText,
   Wallet,
   Heart,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
   Table,
   TableBody,
@@ -78,6 +81,7 @@ const Adjustments = () => {
   // Create form state
   const [refType, setRefType] = useState<'expense_request' | 'cash_advance' | 'medical_claim'>('expense_request');
   const [refId, setRefId] = useState('');
+  const [refPopoverOpen, setRefPopoverOpen] = useState(false);
   const [adjustedAmount, setAdjustedAmount] = useState<number>(0);
   const [reason, setReason] = useState('');
   const [adjustBudget, setAdjustBudget] = useState(true);
@@ -170,6 +174,7 @@ const Adjustments = () => {
   };
 
   const resetForm = () => {
+    setRefPopoverOpen(false);
     setRefType('expense_request');
     setRefId('');
     setAdjustedAmount(0);
@@ -358,28 +363,43 @@ const Adjustments = () => {
 
             <div className="space-y-2">
               <Label>Nomor Pengajuan</Label>
-              <Select
-                value={refId || 'none'}
-                onValueChange={(v) => {
-                  if (v === 'none') { setRefId(''); setAdjustedAmount(0); return; }
-                  setRefId(v);
-                  const rec = eligibleRecords?.find(r => r.id === v);
-                  if (rec) setAdjustedAmount(rec.amount);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={isLoadingRecords ? 'Memuat...' : 'Pilih nomor pengajuan'} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  <SelectItem value="none">-- Pilih --</SelectItem>
-                  {(eligibleRecords || []).map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      <span className="font-mono">{r.number}</span>
-                      <span className="text-muted-foreground ml-2">({r.status}) — {formatCurrency(r.amount)}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={refPopoverOpen} onOpenChange={setRefPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={refPopoverOpen} className="w-full justify-between font-normal">
+                    {refId && selectedRecord
+                      ? `${selectedRecord.number} — ${formatCurrency(selectedRecord.amount)}`
+                      : (isLoadingRecords ? 'Memuat...' : 'Pilih nomor pengajuan...')}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cari nomor pengajuan..." />
+                    <CommandList>
+                      <CommandEmpty>Tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
+                        {(eligibleRecords || []).map((r) => (
+                          <CommandItem
+                            key={r.id}
+                            value={`${r.number} ${r.desc}`}
+                            onSelect={() => {
+                              setRefId(r.id);
+                              setAdjustedAmount(r.amount);
+                              setRefPopoverOpen(false);
+                            }}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${refId === r.id ? 'opacity-100' : 'opacity-0'}`} />
+                            <div className="flex flex-col">
+                              <span className="font-mono text-sm">{r.number}</span>
+                              <span className="text-xs text-muted-foreground">{r.desc} · {r.status} · {formatCurrency(r.amount)}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {selectedRecord && (
