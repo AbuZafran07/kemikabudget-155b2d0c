@@ -14,6 +14,130 @@ export type Database = {
   }
   public: {
     Tables: {
+      adjustments: {
+        Row: {
+          adjust_budget: boolean
+          adjust_cash: boolean
+          adjusted_amount: number
+          adjustment_number: string
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string
+          difference_amount: number
+          division_id: string
+          funding_source_id: string | null
+          id: string
+          original_amount: number
+          period_id: string | null
+          reason: string
+          reference_id: string
+          reference_type: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          adjust_budget?: boolean
+          adjust_cash?: boolean
+          adjusted_amount: number
+          adjustment_number: string
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by: string
+          difference_amount: number
+          division_id: string
+          funding_source_id?: string | null
+          id?: string
+          original_amount: number
+          period_id?: string | null
+          reason: string
+          reference_id: string
+          reference_type: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          adjust_budget?: boolean
+          adjust_cash?: boolean
+          adjusted_amount?: number
+          adjustment_number?: string
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string
+          difference_amount?: number
+          division_id?: string
+          funding_source_id?: string | null
+          id?: string
+          original_amount?: number
+          period_id?: string | null
+          reason?: string
+          reference_id?: string
+          reference_type?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adjustments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adjustments_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adjustments_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_source_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adjustments_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adjustments_funding_source_id_fkey"
+            columns: ["funding_source_id"]
+            isOneToOne: false
+            referencedRelation: "funding_sources_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adjustments_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "budget_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           created_at: string
@@ -2164,6 +2288,10 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_adjustment: {
+        Args: { p_adjustment_id: string; p_note?: string }
+        Returns: Json
+      }
       approve_budget_transfer: {
         Args: { p_transfer_id: string }
         Returns: Json
@@ -2221,6 +2349,7 @@ export type Database = {
           type: string
         }[]
       }
+      get_next_adjustment_number: { Args: never; Returns: string }
       get_next_document_number: {
         Args: { p_division_id: string; p_template_type: string }
         Returns: string
@@ -2249,6 +2378,10 @@ export type Database = {
         Returns: Json
       }
       record_otp_failure: { Args: { p_user_id: string }; Returns: undefined }
+      reject_adjustment: {
+        Args: { p_adjustment_id: string; p_reason: string }
+        Returns: Json
+      }
       reject_budget_transfer: {
         Args: { p_rejection_reason: string; p_transfer_id: string }
         Returns: Json

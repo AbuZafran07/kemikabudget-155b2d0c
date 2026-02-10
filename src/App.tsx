@@ -34,6 +34,7 @@ import MedicalReimbursement from "./pages/MedicalReimbursement";
 import MedicalReimbursementForm from "./pages/MedicalReimbursementForm";
 import MedicalReimbursementDetail from "./pages/MedicalReimbursementDetail";
 import EmployeeMedicalBudgets from "./pages/EmployeeMedicalBudgets";
+import Adjustments from "./pages/Adjustments";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -99,6 +100,11 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/budget-transfer" element={<BudgetTransfer />} />
+                <Route path="/adjustments" element={
+                  <ProtectedRoute requiredRole="finance">
+                    <Adjustments />
+                  </ProtectedRoute>
+                } />
                 <Route path="/divisions" element={
                   <ProtectedRoute requiredRole="admin">
                     <Divisions />
