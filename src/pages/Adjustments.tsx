@@ -83,91 +83,85 @@ const Adjustments = () => {
   const [adjustBudget, setAdjustBudget] = useState(true);
   const [adjustCash, setAdjustCash] = useState(false);
 
-  // Fetch reference record
-  const { data: refRecord, isLoading: isLoadingRef } = useQuery({
-    queryKey: ['adjustment-ref', refType, refId],
+  // Fetch eligible records for the selected type
+  const { data: eligibleRecords, isLoading: isLoadingRecords } = useQuery({
+    queryKey: ['adjustment-eligible', refType],
     queryFn: async () => {
-      if (!refId) return null;
       if (refType === 'expense_request') {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('requests')
-          .select('id, request_number, amount, approved_amount, status, division_id, category_id, period_id, funding_source_id')
-          .eq('id', refId)
-          .single();
-        if (error) return null;
-        return { ...data, display_number: data.request_number, current_amount: data.approved_amount || data.amount };
+          .select('id, request_number, amount, approved_amount, status, description, division_id, category_id, period_id, funding_source_id')
+          .in('status', ['approved' as const, 'paid' as const, 'settled' as const])
+          .order('created_at', { ascending: false })
+          .limit(200);
+        return (data || []).map(d => ({
+          id: d.id,
+          number: d.request_number,
+          amount: d.approved_amount || d.amount,
+          status: d.status,
+          desc: d.description,
+          division_id: d.division_id,
+          category_id: d.category_id,
+          period_id: d.period_id,
+          funding_source_id: d.funding_source_id,
+        }));
       } else if (refType === 'cash_advance') {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('cash_advances')
-          .select('id, ca_number, total_amount, status, division_id, category_id, period_id, funding_source_id')
-          .eq('id', refId)
-          .single();
-        if (error) return null;
-        return { ...data, display_number: data.ca_number, current_amount: data.total_amount };
+          .select('id, ca_number, total_amount, status, purpose, division_id, category_id, period_id, funding_source_id')
+          .in('status', ['approved' as const, 'paid' as const, 'settled' as const, 'partially_settled' as const])
+          .order('created_at', { ascending: false })
+          .limit(200);
+        return (data || []).map(d => ({
+          id: d.id,
+          number: d.ca_number,
+          amount: d.total_amount,
+          status: d.status,
+          desc: d.purpose,
+          division_id: d.division_id,
+          category_id: d.category_id,
+          period_id: d.period_id,
+          funding_source_id: d.funding_source_id,
+        }));
       } else {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('medical_claims')
-          .select('id, claim_number, claim_amount, approved_amount, status, employee_id')
-          .eq('id', refId)
-          .single();
-        if (error) return null;
-        return { ...data, display_number: data.claim_number, current_amount: data.approved_amount || data.claim_amount };
+          .select('id, claim_number, claim_amount, approved_amount, status, patient_name, employee_id')
+          .in('status', ['approved' as const, 'paid' as const, 'closed' as const])
+          .order('created_at', { ascending: false })
+          .limit(200);
+        return (data || []).map(d => ({
+          id: d.id,
+          number: d.claim_number,
+          amount: d.approved_amount || d.claim_amount,
+          status: d.status,
+          desc: d.patient_name,
+          division_id: '',
+          category_id: null,
+          period_id: null,
+          funding_source_id: null,
+        }));
       }
     },
-    enabled: !!refId && refId.length > 10,
   });
 
-  // Search for reference records
-  const [refSearch, setRefSearch] = useState('');
-  const { data: searchResults } = useQuery({
-    queryKey: ['adjustment-search', refType, refSearch],
-    queryFn: async () => {
-      if (!refSearch || refSearch.length < 2) return [];
-      if (refType === 'expense_request') {
-        const { data } = await supabase
-          .from('requests')
-          .select('id, request_number, amount, approved_amount, status, description')
-          .in('status', ['approved' as const, 'paid' as const, 'settled' as const])
-          .ilike('request_number', `%${refSearch}%`)
-          .limit(10);
-        return (data || []).map(d => ({ id: d.id, number: d.request_number, amount: d.approved_amount || d.amount, status: d.status, desc: d.description }));
-      } else if (refType === 'cash_advance') {
-        const { data } = await supabase
-          .from('cash_advances')
-          .select('id, ca_number, total_amount, status, purpose')
-          .in('status', ['approved' as const, 'paid' as const, 'settled' as const, 'partially_settled' as const])
-          .ilike('ca_number', `%${refSearch}%`)
-          .limit(10);
-        return (data || []).map(d => ({ id: d.id, number: d.ca_number, amount: d.total_amount, status: d.status, desc: d.purpose }));
-      } else {
-        const { data } = await supabase
-          .from('medical_claims')
-          .select('id, claim_number, claim_amount, approved_amount, status, patient_name')
-          .in('status', ['approved' as const, 'paid' as const, 'closed' as const])
-          .ilike('claim_number', `%${refSearch}%`)
-          .limit(10);
-        return (data || []).map(d => ({ id: d.id, number: d.claim_number, amount: d.approved_amount || d.claim_amount, status: d.status, desc: d.patient_name }));
-      }
-    },
-    enabled: refSearch.length >= 2,
-  });
+  const selectedRecord = eligibleRecords?.find(r => r.id === refId) || null;
 
   const handleCreate = async () => {
-    if (!refRecord || !reason.trim()) {
+    if (!selectedRecord || !reason.trim()) {
       toast({ title: 'Lengkapi semua field', variant: 'destructive' });
       return;
     }
-    const rec = refRecord as any;
     await createAdjustment.mutateAsync({
       reference_type: refType,
       reference_id: refId,
-      original_amount: rec.current_amount,
+      original_amount: selectedRecord.amount,
       adjusted_amount: adjustedAmount,
       reason,
-      division_id: rec.division_id || '',
-      category_id: rec.category_id,
-      period_id: rec.period_id,
-      funding_source_id: rec.funding_source_id,
+      division_id: selectedRecord.division_id || '',
+      category_id: selectedRecord.category_id,
+      period_id: selectedRecord.period_id,
+      funding_source_id: selectedRecord.funding_source_id,
       adjust_budget: adjustBudget,
       adjust_cash: adjustCash,
     });
@@ -178,7 +172,6 @@ const Adjustments = () => {
   const resetForm = () => {
     setRefType('expense_request');
     setRefId('');
-    setRefSearch('');
     setAdjustedAmount(0);
     setReason('');
     setAdjustBudget(true);
@@ -353,7 +346,7 @@ const Adjustments = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Tipe Pengajuan</Label>
-              <Select value={refType} onValueChange={(v: any) => { setRefType(v); setRefId(''); setRefSearch(''); }}>
+              <Select value={refType} onValueChange={(v: any) => { setRefType(v); setRefId(''); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="expense_request">Expense Request</SelectItem>
@@ -364,38 +357,38 @@ const Adjustments = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Cari Nomor Pengajuan</Label>
-              <Input placeholder="Ketik nomor pengajuan..." value={refSearch} onChange={e => setRefSearch(e.target.value)} />
-              {searchResults && searchResults.length > 0 && (
-                <div className="border rounded-md max-h-40 overflow-y-auto">
-                  {searchResults.map((r: any) => (
-                    <button
-                      key={r.id}
-                      className="w-full text-left px-3 py-2 hover:bg-accent text-sm border-b last:border-b-0"
-                      onClick={() => {
-                        setRefId(r.id);
-                        setRefSearch(r.number);
-                        setAdjustedAmount(r.amount);
-                      }}
-                    >
-                      <div className="flex justify-between">
-                        <span className="font-mono">{r.number}</span>
-                        <Badge variant="outline" className="text-xs">{r.status}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{r.desc}</p>
-                      <p className="text-xs font-medium">{formatCurrency(r.amount)}</p>
-                    </button>
+              <Label>Nomor Pengajuan</Label>
+              <Select
+                value={refId || 'none'}
+                onValueChange={(v) => {
+                  if (v === 'none') { setRefId(''); setAdjustedAmount(0); return; }
+                  setRefId(v);
+                  const rec = eligibleRecords?.find(r => r.id === v);
+                  if (rec) setAdjustedAmount(rec.amount);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoadingRecords ? 'Memuat...' : 'Pilih nomor pengajuan'} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="none">-- Pilih --</SelectItem>
+                  {(eligibleRecords || []).map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      <span className="font-mono">{r.number}</span>
+                      <span className="text-muted-foreground ml-2">({r.status}) — {formatCurrency(r.amount)}</span>
+                    </SelectItem>
                   ))}
-                </div>
-              )}
+                </SelectContent>
+              </Select>
             </div>
 
-            {refRecord && (
+            {selectedRecord && (
               <Card className="bg-muted">
                 <CardContent className="pt-4 space-y-1 text-sm">
-                  <p><strong>Nomor:</strong> {refRecord.display_number}</p>
-                  <p><strong>Status:</strong> {refRecord.status}</p>
-                  <p><strong>Nilai Saat Ini:</strong> {formatCurrency(refRecord.current_amount)}</p>
+                  <p><strong>Nomor:</strong> {selectedRecord.number}</p>
+                  <p><strong>Status:</strong> {selectedRecord.status}</p>
+                  <p><strong>Deskripsi:</strong> {selectedRecord.desc}</p>
+                  <p><strong>Nilai Saat Ini:</strong> {formatCurrency(selectedRecord.amount)}</p>
                 </CardContent>
               </Card>
             )}
@@ -408,9 +401,9 @@ const Adjustments = () => {
                 value={adjustedAmount}
                 onChange={e => setAdjustedAmount(Number(e.target.value))}
               />
-              {refRecord && adjustedAmount !== refRecord.current_amount && (
-                <p className={`text-sm font-medium ${adjustedAmount > refRecord.current_amount ? 'text-destructive' : 'text-green-600'}`}>
-                  Selisih: {adjustedAmount > refRecord.current_amount ? '+' : ''}{formatCurrency(adjustedAmount - refRecord.current_amount)}
+              {selectedRecord && adjustedAmount !== selectedRecord.amount && (
+                <p className={`text-sm font-medium ${adjustedAmount > selectedRecord.amount ? 'text-destructive' : 'text-green-600'}`}>
+                  Selisih: {adjustedAmount > selectedRecord.amount ? '+' : ''}{formatCurrency(adjustedAmount - selectedRecord.amount)}
                 </p>
               )}
             </div>
@@ -439,7 +432,7 @@ const Adjustments = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setShowCreate(false); }}>Batal</Button>
-            <Button onClick={handleCreate} disabled={!refRecord || !reason.trim() || createAdjustment.isPending} className="gap-2">
+            <Button onClick={handleCreate} disabled={!selectedRecord || !reason.trim() || createAdjustment.isPending} className="gap-2">
               {createAdjustment.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Kirim Adjustment
             </Button>
