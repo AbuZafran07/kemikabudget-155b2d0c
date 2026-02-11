@@ -107,6 +107,7 @@ export function useRequests() {
       })) as unknown as Request[];
     },
     enabled: !!profile,
+    refetchInterval: 30_000,
   });
 
   // Fetch categories

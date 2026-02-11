@@ -53,7 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useFinanceRealtime } from '@/hooks/useRealtimeSubscription';
+
 
 interface FundingSource {
   id: string;
@@ -74,8 +74,6 @@ const FundingSources = () => {
   const queryClient = useQueryClient();
   const { canManageMasterData } = usePermissions();
   
-  // Enable realtime updates
-  useFinanceRealtime();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<FundingSource | null>(null);

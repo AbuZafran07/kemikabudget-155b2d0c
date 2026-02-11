@@ -65,6 +65,7 @@ export function usePettyCash() {
       if (error) throw error;
       return data as FundingSource[];
     },
+    refetchInterval: 30_000,
   });
 
   // Fetch bank accounts for source selection in top-up

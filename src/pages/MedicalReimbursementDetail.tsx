@@ -14,7 +14,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useMedicalClaimsRealtime } from "@/hooks/useRealtimeSubscription";
+
 import {
   useMedicalClaim,
   useMedicalClaimEvents,
@@ -59,8 +59,6 @@ const MedicalReimbursementDetail = () => {
   const { t, language } = useLanguage();
   const { user, role, hasRoleOrHigher } = useAuth();
 
-  // Enable realtime updates
-  useMedicalClaimsRealtime();
 
   const { data: claim, isLoading } = useMedicalClaim(id);
   const { data: events } = useMedicalClaimEvents(id);

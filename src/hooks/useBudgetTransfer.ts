@@ -77,6 +77,7 @@ export function useBudgetTransfer() {
       return data as BudgetTransfer[];
     },
     enabled: !!user,
+    refetchInterval: 30_000,
   });
 
   // Get pending transfers for dashboard

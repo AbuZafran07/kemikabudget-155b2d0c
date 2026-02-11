@@ -26,7 +26,7 @@ import { TablePagination } from "@/components/common/TablePagination";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashAdvances } from "@/hooks/useCashAdvance";
-import { useCashAdvanceRealtime } from "@/hooks/useRealtimeSubscription";
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -37,8 +37,6 @@ const CashAdvance = () => {
   const { role, profile } = useAuth();
   const navigate = useNavigate();
 
-  // Enable realtime updates
-  useCashAdvanceRealtime();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");

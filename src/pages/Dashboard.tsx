@@ -9,7 +9,7 @@ import ExpenseByCategory from "@/components/dashboard/ExpenseByCategory";
 import TransactionDetailDialog from "@/components/dashboard/TransactionDetailDialog";
 import PendingMedicalClaimsCard from "@/components/dashboard/PendingMedicalClaimsCard";
 import { useDashboard } from "@/hooks/useDashboard";
-import { useDashboardRealtime } from "@/hooks/useRealtimeSubscription";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
@@ -49,8 +49,6 @@ const Dashboard = () => {
   const { role, profile } = useAuth();
   const { t } = useLanguage();
   
-  // Enable realtime updates
-  useDashboardRealtime();
   
   const {
     kpis,

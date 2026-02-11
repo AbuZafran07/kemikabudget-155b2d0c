@@ -166,6 +166,7 @@ export function useMedicalClaims(filters?: { status?: string; employeeId?: strin
       })) as MedicalClaim[];
     },
     enabled: !!user?.id,
+    refetchInterval: 30_000,
   });
 }
 
