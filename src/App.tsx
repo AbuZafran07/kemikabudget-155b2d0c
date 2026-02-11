@@ -131,11 +131,7 @@ const App = () => (
                     <DocumentTemplates />
                   </ProtectedRoute>
                 } />
-                <Route path="/reports" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Reports />
-                  </ProtectedRoute>
-                } />
+                <Route path="/reports" element={<Reports />} />
                 <Route path="/audit-logs" element={
                   <ProtectedRoute requiredRole="admin">
                     <AuditLogs />
