@@ -531,13 +531,24 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
                       const { error: uploadError } = await supabase.storage
                         .from('signatures')
                         .upload(fileName, file, { upsert: true });
-                      if (uploadError) throw uploadError;
+                      if (uploadError) {
+                        console.error('[Signature] Upload error:', uploadError);
+                        throw uploadError;
+                      }
                       const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(fileName);
                       const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-                      await supabase.from('profiles').update({ signature_url: newUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+                      const { error: updateError } = await supabase
+                        .from('profiles')
+                        .update({ signature_url: newUrl, updated_at: new Date().toISOString() } as any)
+                        .eq('id', user.id);
+                      if (updateError) {
+                        console.error('[Signature] Profile update error:', updateError);
+                        throw updateError;
+                      }
                       setSignatureUrl(newUrl);
                       toast({ title: 'Tanda tangan berhasil diupload' });
                     } catch (err) {
+                      console.error('[Signature] Full error:', err);
                       toast({ title: 'Gagal upload', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
                     } finally {
                       setIsUploadingSignature(false);
