@@ -211,6 +211,14 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
     };
   }, [user?.id, role, refetchBadges]);
 
+  // Auto-close sidebar on mobile when route changes
+  useEffect(() => {
+    if (window.innerWidth < 768 && !isCollapsed) {
+      onToggle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   const menuSections = getMenuSections();
 
   const toggleMenu = (titleKey: string) => {
