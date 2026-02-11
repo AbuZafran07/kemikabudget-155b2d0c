@@ -21,15 +21,13 @@ import { RequestForm } from '@/components/requests/RequestForm';
 import { RequestDetail } from '@/components/requests/RequestDetail';
 import { Request, RequestFormData } from '@/hooks/useRequests';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useRequestsRealtime } from '@/hooks/useRealtimeSubscription';
+
 
 type ViewMode = 'list' | 'create' | 'edit' | 'view';
 
 const Requests = () => {
   const { t } = useLanguage();
   
-  // Enable realtime updates
-  useRequestsRealtime();
   
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);

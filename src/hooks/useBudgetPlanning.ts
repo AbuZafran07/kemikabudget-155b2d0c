@@ -71,6 +71,7 @@ export function useBudgetPlanning() {
       if (error) throw error;
       return data as unknown as DivisionBudget[];
     },
+    refetchInterval: 30_000,
   });
 
   // Fetch divisions

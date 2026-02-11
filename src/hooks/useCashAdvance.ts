@@ -158,6 +158,7 @@ export const useCashAdvances = (filters?: {
       return data as CashAdvance[];
     },
     enabled: !!user?.id,
+    refetchInterval: 30_000,
   });
 };
 

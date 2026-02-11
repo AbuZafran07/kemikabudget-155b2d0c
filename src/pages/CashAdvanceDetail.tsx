@@ -49,7 +49,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCashAdvanceRealtime } from "@/hooks/useRealtimeSubscription";
+
 import {
   useCashAdvance,
   useCashAdvanceItems,
@@ -71,8 +71,6 @@ const CashAdvanceDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  // Enable realtime updates
-  useCashAdvanceRealtime();
 
   const [activeTab, setActiveTab] = useState("items");
   const [showApproveDialog, setShowApproveDialog] = useState(false);
