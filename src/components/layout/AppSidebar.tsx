@@ -109,7 +109,7 @@ const getMenuSections = (): MenuSection[] => [
   {
     titleKey: "nav.reports",
     items: [
-      { titleKey: "nav.report", icon: BarChart3, href: "/reports", roles: ["super_admin", "finance", "admin"] },
+      { titleKey: "nav.report", icon: BarChart3, href: "/reports", roles: ["super_admin", "finance", "admin", "user"] },
       { titleKey: "nav.auditLogs", icon: FileSearch, href: "/audit-logs", roles: ["super_admin", "admin"] },
       { titleKey: "nav.notifications", icon: Mail, href: "/notification-history", roles: ["super_admin", "finance", "admin"] },
     ],
