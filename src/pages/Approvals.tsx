@@ -109,9 +109,9 @@ const Approvals = () => {
       return; // Invalid amount
     }
 
-    // Check if amount > 50M requires note (only for regular requests)
-    if (selectedRequest.type === 'request' && parsedAmount > 50000000 && !approvalNote.trim()) {
-      return; // Will show error in the UI
+    // Note required if amount is adjusted
+    if (selectedRequest && parsedAmount !== selectedRequest.amount && !approvalNote.trim()) {
+      return;
     }
 
     await approveRequest.mutateAsync({
@@ -252,12 +252,6 @@ const Approvals = () => {
                       {t('paymentQueue.overdue')}
                     </Badge>
                   )}
-                  {item.type === 'request' && item.amount > 50000000 && (
-                    <Badge variant="secondary" className="text-xs gap-1 bg-warning/10 text-warning">
-                      <MessageSquare className="h-3 w-3" />
-                      {t('approvals.noteRequired')}
-                    </Badge>
-                  )}
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-1">
                   {item.description}
@@ -385,7 +379,7 @@ const Approvals = () => {
             <div className="space-y-2">
               <Label htmlFor="approvalNote">
                 {t('approvals.approvalNote')}
-                {selectedRequest && (parseFloat(approvedAmount) > 50000000 || parseFloat(approvedAmount) !== selectedRequest?.amount) && (
+                {selectedRequest && parseFloat(approvedAmount) !== selectedRequest?.amount && (
                   <span className="text-destructive ml-1">*</span>
                 )}
               </Label>
@@ -396,11 +390,6 @@ const Approvals = () => {
                 onChange={(e) => setApprovalNote(e.target.value)}
                 rows={3}
               />
-              {selectedRequest && parseFloat(approvedAmount) > 50000000 && selectedRequest.type === 'request' && !approvalNote.trim() && (
-                <p className="text-xs text-destructive">
-                  {t('approvals.noteRequiredOver50M')}
-                </p>
-              )}
               {selectedRequest && parseFloat(approvedAmount) !== selectedRequest.amount && !approvalNote.trim() && (
                 <p className="text-xs text-destructive">
                   {language === 'id' 
@@ -422,7 +411,6 @@ const Approvals = () => {
                 approveRequest.isPending ||
                 !approvedAmount ||
                 parseFloat(approvedAmount) <= 0 ||
-                (selectedRequest?.type === 'request' && parseFloat(approvedAmount) > 50000000 && !approvalNote.trim()) ||
                 (selectedRequest && parseFloat(approvedAmount) !== selectedRequest.amount && !approvalNote.trim())
               }
               className="gap-2"
