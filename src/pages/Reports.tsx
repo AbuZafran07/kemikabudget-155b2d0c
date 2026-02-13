@@ -61,6 +61,7 @@ type ReportType = 'budget-vs-actual' | 'detail-expense' | 'over-budget' | 'categ
 const Reports = () => {
   const { role, profile } = useAuth();
   const { language } = useLanguage();
+  const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
   const [reportType, setReportType] = useState<ReportType>('budget-vs-actual');
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -85,7 +86,7 @@ const Reports = () => {
     dataType: 'actual',
   });
 
-  const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
+  // isSuperAdminOrFinance moved to top
   const dateLocale = language === 'id' ? localeId : enUS;
 
   // Generate year options
@@ -706,18 +707,22 @@ const Reports = () => {
             <BarChart3 className="h-4 w-4" />
             Budget vs Actual
           </TabsTrigger>
-          <TabsTrigger value="detail-expense" className="gap-2 px-4">
-            <FileText className="h-4 w-4" />
-            Detail Expense
-          </TabsTrigger>
-          <TabsTrigger value="over-budget" className="gap-2 px-4">
-            <TrendingUp className="h-4 w-4" />
-            Over Budget
-          </TabsTrigger>
-          <TabsTrigger value="category-analysis" className="gap-2 px-4">
-            <PieChart className="h-4 w-4" />
-            Analisis Kategori
-          </TabsTrigger>
+          {isSuperAdminOrFinance && (
+            <>
+              <TabsTrigger value="detail-expense" className="gap-2 px-4">
+                <FileText className="h-4 w-4" />
+                Detail Expense
+              </TabsTrigger>
+              <TabsTrigger value="over-budget" className="gap-2 px-4">
+                <TrendingUp className="h-4 w-4" />
+                Over Budget
+              </TabsTrigger>
+              <TabsTrigger value="category-analysis" className="gap-2 px-4">
+                <PieChart className="h-4 w-4" />
+                Analisis Kategori
+              </TabsTrigger>
+            </>
+          )}
         </TabsList>
 
         {/* Budget vs Actual */}
