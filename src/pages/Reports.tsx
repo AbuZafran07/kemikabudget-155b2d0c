@@ -707,21 +707,19 @@ const Reports = () => {
             <BarChart3 className="h-4 w-4" />
             Budget vs Actual
           </TabsTrigger>
+          <TabsTrigger value="detail-expense" className="gap-2 px-4">
+            <FileText className="h-4 w-4" />
+            Detail Expense
+          </TabsTrigger>
+          <TabsTrigger value="over-budget" className="gap-2 px-4">
+            <TrendingUp className="h-4 w-4" />
+            Over Budget
+          </TabsTrigger>
           {isSuperAdminOrFinance && (
-            <>
-              <TabsTrigger value="detail-expense" className="gap-2 px-4">
-                <FileText className="h-4 w-4" />
-                Detail Expense
-              </TabsTrigger>
-              <TabsTrigger value="over-budget" className="gap-2 px-4">
-                <TrendingUp className="h-4 w-4" />
-                Over Budget
-              </TabsTrigger>
-              <TabsTrigger value="category-analysis" className="gap-2 px-4">
-                <PieChart className="h-4 w-4" />
-                Analisis Kategori
-              </TabsTrigger>
-            </>
+            <TabsTrigger value="category-analysis" className="gap-2 px-4">
+              <PieChart className="h-4 w-4" />
+              Analisis Kategori
+            </TabsTrigger>
           )}
         </TabsList>
 
