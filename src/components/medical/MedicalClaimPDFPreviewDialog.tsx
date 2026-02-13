@@ -59,6 +59,24 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
     enabled: !!claim?.employee_id,
   });
 
+  // Fetch medical budget info
+  const { data: medicalBudget } = useQuery({
+    queryKey: ["medical-budget-for-pdf", claim?.employee_id],
+    queryFn: async () => {
+      if (!claim?.employee_id) return null;
+      const currentYear = new Date().getFullYear();
+      const { data } = await supabase
+        .from("employee_medical_budgets")
+        .select("total_entitlement, used_amount, remaining_amount")
+        .eq("employee_id", claim.employee_id)
+        .eq("year", currentYear)
+        .eq("status", "active")
+        .single();
+      return data;
+    },
+    enabled: !!claim?.employee_id,
+  });
+
   if (!claim) return null;
 
   const formatCurrency = (amount: number) => {
@@ -185,6 +203,25 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
                 <span class="info-value">: ${formatDate(claim.claim_date)}</span>
               </div>
             </div>
+            ${medicalBudget ? `
+            <div style="margin-top: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+              <div style="font-size: 9pt; font-weight: bold; color: #1a365d; margin-bottom: 6px;">${language === "id" ? "INFORMASI BUDGET MEDICAL" : "MEDICAL BUDGET INFORMATION"}</div>
+              <div style="display: flex; gap: 30px; font-size: 10pt;">
+                <div>
+                  <span style="color: #666;">${language === "id" ? "Total Hak" : "Total Entitlement"}:</span>
+                  <span style="font-weight: 600; margin-left: 6px;">${formatCurrency(medicalBudget.total_entitlement)}</span>
+                </div>
+                <div>
+                  <span style="color: #666;">${language === "id" ? "Terpakai" : "Used"}:</span>
+                  <span style="font-weight: 600; margin-left: 6px; color: #dc2626;">${formatCurrency(medicalBudget.used_amount)}</span>
+                </div>
+                <div>
+                  <span style="color: #666;">${language === "id" ? "Sisa" : "Remaining"}:</span>
+                  <span style="font-weight: 600; margin-left: 6px; color: #16a34a;">${formatCurrency(medicalBudget.remaining_amount ?? (medicalBudget.total_entitlement - medicalBudget.used_amount))}</span>
+                </div>
+              </div>
+            </div>
+            ` : ''}
           </div>
           
           <div class="section">
