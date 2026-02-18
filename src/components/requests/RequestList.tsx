@@ -54,8 +54,8 @@ interface RequestListProps {
 
 const PAGE_SIZES = [10, 25, 50];
 
-// Active statuses: draft, submitted, under_review
-const ACTIVE_STATUSES = ['draft', 'submitted', 'under_review'];
+// Active statuses: draft, submitted, revision, under_review
+const ACTIVE_STATUSES = ['draft', 'submitted', 'revision', 'under_review'];
 // Archived statuses: approved, rejected, paid, settled, cancelled
 const ARCHIVED_STATUSES = ['approved', 'rejected', 'paid', 'settled', 'cancelled'];
 
@@ -142,6 +142,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
     switch (status) {
       case 'draft': return t('status.draft');
       case 'submitted': return t('status.submitted');
+      case 'revision': return 'Revisi';
       case 'under_review': return t('status.underReview');
       case 'approved': return t('status.approved');
       case 'rejected': return t('status.rejected');
@@ -293,7 +294,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                           <Eye className="mr-2 h-4 w-4" />
                           {t('action.viewDetail')}
                         </DropdownMenuItem>
-                        {request.status === 'draft' && (
+                        {(request.status === 'draft' || request.status === 'revision') && (
                           <DropdownMenuItem onClick={() => onEdit(request)}>
                             <Edit className="mr-2 h-4 w-4" />
                             {t('action.edit')}
@@ -303,7 +304,7 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                           <Copy className="mr-2 h-4 w-4" />
                           {t('action.duplicate')}
                         </DropdownMenuItem>
-                        {['draft', 'submitted'].includes(request.status) && (
+                        {['draft', 'submitted', 'revision'].includes(request.status) && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

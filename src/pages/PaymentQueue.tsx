@@ -396,6 +396,8 @@ const PaymentQueue = () => {
       approved_at: data.approved_at,
       submitted_at: data.submitted_at,
       status: data.status,
+      notes: data.notes,
+      reference_number: (data as any).reference_number,
       division: data.division as any,
       category: data.category as any,
       requester: profile || undefined,

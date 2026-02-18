@@ -1820,6 +1820,7 @@ export type Database = {
           paid_by: string | null
           payment_method: string | null
           period_id: string | null
+          reference_number: string | null
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
@@ -1856,6 +1857,7 @@ export type Database = {
           paid_by?: string | null
           payment_method?: string | null
           period_id?: string | null
+          reference_number?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
@@ -1892,6 +1894,7 @@ export type Database = {
           paid_by?: string | null
           payment_method?: string | null
           period_id?: string | null
+          reference_number?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
@@ -2480,6 +2483,7 @@ export type Database = {
       request_status:
         | "draft"
         | "submitted"
+        | "revision"
         | "under_review"
         | "approved"
         | "rejected"
@@ -2654,6 +2658,7 @@ export const Constants = {
       request_status: [
         "draft",
         "submitted",
+        "revision",
         "under_review",
         "approved",
         "rejected",

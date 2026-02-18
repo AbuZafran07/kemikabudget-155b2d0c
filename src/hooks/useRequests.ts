@@ -25,7 +25,7 @@ export interface Request {
   beneficiary_account: string | null;
   beneficiary_email: string | null;
   notes: string | null;
-  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'paid' | 'settled' | 'cancelled';
+  status: 'draft' | 'submitted' | 'revision' | 'under_review' | 'approved' | 'rejected' | 'paid' | 'settled' | 'cancelled';
   submitted_at: string | null;
   approved_at: string | null;
   rejected_at: string | null;
@@ -264,7 +264,7 @@ export function useRequests() {
     },
   });
 
-  // Submit request mutation
+  // Submit request mutation (also handles resubmit from revision)
   const submitRequest = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
@@ -282,6 +282,8 @@ export function useRequests() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['request-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['request-events'] });
       clearDraft();
       toast({
         title: 'Pengajuan Dikirim',
@@ -296,6 +298,16 @@ export function useRequests() {
         amount: data.amount,
         description: data.description,
       });
+
+      // Log resubmit event if applicable
+      if (user?.id) {
+        supabase.from('request_events').insert({
+          request_id: data.id,
+          event_type: 'resubmitted',
+          description: 'Pengajuan dikirim ulang setelah revisi',
+          performed_by: user.id,
+        }).then(); // fire and forget
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -324,6 +336,49 @@ export function useRequests() {
       toast({
         title: 'Dibatalkan',
         description: 'Pengajuan telah dibatalkan',
+      });
+    },
+  });
+
+  // Revision request mutation - user requests revision on submitted request
+  const revisionRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const userId = user?.id;
+      if (!userId) throw new Error('Sesi belum siap');
+
+      const { data, error } = await supabase
+        .from('requests')
+        .update({ status: 'revision' })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Log event
+      await supabase.from('request_events').insert({
+        request_id: id,
+        event_type: 'revision_requested',
+        description: 'Pemohon meminta revisi pengajuan',
+        performed_by: userId,
+      });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['request-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['request-events'] });
+      toast({
+        title: 'Revisi Diminta',
+        description: 'Pengajuan telah dikembalikan untuk direvisi. Silakan edit dan kirim ulang.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
       });
     },
   });
@@ -383,6 +438,7 @@ export function useRequests() {
     updateRequest,
     submitRequest,
     cancelRequest,
+    revisionRequest,
     saveDraft,
     loadDraft,
     clearDraft,

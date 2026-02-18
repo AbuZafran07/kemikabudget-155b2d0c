@@ -17,6 +17,8 @@ export interface PengajuanDanaData {
   approved_at?: string | null;
   submitted_at?: string | null;
   status?: string;
+  notes?: string | null;
+  reference_number?: string | null;
   division?: { name: string; code: string };
   category?: { name: string; code: string };
   requester?: { full_name: string; email: string; signature_url?: string | null };
@@ -69,11 +71,11 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
   // Check if request is truly approved (status-based, not just approver name)
   const isApproved = ['approved', 'paid', 'settled'].includes(data.status || '');
 
-  // Find attachment references
+  // Find attachment references - prioritize reference_number/notes field, then attachment filenames
   const invoiceReff = data.attachments?.find(a => a.attachment_type === 'invoice')?.file_name || '';
   const quotationReff = data.attachments?.find(a => a.attachment_type === 'quotation')?.file_name || '';
   const receiptReff = data.attachments?.find(a => a.attachment_type === 'receipt')?.file_name || '';
-  const reffNo = invoiceReff || quotationReff || receiptReff || '-';
+  const reffNo = data.reference_number || data.notes || invoiceReff || quotationReff || receiptReff || '-';
 
   // Division display - code on same line
   const divisionDisplay = safeDivisionCode 
