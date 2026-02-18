@@ -721,8 +721,8 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
               <Input placeholder="Nomor rekening" {...form.register("beneficiary_account")} />
             </div>
             <div className="col-span-2 space-y-2">
-              <Label>Email Penerima</Label>
-              <Input type="email" placeholder="Email untuk notifikasi" {...form.register("beneficiary_email")} />
+              <Label>Transfer Atas Nama</Label>
+              <Input type="text" placeholder="Nama penerima transfer" {...form.register("beneficiary_email")} />
             </div>
           </div>
         )}
