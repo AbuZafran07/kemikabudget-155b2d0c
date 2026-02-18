@@ -31,7 +31,7 @@ const requestSchema = z.object({
   beneficiary_name: z.string().optional(),
   beneficiary_bank: z.string().optional(),
   beneficiary_account: z.string().optional(),
-  beneficiary_email: z.string().email().optional().or(z.literal("")),
+  beneficiary_email: z.string().optional(),
   notes: z.string().optional(),
   // Additional fields from reference
   reference_number: z.string().optional(),
