@@ -66,6 +66,7 @@ export const generatePaymentReceiptPDF = (payment: PaymentReceiptData): void => 
 <html>
 <head>
   <title>Kwitansi Pembayaran ${safeRequestNumber}</title>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline'">
   <style>
     @page {
       size: A4;

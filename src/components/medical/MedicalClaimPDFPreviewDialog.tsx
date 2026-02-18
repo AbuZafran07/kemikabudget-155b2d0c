@@ -9,6 +9,7 @@ import { MedicalClaim } from "@/hooks/useMedicalReimbursement";
 import { format } from "date-fns";
 import { id as idLocale, enUS } from "date-fns/locale";
 import { exportStyledHtmlToPdf } from "@/lib/html2pdfExport";
+import { escapeHtml } from "@/lib/htmlEscape";
 import logoKemika from "@/assets/logo-kemika.png";
 
 interface MedicalClaimPDFPreviewDialogProps {
@@ -120,6 +121,15 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
     // Fixed names for HRGA and CEO/Director
     const hrgaName = "Ferry Ferdiansyah";
     const ceoName = "Haris Pratama Putra";
+
+    // Escape all user-controlled data to prevent XSS
+    const safeEmployeeName = escapeHtml(claim.employee?.full_name);
+    const safeClaimNumber = escapeHtml(claim.claim_number);
+    const safePatientName = escapeHtml(claim.patient_name);
+    const safeHospitalClinic = escapeHtml(claim.hospital_clinic);
+    const safeDoctorName = escapeHtml(claim.doctor_name);
+    const safeDiagnosis = escapeHtml(claim.diagnosis);
+    const safeNotes = escapeHtml(claim.notes);
     
     // Format print date like budget submission: "09 Februari 2026 14:31"
     const printDate = format(new Date(), "dd MMMM yyyy HH:mm", {
@@ -131,6 +141,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
       <html>
       <head>
         <meta charset="UTF-8">
+        <meta http-equiv="Content-Security-Policy" content="script-src 'none'">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11pt; line-height: 1.4; color: #1a1a1a; background: white; }
@@ -188,7 +199,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           
           <div class="doc-title">
             <h2>${language === "id" ? "FORMULIR KLAIM MEDICAL" : "MEDICAL CLAIM FORM"}</h2>
-            <div class="doc-number">${claim.claim_number}</div>
+            <div class="doc-number">${safeClaimNumber}</div>
           </div>
           
           <div class="section">
@@ -196,7 +207,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
             <div class="info-grid">
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Nama Karyawan" : "Employee Name"}</span>
-                <span class="info-value">: ${claim.employee?.full_name || "-"}</span>
+                <span class="info-value">: ${safeEmployeeName}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Tanggal Klaim" : "Claim Date"}</span>
@@ -237,7 +248,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               </div>
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Nama Pasien" : "Patient Name"}</span>
-                <span class="info-value">: ${claim.patient_name}</span>
+                <span class="info-value">: ${safePatientName}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Hubungan" : "Relationship"}</span>
@@ -248,7 +259,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
                   ? `
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "RS / Klinik" : "Hospital / Clinic"}</span>
-                <span class="info-value">: ${claim.hospital_clinic}</span>
+                <span class="info-value">: ${safeHospitalClinic}</span>
               </div>
               `
                   : ""
@@ -258,7 +269,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
                   ? `
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Nama Dokter" : "Doctor Name"}</span>
-                <span class="info-value">: ${claim.doctor_name}</span>
+                <span class="info-value">: ${safeDoctorName}</span>
               </div>
               `
                   : ""
@@ -268,7 +279,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
                   ? `
               <div class="info-item" style="grid-column: span 2;">
                 <span class="info-label">${language === "id" ? "Diagnosa" : "Diagnosis"}</span>
-                <span class="info-value">: ${claim.diagnosis}</span>
+                <span class="info-value">: ${safeDiagnosis}</span>
               </div>
               `
                   : ""
@@ -297,7 +308,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               ? `
           <div class="section">
             <div class="section-title">${language === "id" ? "Catatan" : "Notes"}</div>
-            <p>${claim.notes}</p>
+            <p>${safeNotes}</p>
           </div>
           `
               : ""
@@ -307,13 +318,13 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
             <tr class="signature-row">
               <td class="signature-box">
                 <div class="signature-header">
-                  Ditandatangani oleh <strong>${claim.employee?.full_name || ""}</strong>
+                  Ditandatangani oleh <strong>${safeEmployeeName}</strong>
                   <div class="signature-header-sub">Pemohon,</div>
                 </div>
                 <div class="signature-content">
                   ${requesterProfile?.signature_url ? `<img src="${requesterProfile.signature_url}" class="signature-img" />` : ''}
                   <div class="signature-line"></div>
-                  <div class="signature-name">${claim.employee?.full_name || ""}</div>
+                  <div class="signature-name">${safeEmployeeName}</div>
                   <div class="signature-date">${claim.submitted_at ? format(new Date(claim.submitted_at), "dd MMM yyyy HH:mm", { locale: language === "id" ? idLocale : enUS }) : formatDate(claim.claim_date)}</div>
                 </div>
               </td>

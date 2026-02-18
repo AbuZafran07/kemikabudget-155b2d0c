@@ -84,6 +84,7 @@ export const generateRequestPDF = (request: RequestData): void => {
 <html>
 <head>
   <title>Pengajuan ${safeRequestNumber}</title>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline'">
   <style>
     @page {
       size: A4;
