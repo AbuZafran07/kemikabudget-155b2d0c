@@ -124,7 +124,6 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       margin-bottom: 5px;
     }
     .doc-info-box {
-      border: 1px solid #333;
       display: inline-block;
       text-align: left;
     }
