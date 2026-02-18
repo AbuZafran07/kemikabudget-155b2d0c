@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 export type RequestStatus =
   | "draft"
   | "submitted"
+  | "revision"
   | "under_review"
   | "approved"
   | "rejected"
@@ -28,6 +29,10 @@ const statusConfig: Record<
   submitted: {
     label: "Diajukan",
     className: "bg-info/10 text-info border-info/20",
+  },
+  revision: {
+    label: "Revisi",
+    className: "bg-orange-500/10 text-orange-600 border-orange-500/20",
   },
   under_review: {
     label: "Dalam Review",

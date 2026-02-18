@@ -1,4 +1,4 @@
-import { CheckCircle, AlertCircle, XCircle, Clock, ChevronRight } from "lucide-react";
+import { CheckCircle, AlertCircle, XCircle, Clock, RotateCcw, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import StatusBadge, { RequestStatus } from "@/components/common/StatusBadge";
 
@@ -21,6 +21,7 @@ interface RecentActivityProps {
 const statusIcons: Record<RequestStatus, React.ElementType> = {
   draft: Clock,
   submitted: Clock,
+  revision: RotateCcw,
   under_review: AlertCircle,
   approved: CheckCircle,
   rejected: XCircle,

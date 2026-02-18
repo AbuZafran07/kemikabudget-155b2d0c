@@ -63,6 +63,8 @@ interface RequestAttachment {
 const eventIcons: Record<string, React.ElementType> = {
   created: FileText,
   submitted: Send,
+  revision_requested: AlertCircle,
+  resubmitted: Send,
   approved: CheckCircle,
   rejected: XCircle,
   paid: CreditCard,
@@ -75,6 +77,8 @@ const eventIcons: Record<string, React.ElementType> = {
 const eventColors: Record<string, string> = {
   created: 'bg-muted text-muted-foreground',
   submitted: 'bg-blue-500/10 text-blue-500',
+  revision_requested: 'bg-orange-500/10 text-orange-600',
+  resubmitted: 'bg-blue-500/10 text-blue-500',
   approved: 'bg-success/10 text-success',
   rejected: 'bg-destructive/10 text-destructive',
   paid: 'bg-primary/10 text-primary',
@@ -91,7 +95,7 @@ const attachmentTypeLabels: Record<string, string> = {
 };
 
 export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
   const [pdfPreviewData, setPdfPreviewData] = useState<PengajuanDanaData | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -336,7 +340,9 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     needed_date: request.needed_date,
                     created_at: request.created_at,
                     approved_at: request.approved_at,
-                    status: request.status, // Add status for proper approval detection
+                    status: request.status,
+                    notes: request.notes,
+                    reference_number: request.reference_number,
                     division: request.divisions as any,
                     category: request.cost_categories as any,
                     requester: request.requester as any,
@@ -374,6 +380,8 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                       approved_at: request.approved_at,
                       submitted_at: request.submitted_at,
                       status: request.status,
+                      notes: request.notes,
+                      reference_number: request.reference_number,
                       division: request.divisions as any,
                       category: request.cost_categories as any,
                       requester: request.requester as any,
@@ -414,6 +422,40 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                 Download PDF
               </Button>
             </div>
+            {/* Revision Button - only for submitted requests owned by user */}
+            {request.status === 'submitted' && request.requester_id === user?.id && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-orange-500/30 text-orange-600 hover:bg-orange-500/10 mt-2"
+                onClick={async () => {
+                  if (!confirm('Apakah Anda yakin ingin meminta revisi? Status akan berubah ke "Revisi" dan Anda bisa mengedit pengajuan.')) return;
+                  try {
+                    const { error } = await supabase
+                      .from('requests')
+                      .update({ status: 'revision' })
+                      .eq('id', requestId);
+                    if (error) throw error;
+                    
+                    await supabase.from('request_events').insert({
+                      request_id: requestId,
+                      event_type: 'revision_requested',
+                      description: 'Pemohon meminta revisi pengajuan',
+                      performed_by: user!.id,
+                    });
+                    
+                    toast.success('Pengajuan dikembalikan untuk direvisi');
+                    // Refetch
+                    window.location.reload();
+                  } catch (err: any) {
+                    toast.error(err.message || 'Gagal meminta revisi');
+                  }
+                }}
+              >
+                <AlertCircle className="h-4 w-4" />
+                Minta Revisi
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -520,11 +562,11 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
               </>
             )}
 
-            {/* Notes */}
+            {/* Reference Number / Notes */}
             {request.notes && (
               <>
                 <Separator className="my-4" />
-                <h4 className="font-medium text-foreground mb-2">Catatan</h4>
+                <h4 className="font-medium text-foreground mb-2">Reff No (INV/Nota/Resi)</h4>
                 <p className="text-muted-foreground whitespace-pre-wrap">{request.notes}</p>
               </>
             )}
@@ -691,6 +733,8 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     needed_date: request.needed_date,
                     created_at: request.created_at,
                     approved_at: request.approved_at,
+                    notes: request.notes,
+                    reference_number: request.reference_number,
                     division: request.divisions as any,
                     category: request.cost_categories as any,
                     requester: request.requester as any,
