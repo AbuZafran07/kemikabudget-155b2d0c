@@ -126,7 +126,7 @@ const MedicalReimbursementDetail = () => {
   const isOwner = claim.employee_id === user?.id;
   const isHRGA = role === "admin" || role === "super_admin";
   const isFinance = role === "finance" || role === "super_admin";
-  const canEdit = isOwner && claim.status === "draft";
+  const canEdit = isOwner && ["draft", "submitted", "review_hrga"].includes(claim.status) && !claim.is_locked;
   const canSubmit = isOwner && claim.status === "draft";
   // HRGA now directly approves/rejects (no finance review step)
   const canHRGAReview = isHRGA && (claim.status === "submitted" || claim.status === "review_hrga");

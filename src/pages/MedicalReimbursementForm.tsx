@@ -340,7 +340,7 @@ const MedicalReimbursementForm = () => {
               claimId={id}
               attachments={attachments}
               onAttachmentsChange={() => refetchAttachments()}
-              disabled={existingClaim?.status !== "draft"}
+              disabled={!["draft", "submitted", "review_hrga"].includes(existingClaim?.status || "")}
             />
           )}
 
