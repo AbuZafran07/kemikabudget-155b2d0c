@@ -59,7 +59,7 @@ interface Attachment {
 export function RequestForm({ requestId, initialData, onSuccess, onCancel, isSheet = false }: RequestFormProps) {
   const { profile, hasRoleOrHigher, user } = useAuth();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const {
     categories,
     fundingSources,
@@ -709,23 +709,26 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
           </div>
         </div>
 
-        {/* Bank Details - Show only for bank funding source */}
-        {isBank && (
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-            <div className="space-y-2">
-              <Label>Nama Bank</Label>
-              <Input placeholder="Nama bank penerima" {...form.register("beneficiary_bank")} />
-            </div>
-            <div className="space-y-2">
-              <Label>No. Rekening</Label>
-              <Input placeholder="Nomor rekening" {...form.register("beneficiary_account")} />
-            </div>
-            <div className="col-span-2 space-y-2">
-              <Label>Transfer Atas Nama</Label>
-              <Input type="text" placeholder="Nama penerima transfer" {...form.register("beneficiary_email")} />
-            </div>
+        {/* Beneficiary Details - Optional for all funding sources */}
+        <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="col-span-2 text-sm text-muted-foreground">
+            {language === 'id' 
+              ? 'Isi jika pembayaran dilakukan via transfer (opsional)' 
+              : 'Fill if payment is via transfer (optional)'}
           </div>
-        )}
+          <div className="space-y-2">
+            <Label>Transfer Atas Nama</Label>
+            <Input type="text" placeholder="Nama penerima transfer" {...form.register("beneficiary_email")} />
+          </div>
+          <div className="space-y-2">
+            <Label>Nama Bank</Label>
+            <Input placeholder="Nama bank penerima" {...form.register("beneficiary_bank")} />
+          </div>
+          <div className="space-y-2">
+            <Label>No. Rekening</Label>
+            <Input placeholder="Nomor rekening" {...form.register("beneficiary_account")} />
+          </div>
+        </div>
 
         {/* Attachments */}
         <div className="space-y-3">
