@@ -91,6 +91,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
 <html>
 <head>
   <title>Pengajuan Dana ${safeRequestNumber}</title>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline'">
   <style>
     @page { size: A4; margin: 10mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }

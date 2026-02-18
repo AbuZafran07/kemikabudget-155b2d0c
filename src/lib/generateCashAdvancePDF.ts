@@ -80,6 +80,7 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
 <html>
 <head>
   <title>Cash Advance ${safeCaNumber}</title>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline'">
   <style>
     @page { size: A4; margin: 10mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
