@@ -340,12 +340,23 @@ const PaymentQueue = () => {
       return;
     }
 
-    // Get requester profile with signature
+    // Get requester profile with signature and division
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, email, signature_url')
+      .select('full_name, email, signature_url, division_id')
       .eq('id', data.requester_id)
       .single();
+
+    // Fetch requester's division info
+    let requesterDivision = null;
+    if (profile?.division_id) {
+      const { data: divData } = await supabase
+        .from('divisions')
+        .select('name, code')
+        .eq('id', profile.division_id)
+        .single();
+      requesterDivision = divData;
+    }
 
     // Get approver profile if approved
     let approverProfile: { full_name: string; signature_url?: string | null } | null = null;
@@ -388,6 +399,7 @@ const PaymentQueue = () => {
       division: data.division as any,
       category: data.category as any,
       requester: profile || undefined,
+      requesterDivision,
       approver: approverProfile,
       funding_source: data.funding_source as any,
       attachments: attachments || [],

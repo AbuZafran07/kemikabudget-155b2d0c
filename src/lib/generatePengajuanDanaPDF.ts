@@ -20,6 +20,7 @@ export interface PengajuanDanaData {
   division?: { name: string; code: string };
   category?: { name: string; code: string };
   requester?: { full_name: string; email: string; signature_url?: string | null };
+  requesterDivision?: { name: string; code: string } | null;
   approver?: { full_name: string; signature_url?: string | null } | null;
   funding_source?: { name: string; type: string };
   attachments?: { attachment_type: string; file_name: string }[];
@@ -495,7 +496,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         <td class="signature-box">
           <div class="signature-header">
             Ditandatangani oleh <strong>${safeRequesterName}</strong>
-            <div class="signature-header-sub">${safeDivisionName},</div>
+            <div class="signature-header-sub">${escapeHtml(data.requesterDivision?.name) || safeDivisionName},</div>
           </div>
           <div class="signature-content">
             ${data.requester?.signature_url ? `<img src="${data.requester.signature_url}" class="signature-img" />` : ''}

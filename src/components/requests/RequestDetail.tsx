@@ -142,9 +142,20 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
       // Fetch requester profile separately - include signature_url from profiles table
       const { data: requesterProfile } = await supabase
         .from('profiles')
-        .select('full_name, email, signature_url')
+        .select('full_name, email, signature_url, division_id')
         .eq('id', requestData.requester_id)
         .single();
+
+      // Fetch requester's division info
+      let requesterDivision = null;
+      if (requesterProfile?.division_id) {
+        const { data: divData } = await supabase
+          .from('divisions')
+          .select('name, code')
+          .eq('id', requesterProfile.division_id)
+          .single();
+        requesterDivision = divData;
+      }
 
       // Fetch approver profile if exists
       let approverProfile = null;
@@ -160,6 +171,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
       return {
         ...requestData,
         requester: requesterProfile,
+        requesterDivision,
         approver: approverProfile,
         funding_sources: requestData.funding_source_options,
       };
@@ -328,6 +340,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     division: request.divisions as any,
                     category: request.cost_categories as any,
                     requester: request.requester as any,
+                    requesterDivision: (request as any).requesterDivision || null,
                     approver: (request as any).approver || null,
                     funding_source: request.funding_sources as any,
                     attachments: attachments?.map(a => ({ attachment_type: a.attachment_type, file_name: a.file_name })),
@@ -364,6 +377,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                       division: request.divisions as any,
                       category: request.cost_categories as any,
                       requester: request.requester as any,
+                      requesterDivision: (request as any).requesterDivision || null,
                       approver: (request as any).approver || null,
                       funding_source: request.funding_sources as any,
                       attachments: attachments?.map(a => ({ attachment_type: a.attachment_type, file_name: a.file_name })),
@@ -680,6 +694,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     division: request.divisions as any,
                     category: request.cost_categories as any,
                     requester: request.requester as any,
+                    requesterDivision: (request as any).requesterDivision || null,
                     approver: request.approver as any,
                     funding_source: request.funding_sources as any,
                   });
