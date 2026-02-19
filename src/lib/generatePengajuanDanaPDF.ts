@@ -207,56 +207,32 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     table.main-table .amount { text-align: right; white-space: nowrap; min-width: 130px; }
     table.main-table .description { word-wrap: break-word; }
     
-    .payment-section {
-      display: flex;
+    table.payment-table {
+      width: 100%;
+      border-collapse: collapse;
       margin-bottom: 10px;
     }
-    .transfer-box, .tunai-box {
-      border: 1px solid #333;
-    }
-    .transfer-box { width: 70%; }
-    .tunai-box { width: 30%; border-left: none; }
-    
-    .section-header {
+    table.payment-table th {
       background: #1a5f2a;
       color: white;
       padding: 5px 8px;
       font-weight: bold;
       text-align: center;
-      border-bottom: 1px solid #333;
-    }
-    .section-content {
-      display: flex;
-    }
-    .section-content > div {
-      flex: 1;
-      padding: 8px;
-      border-right: 1px solid #333;
-      text-align: center;
-    }
-    .section-content > div:last-child {
-      border-right: none;
-    }
-    .section-content .sub-label {
-      font-size: 8pt;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .section-content .sub-value {
-      min-height: 20px;
+      border: 1px solid #333;
       font-size: 9pt;
     }
-    
-    .tunai-content {
+    table.payment-table td {
       padding: 8px;
+      border: 1px solid #333;
       text-align: center;
+      vertical-align: top;
     }
-    .tunai-content .sub-label {
+    table.payment-table .sub-label {
       font-size: 8pt;
       font-weight: bold;
       margin-bottom: 5px;
     }
-    .tunai-content .sub-value {
+    table.payment-table .sub-value {
       min-height: 20px;
       font-size: 9pt;
     }
@@ -467,36 +443,38 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       </tbody>
     </table>
 
-    <div class="payment-section">
-      <div class="transfer-box">
-        <div class="section-header">Transfer Bank</div>
-        <div class="section-content">
-          <div>
+    <table class="payment-table">
+      <thead>
+        <tr>
+          <th colspan="4">Transfer Bank</th>
+          <th>Tunai</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
             <div class="sub-label">Atas Nama</div>
             <div class="sub-value">${isTransfer ? safeBeneficiaryEmail : '-'}</div>
-          </div>
-          <div>
+          </td>
+          <td>
             <div class="sub-label">Nama Bank</div>
             <div class="sub-value">${isTransfer ? safeBeneficiaryBank : '-'}</div>
-          </div>
-          <div>
+          </td>
+          <td>
             <div class="sub-label">No. Rekening</div>
             <div class="sub-value">${isTransfer ? safeBeneficiaryAccount : '-'}</div>
-          </div>
-          <div>
+          </td>
+          <td>
             <div class="sub-label">Nilai Transfer</div>
             <div class="sub-value">${isTransfer ? 'Rp. ' + formatCurrency(nilaiApproved) : '-'}</div>
-          </div>
-        </div>
-      </div>
-      <div class="tunai-box">
-        <div class="section-header">Tunai</div>
-        <div class="tunai-content">
-          <div class="sub-label">Nilai Cash</div>
-          <div class="sub-value">${isCash ? 'Rp. ' + formatCurrency(nilaiApproved) : '-'}</div>
-        </div>
-      </div>
-    </div>
+          </td>
+          <td>
+            <div class="sub-label">Nilai Cash</div>
+            <div class="sub-value">${isCash ? 'Rp. ' + formatCurrency(nilaiApproved) : '-'}</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
     <!-- Always 3-column signature layout -->
     <table class="signature-section">
