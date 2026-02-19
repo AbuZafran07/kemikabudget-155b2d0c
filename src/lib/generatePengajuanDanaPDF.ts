@@ -264,17 +264,22 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     .signature-header {
       background-color: #f5f5f5;
       color: #333;
-      padding: 6px;
+      padding: 8px 6px;
       font-weight: bold;
       border-bottom: 1px solid #333;
       font-size: 9pt;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      height: 42px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
-    .signature-header-sub {
-      font-size: 8pt;
-      font-weight: normal;
-      color: #555;
+    .signature-header-role {
+      font-size: 9pt;
+      font-weight: bold;
+      color: #333;
     }
     .signature-content {
       padding: 10px 8px;
@@ -486,8 +491,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       <tr class="signature-row">
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${safeRequesterName}</strong>
-            <div class="signature-header-sub">${escapeHtml(data.requesterDivision?.name) || safeDivisionName},</div>
+            <span class="signature-header-role">Requested</span>
           </div>
           <div class="signature-content">
             ${data.requester?.signature_url ? `<img src="${data.requester.signature_url}" class="signature-img" />` : ''}
@@ -498,36 +502,33 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         </td>
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${isApproved && safeApproverName ? safeApproverName : '(Belum Disetujui)'}</strong>
-            <div class="signature-header-sub">Mengetahui,</div>
+            <span class="signature-header-role">Reviewed</span>
           </div>
           <div class="signature-content">
             ${isApproved && data.approver?.signature_url ? `<img src="${data.approver.signature_url}" class="signature-img" />` : ''}
             <div class="signature-line"></div>
-            <div class="signature-name">${isApproved && safeApproverName ? safeApproverName : '(Belum Disetujui)'}</div>
+            <div class="signature-name">${isApproved && safeApproverName ? safeApproverName : '(                              )'}</div>
             <div class="signature-date">${isApproved && approvedDate ? approvedDate : '________'}</div>
           </div>
         </td>
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</strong>
-            <div class="signature-header-sub">Approve,</div>
+            <span class="signature-header-role">Approved</span>
           </div>
           <div class="signature-content">
             <div class="signature-line"></div>
-            <div class="signature-name">${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</div>
+            <div class="signature-name">${isApproved ? 'Haris Pratama Putra' : '(                              )'}</div>
             <div class="signature-date">${isApproved && approvedDate ? approvedDate : '________'}</div>
           </div>
         </td>
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</strong>
-            <div class="signature-header-sub">Payment Executed By,</div>
+            <span class="signature-header-role">Paid</span>
           </div>
           <div class="signature-content">
             ${isPaid && data.payer?.signature_url ? `<img src="${data.payer.signature_url}" class="signature-img" />` : ''}
             <div class="signature-line"></div>
-            <div class="signature-name">${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</div>
+            <div class="signature-name">${isPaid && safePayerName ? safePayerName : '(                              )'}</div>
             <div class="signature-date">${isPaid && paidDate ? paidDate : '________'}</div>
           </div>
         </td>
