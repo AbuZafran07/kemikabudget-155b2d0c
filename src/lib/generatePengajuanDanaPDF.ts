@@ -270,6 +270,14 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       font-size: 9pt;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      height: 50px;
+      overflow: hidden;
+    }
+    .signature-header-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
     }
     .signature-header-sub {
       font-size: 8pt;
@@ -486,7 +494,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       <tr class="signature-row">
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${safeRequesterName}</strong>
+            <span class="signature-header-name">Ditandatangani oleh <strong>${safeRequesterName}</strong></span>
             <div class="signature-header-sub">${escapeHtml(data.requesterDivision?.name) || safeDivisionName},</div>
           </div>
           <div class="signature-content">
@@ -498,7 +506,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         </td>
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${isApproved && safeApproverName ? safeApproverName : '(Belum Disetujui)'}</strong>
+            <span class="signature-header-name">Ditandatangani oleh <strong>${isApproved && safeApproverName ? safeApproverName : '(Belum Disetujui)'}</strong></span>
             <div class="signature-header-sub">Mengetahui,</div>
           </div>
           <div class="signature-content">
@@ -510,7 +518,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         </td>
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</strong>
+            <span class="signature-header-name">Ditandatangani oleh <strong>${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</strong></span>
             <div class="signature-header-sub">Approve,</div>
           </div>
           <div class="signature-content">
@@ -521,7 +529,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         </td>
         <td class="signature-box">
           <div class="signature-header">
-            Ditandatangani oleh <strong>${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</strong>
+            <span class="signature-header-name">Ditandatangani oleh <strong>${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</strong></span>
             <div class="signature-header-sub">Payment Executed By,</div>
           </div>
           <div class="signature-content">
