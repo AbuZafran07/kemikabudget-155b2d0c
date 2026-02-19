@@ -34,6 +34,7 @@ import { useApprovals, ApprovalRequest } from "@/hooks/useApprovals";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { TablePagination } from "@/components/common/TablePagination";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -65,6 +66,8 @@ const Approvals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   // Dialog states
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
@@ -85,8 +88,29 @@ const Approvals = () => {
     return matchesSearch && matchesDivision && matchesType;
   }) || [];
 
+  // Paginate
+  const totalFiltered = filteredApprovals.length;
+  const paginatedApprovals = filteredApprovals.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Get unique divisions from approvals
   const divisions = [...new Set(approvals?.map(a => a.divisions?.code).filter(Boolean))] as string[];
+
+  // Reset page on filter/search change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+  const handleDivisionFilterChange = (value: string) => {
+    setDivisionFilter(value);
+    setCurrentPage(1);
+  };
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value);
+    setCurrentPage(1);
+  };
 
   const handleApprove = (request: ApprovalRequest) => {
     setSelectedRequest(request);
@@ -184,11 +208,11 @@ const Approvals = () => {
             <Input
               placeholder={t('common.searchPlaceholder')}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
             />
           </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder={language === 'id' ? 'Tipe' : 'Type'} />
             </SelectTrigger>
@@ -199,7 +223,7 @@ const Approvals = () => {
               <SelectItem value="cash_advance">{language === 'id' ? 'Cash Advance' : 'Cash Advance'}</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+          <Select value={divisionFilter} onValueChange={handleDivisionFilterChange}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder={t('users.division')} />
             </SelectTrigger>
@@ -217,7 +241,7 @@ const Approvals = () => {
 
       {/* Approval Cards */}
       <div className="space-y-4">
-        {filteredApprovals.map((item) => (
+        {paginatedApprovals.map((item) => (
           <div
             key={item.id}
             className={`bg-card rounded-xl border p-5 transition-all hover:shadow-card-hover cursor-pointer group ${
@@ -307,6 +331,17 @@ const Approvals = () => {
           </div>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalFiltered > 0 && (
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={totalFiltered}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
       {filteredApprovals.length === 0 && (
         <div className="bg-card rounded-xl border border-border p-12 text-center">
