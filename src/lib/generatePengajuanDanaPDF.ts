@@ -12,6 +12,7 @@ export interface PengajuanDanaData {
   beneficiary_name?: string | null;
   beneficiary_bank?: string | null;
   beneficiary_account?: string | null;
+  beneficiary_email?: string | null;
   needed_date: string;
   created_at: string;
   approved_at?: string | null;
@@ -48,6 +49,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
   const safeBeneficiaryName = escapeHtml(data.beneficiary_name) || '-';
   const safeBeneficiaryBank = escapeHtml(data.beneficiary_bank) || '-';
   const safeBeneficiaryAccount = escapeHtml(data.beneficiary_account) || '-';
+  const safeBeneficiaryEmail = escapeHtml(data.beneficiary_email) || '-';
   const safeDivisionName = escapeHtml(data.division?.name) || '-';
   const safeDivisionCode = escapeHtml(data.division?.code) || '';
   const safeCategoryName = escapeHtml(data.category?.name) || '-';
@@ -469,6 +471,10 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       <div class="transfer-box">
         <div class="section-header">Transfer Bank</div>
         <div class="section-content">
+          <div>
+            <div class="sub-label">Atas Nama</div>
+            <div class="sub-value">${isTransfer ? safeBeneficiaryEmail : '-'}</div>
+          </div>
           <div>
             <div class="sub-label">Nama Bank</div>
             <div class="sub-value">${isTransfer ? safeBeneficiaryBank : '-'}</div>

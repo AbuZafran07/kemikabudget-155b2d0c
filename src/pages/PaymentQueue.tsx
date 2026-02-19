@@ -391,6 +391,7 @@ const PaymentQueue = () => {
       beneficiary_name: data.beneficiary_name,
       beneficiary_bank: data.beneficiary_bank,
       beneficiary_account: data.beneficiary_account,
+      beneficiary_email: (data as any).beneficiary_email,
       needed_date: data.needed_date,
       created_at: data.created_at,
       approved_at: data.approved_at,
