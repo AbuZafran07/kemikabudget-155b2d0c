@@ -172,11 +172,23 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
         approverProfile = approver;
       }
 
+      // Fetch payer profile if exists
+      let payerProfile = null;
+      if (requestData.paid_by) {
+        const { data: payer } = await supabase
+          .from('profiles')
+          .select('full_name, signature_url')
+          .eq('id', requestData.paid_by)
+          .single();
+        payerProfile = payer;
+      }
+
       return {
         ...requestData,
         requester: requesterProfile,
         requesterDivision,
         approver: approverProfile,
+        payer: payerProfile,
         funding_sources: requestData.funding_source_options,
       };
     },
@@ -349,6 +361,8 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                     requester: request.requester as any,
                     requesterDivision: (request as any).requesterDivision || null,
                     approver: (request as any).approver || null,
+                    payer: (request as any).payer || null,
+                    paid_at: request.paid_at,
                     funding_source: request.funding_sources as any,
                     attachments: attachments?.map(a => ({ attachment_type: a.attachment_type, file_name: a.file_name })),
                   });
@@ -389,6 +403,8 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                       requester: request.requester as any,
                       requesterDivision: (request as any).requesterDivision || null,
                       approver: (request as any).approver || null,
+                      payer: (request as any).payer || null,
+                      paid_at: request.paid_at,
                       funding_source: request.funding_sources as any,
                       attachments: attachments?.map(a => ({ attachment_type: a.attachment_type, file_name: a.file_name })),
                     };

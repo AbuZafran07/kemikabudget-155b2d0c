@@ -375,6 +375,23 @@ const PaymentQueue = () => {
       }
     }
 
+    // Get payer profile if paid
+    let payerProfile: { full_name: string; signature_url?: string | null } | null = null;
+    if (data.paid_by) {
+      const { data: payer, error: payerError } = await supabase
+        .from('profiles')
+        .select('full_name, signature_url')
+        .eq('id', data.paid_by)
+        .single();
+      
+      if (payer && payer.full_name) {
+        payerProfile = { full_name: payer.full_name, signature_url: payer.signature_url };
+      }
+      if (payerError) {
+        console.warn('Could not fetch payer profile:', payerError);
+      }
+    }
+
     // Get attachments
     const { data: attachments } = await supabase
       .from('request_attachments')
@@ -404,6 +421,8 @@ const PaymentQueue = () => {
       requester: profile || undefined,
       requesterDivision,
       approver: approverProfile,
+      payer: payerProfile,
+      paid_at: data.paid_at,
       funding_source: data.funding_source as any,
       attachments: attachments || [],
     };
