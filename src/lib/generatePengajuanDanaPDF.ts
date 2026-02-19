@@ -25,6 +25,8 @@ export interface PengajuanDanaData {
   requester?: { full_name: string; email: string; signature_url?: string | null };
   requesterDivision?: { name: string; code: string } | null;
   approver?: { full_name: string; signature_url?: string | null } | null;
+  payer?: { full_name: string; signature_url?: string | null } | null;
+  paid_at?: string | null;
   funding_source?: { name: string; type: string };
   attachments?: { attachment_type: string; file_name: string }[];
 }
@@ -61,7 +63,9 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
   const neededDate = format(new Date(data.needed_date), 'dd MMM yyyy', { locale: localeId });
   const createdDate = format(new Date(data.created_at), 'dd MMM yyyy', { locale: localeId });
   const printDate = format(new Date(), 'dd MMMM yyyy HH:mm', { locale: localeId });
-  const approvedDate = data.approved_at ? format(new Date(data.approved_at), 'dd MMM yyyy', { locale: localeId }) : '';
+  const approvedDate = data.approved_at ? format(new Date(data.approved_at), 'dd MMM yyyy HH:mm', { locale: localeId }) : '';
+  const paidDate = data.paid_at ? format(new Date(data.paid_at), 'dd MMM yyyy HH:mm', { locale: localeId }) : '';
+  const safePayerName = escapeHtml(data.payer?.full_name) || '';
 
   const nilaiPengajuan = data.amount;
   const nilaiApproved = data.approved_amount ?? data.amount;
@@ -72,6 +76,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
   
   // Check if request is truly approved (status-based, not just approver name)
   const isApproved = ['approved', 'paid', 'settled'].includes(data.status || '');
+  const isPaid = ['paid', 'settled'].includes(data.status || '');
 
   // Find attachment references - prioritize reference_number/notes field, then attachment filenames
   const invoiceReff = data.attachments?.find(a => a.attachment_type === 'invoice')?.file_name || '';
@@ -252,7 +257,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       display: table-cell;
       text-align: center;
       border-right: 1px solid #333;
-      width: 33.33%;
+      width: 25%;
       vertical-align: top;
     }
     .signature-box:last-child { border-right: none; }
@@ -273,7 +278,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
     }
     .signature-content {
       padding: 10px 8px;
-      min-height: 90px;
+      height: 120px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -476,7 +481,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
       </tbody>
     </table>
 
-    <!-- Always 3-column signature layout -->
+    <!-- Always 4-column signature layout -->
     <table class="signature-section">
       <tr class="signature-row">
         <td class="signature-box">
@@ -512,6 +517,18 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
             <div class="signature-line"></div>
             <div class="signature-name">${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</div>
             <div class="signature-date">${isApproved && approvedDate ? approvedDate : '________'}</div>
+          </div>
+        </td>
+        <td class="signature-box">
+          <div class="signature-header">
+            Ditandatangani oleh <strong>${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</strong>
+            <div class="signature-header-sub">Payment Executed By,</div>
+          </div>
+          <div class="signature-content">
+            ${isPaid && data.payer?.signature_url ? `<img src="${data.payer.signature_url}" class="signature-img" />` : ''}
+            <div class="signature-line"></div>
+            <div class="signature-name">${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</div>
+            <div class="signature-date">${isPaid && paidDate ? paidDate : '________'}</div>
           </div>
         </td>
       </tr>
