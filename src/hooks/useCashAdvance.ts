@@ -202,8 +202,8 @@ export const useCashAdvance = (id: string) => {
       let payer = null;
       if (data.paid_by) {
         const { data: payerData } = await supabase
-          .from("profiles_secure")
-          .select("id, full_name")
+          .from("profiles")
+          .select("id, full_name, signature_url")
           .eq("id", data.paid_by)
           .maybeSingle();
         payer = payerData;

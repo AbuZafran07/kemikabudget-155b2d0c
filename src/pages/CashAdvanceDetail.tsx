@@ -581,11 +581,13 @@ const CashAdvanceDetail = () => {
           created_at: ca.created_at,
           submitted_at: ca.submitted_at,
           approved_at: ca.approved_at,
+          paid_at: ca.paid_at,
           status: ca.status,
           notes: ca.notes,
           division: ca.division ? { name: ca.division.name, code: ca.division.code } : undefined,
           requester: ca.requester ? { full_name: ca.requester.full_name, signature_url: (ca.requester as any).signature_url } : undefined,
           approver: ca.approver ? { full_name: ca.approver.full_name, signature_url: (ca.approver as any).signature_url } : null,
+          payer: ca.payer ? { full_name: ca.payer.full_name, signature_url: (ca.payer as any).signature_url } : null,
           funding_source: ca.funding_source ? { name: ca.funding_source.name, type: 'petty_cash' } : null,
           items: items.map(item => ({
             description: item.description,

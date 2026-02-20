@@ -18,11 +18,13 @@ export interface CashAdvancePDFData {
   created_at: string;
   submitted_at?: string | null;
   approved_at?: string | null;
+  paid_at?: string | null;
   status: string;
   notes?: string | null;
   division?: { name: string; code: string };
   requester?: { full_name: string; signature_url?: string | null };
   approver?: { full_name: string; signature_url?: string | null } | null;
+  payer?: { full_name: string; signature_url?: string | null } | null;
   funding_source?: { name: string; type: string } | null;
   items: CashAdvanceItem[];
 }
@@ -49,8 +51,11 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
   const approvedDate = data.approved_at ? format(new Date(data.approved_at), 'dd MMM yyyy', { locale: localeId }) : '';
 
   const isApproved = ['approved', 'paid', 'partially_settled', 'settled'].includes(data.status);
+  const isPaid = ['paid', 'partially_settled', 'settled'].includes(data.status);
+  const paidDate = data.paid_at ? format(new Date(data.paid_at), 'dd MMM yyyy', { locale: localeId }) : '';
+  const safePayerName = escapeHtml(data.payer?.full_name) || '';
 
-  const divisionDisplay = safeDivisionCode 
+  const divisionDisplay = safeDivisionCode
     ? `${safeDivisionName} (${safeDivisionCode})`
     : safeDivisionName;
 
@@ -113,7 +118,6 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
       margin-bottom: 5px;
     }
     .doc-info-box {
-      border: 1px solid #333;
       display: inline-block;
       text-align: left;
     }
@@ -210,7 +214,7 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
       display: table-cell;
       text-align: center;
       border-right: 1px solid #333;
-      width: 33.33%;
+      width: 25%;
       vertical-align: top;
     }
     .signature-box:last-child { border-right: none; }
@@ -231,7 +235,7 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
     }
     .signature-content {
       padding: 10px 8px;
-      min-height: 90px;
+      height: 120px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -368,11 +372,6 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
           <span class="info-colon">:</span>
           <span class="info-value">${divisionDisplay}</span>
         </div>
-        <div class="info-item">
-          <span class="info-label">Keperluan</span>
-          <span class="info-colon">:</span>
-          <span class="info-value">${safePurpose}</span>
-        </div>
       </div>
       <div class="info-right">
         <div class="info-item">
@@ -385,6 +384,14 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
           <span class="info-colon">:</span>
           <span class="info-value">${safeFundingSourceName}</span>
         </div>
+      </div>
+    </div>
+
+    <div style="border: 1px solid #666; border-top: none; margin-bottom: 10px; margin-top: -10px; padding: 8px 10px; background: #fff;">
+      <div class="info-item">
+        <span class="info-label">Keperluan</span>
+        <span class="info-colon">:</span>
+        <span class="info-value">${safePurpose}</span>
       </div>
     </div>
 
@@ -417,7 +424,7 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
     </div>
     ` : ''}
 
-    <!-- Always 3-column signature layout -->
+    <!-- 4-column signature layout matching Pengajuan Dana -->
     <table class="signature-section">
       <tr class="signature-row">
         <td class="signature-box">
@@ -453,6 +460,18 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
             <div class="signature-line"></div>
             <div class="signature-name">${isApproved ? 'Haris Pratama Putra' : '(Belum Disetujui)'}</div>
             <div class="signature-date">${isApproved && approvedDate ? approvedDate : '________'}</div>
+          </div>
+        </td>
+        <td class="signature-box">
+          <div class="signature-header">
+            Ditandatangani oleh <strong>${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</strong>
+            <div class="signature-header-sub">Payment Executed By,</div>
+          </div>
+          <div class="signature-content">
+            ${isPaid && data.payer?.signature_url ? `<img src="${data.payer.signature_url}" class="signature-img" />` : ''}
+            <div class="signature-line"></div>
+            <div class="signature-name">${isPaid && safePayerName ? safePayerName : '(Belum Dibayar)'}</div>
+            <div class="signature-date">${isPaid && paidDate ? paidDate : '________'}</div>
           </div>
         </td>
       </tr>
