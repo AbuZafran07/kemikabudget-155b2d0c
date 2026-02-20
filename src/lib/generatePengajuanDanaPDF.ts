@@ -435,7 +435,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
           <th class="num">No.</th>
           <th>Keterangan Biaya</th>
           <th class="amount">Nilai Pengajuan</th>
-          <th class="amount">Nilai Approved</th>
+          ${isApproved ? '<th class="amount">Nilai Approved</th>' : ''}
         </tr>
       </thead>
       <tbody>
@@ -443,7 +443,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
           <td class="num">1</td>
           <td class="description">${safeDescription}</td>
           <td class="amount">Rp. ${formatCurrency(nilaiPengajuan)}</td>
-          <td class="amount">Rp. ${formatCurrency(nilaiApproved)}</td>
+          ${isApproved ? `<td class="amount">Rp. ${formatCurrency(nilaiApproved)}</td>` : ''}
         </tr>
       </tbody>
     </table>
