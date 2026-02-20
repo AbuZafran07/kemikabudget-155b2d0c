@@ -692,6 +692,18 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                               </div>
                             </div>
                           )}
+                          {event.event_type === 'approved' && metadata?.approval_note && (
+                            <div className="mt-1 p-2 bg-success/10 rounded-md border border-success/20">
+                              <p className="text-xs font-medium text-success">Catatan Approval</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{metadata.approval_note}</p>
+                            </div>
+                          )}
+                          {event.event_type === 'rejected' && metadata?.rejection_reason && (
+                            <div className="mt-1 p-2 bg-destructive/10 rounded-md border border-destructive/20">
+                              <p className="text-xs font-medium text-destructive">Alasan Penolakan</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{metadata.rejection_reason}</p>
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             <span>{event.performer?.full_name || 'System'}</span>
                             <span>•</span>
@@ -709,20 +721,30 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
           </div>
 
           {/* Approval Info */}
-          {request.approved_at && (
-            <div className="bg-success/5 rounded-xl border border-success/20 p-6">
-              <h4 className="font-medium text-success mb-2 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Disetujui
-              </h4>
-              <p className="text-sm text-foreground">
-                Oleh {(request.approver as any)?.full_name || 'Unknown'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {format(new Date(request.approved_at), 'dd MMMM yyyy HH:mm', { locale: localeId })}
-              </p>
-            </div>
-          )}
+          {request.approved_at && (() => {
+            const approvalEvent = events.find(e => e.event_type === 'approved');
+            const approvalNote = (approvalEvent?.metadata as Record<string, any>)?.approval_note;
+            return (
+              <div className="bg-success/5 rounded-xl border border-success/20 p-6">
+                <h4 className="font-medium text-success mb-2 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Disetujui
+                </h4>
+                <p className="text-sm text-foreground">
+                  Oleh {(request.approver as any)?.full_name || 'Unknown'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(request.approved_at), 'dd MMMM yyyy HH:mm', { locale: localeId })}
+                </p>
+                {approvalNote && (
+                  <div className="mt-3 pt-3 border-t border-success/20">
+                    <p className="text-xs font-medium text-success mb-1">Catatan Approval</p>
+                    <p className="text-sm text-muted-foreground">{approvalNote}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {request.paid_at && (
             <div className="bg-primary/5 rounded-xl border border-primary/20 p-6">
