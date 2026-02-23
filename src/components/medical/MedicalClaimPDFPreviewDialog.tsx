@@ -318,7 +318,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
             <tr class="signature-row">
               <td class="signature-box">
                 <div class="signature-header">
-                  Ditandatangani oleh <strong>${safeEmployeeName}</strong>
+                  Ditandatangani oleh<br/><strong>${safeEmployeeName}</strong>
                   <div class="signature-header-sub">Pemohon,</div>
                 </div>
                 <div class="signature-content">
@@ -330,7 +330,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               </td>
               <td class="signature-box">
                 <div class="signature-header">
-                  Ditandatangani oleh <strong>${hrgaName}</strong>
+                  Ditandatangani oleh<br/><strong>${hrgaName}</strong>
                   <div class="signature-header-sub">Mengetahui,</div>
                 </div>
                 <div class="signature-content">
@@ -341,7 +341,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               </td>
               <td class="signature-box">
                 <div class="signature-header">
-                  Ditandatangani oleh <strong>${ceoName}</strong>
+                  Ditandatangani oleh<br/><strong>${ceoName}</strong>
                   <div class="signature-header-sub">Approve,</div>
                 </div>
                 <div class="signature-content">
