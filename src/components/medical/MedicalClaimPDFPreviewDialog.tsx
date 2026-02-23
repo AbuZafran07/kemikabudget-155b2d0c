@@ -164,15 +164,15 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           .info-label { width: 140px; font-weight: 500; color: #666; }
           .info-value { flex: 1; font-weight: 500; }
           
-          .amount-box { background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center; }
-          .amount-box .label { font-size: 10pt; color: #0369a1; margin-bottom: 5px; }
-          .amount-box .value { font-size: 18pt; font-weight: bold; color: #0369a1; }
+          .amount-box { background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 8px 12px; margin: 10px 0; text-align: center; }
+          .amount-box .label { font-size: 8pt; color: #0369a1; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+          .amount-box .value { font-size: 14pt; font-weight: bold; color: #0369a1; }
           
-          .approved-box { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center; }
-          .approved-box .label { font-size: 10pt; color: #15803d; margin-bottom: 5px; }
-          .approved-box .value { font-size: 18pt; font-weight: bold; color: #15803d; }
+          .approved-box { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 6px; padding: 8px 12px; margin: 8px 0; text-align: center; }
+          .approved-box .label { font-size: 8pt; color: #15803d; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+          .approved-box .value { font-size: 14pt; font-weight: bold; color: #15803d; }
           
-          .signatures { display: table; width: 100%; margin-top: 50px; border-collapse: collapse; border: 1px solid #333; }
+          .signatures { display: table; width: 100%; margin-top: 30px; border-collapse: collapse; border: 1px solid #333; }
           .signature-row { display: table-row; }
           .signature-box { display: table-cell; text-align: center; border-right: 1px solid #333; width: 33.33%; vertical-align: top; }
           .signature-box:last-child { border-right: none; }
