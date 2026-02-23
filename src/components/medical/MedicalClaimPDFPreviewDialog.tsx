@@ -178,8 +178,8 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
           .signature-box:last-child { border-right: none; }
           .signature-header { background-color: #f5f5f5; color: #333; padding: 6px; font-weight: bold; border-bottom: 1px solid #333; font-size: 9pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .signature-header-sub { font-size: 8pt; font-weight: normal; color: #555; }
-          .signature-content { padding: 10px 8px; min-height: 90px; display: flex; flex-direction: column; justify-content: flex-end; background: #ffffff; }
-          .signature-img { max-height: 50px; object-fit: contain; margin: 0 auto 5px auto; display: block; }
+          .signature-content { padding: 10px 8px; height: 120px; display: flex; flex-direction: column; justify-content: flex-end; background: #ffffff; }
+          .signature-img { max-height: 60px; object-fit: contain; margin: 0 auto 5px auto; display: block; }
           .signature-line { border-bottom: 1px solid #333; width: 85%; margin: 0 auto; margin-bottom: 5px; }
           .signature-name { font-weight: bold; min-height: 18px; font-size: 9pt; color: #000; }
           .signature-date { font-size: 8pt; color: #555; margin-top: 2px; }
