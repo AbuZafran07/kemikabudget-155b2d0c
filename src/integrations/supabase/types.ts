@@ -2396,6 +2396,10 @@ export type Database = {
         Args: { p_ca_id: string; p_reason: string }
         Returns: Json
       }
+      reject_from_payment_queue: {
+        Args: { p_id: string; p_reason: string; p_type: string }
+        Returns: Json
+      }
       reject_request: {
         Args: { p_rejection_reason: string; p_request_id: string }
         Returns: Json

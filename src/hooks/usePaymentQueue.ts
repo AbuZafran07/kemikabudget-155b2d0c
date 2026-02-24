@@ -395,6 +395,41 @@ export function usePaymentQueue() {
     },
   });
 
+  // Reject from payment queue (super_admin only)
+  const rejectFromQueue = useMutation({
+    mutationFn: async ({ id, type, reason }: { id: string; type: 'request' | 'medical_claim' | 'cash_advance'; reason: string }) => {
+      const { data, error } = await supabase.rpc('reject_from_payment_queue', {
+        p_id: id,
+        p_type: type,
+        p_reason: reason,
+      });
+
+      if (error) throw error;
+      const result = data as { success: boolean; error?: string; message?: string };
+      if (!result.success) throw new Error(result.error || 'Failed to reject');
+      return result;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['medical-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-advances'] });
+      queryClient.invalidateQueries({ queryKey: ['funding_sources'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] });
+      toast({
+        title: 'Berhasil Ditolak',
+        description: result.message || 'Item telah ditolak dari antrian pembayaran',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Gagal Menolak',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Get statistics
   const overdueCount = payments?.filter(p => p.isOverdue).length || 0;
   const totalPending = payments?.length || 0;
@@ -407,6 +442,7 @@ export function usePaymentQueue() {
     refetch,
     payRequest,
     settleRequest,
+    rejectFromQueue,
     overdueCount,
     totalPending,
     totalAmount,
