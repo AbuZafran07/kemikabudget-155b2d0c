@@ -16,6 +16,7 @@ import {
   Eye,
   Printer,
   Heart,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ import { PDFPreviewDialog } from "@/components/payments/PDFPreviewDialog";
 import { PengajuanDanaData } from "@/lib/generatePengajuanDanaPDF";
 import { TablePagination } from "@/components/common/TablePagination";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -77,6 +79,7 @@ const PaymentQueue = () => {
     fundingSources,
     isLoading,
     payRequest,
+    rejectFromQueue,
     overdueCount,
     totalPending,
     totalAmount,
@@ -85,6 +88,8 @@ const PaymentQueue = () => {
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const isSuperAdmin = role === 'super_admin';
 
   const fundingSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
     petty_cash: { label: t('paymentQueue.pettyCash'), icon: Wallet, color: "text-success" },
@@ -115,6 +120,11 @@ const PaymentQueue = () => {
   // PDF Preview state
   const [isPDFPreviewOpen, setIsPDFPreviewOpen] = useState(false);
   const [pdfPreviewData, setPdfPreviewData] = useState<PengajuanDanaData | null>(null);
+
+  // Reject dialog state
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<PaymentRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const filteredPayments = useMemo(() => {
     return payments?.filter((item) => {
@@ -837,6 +847,21 @@ const PaymentQueue = () => {
                       <Eye className="h-4 w-4" />
                     </Button>
                   )}
+                  {isSuperAdmin && (
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRejectTarget(item);
+                        setRejectReason("");
+                        setIsRejectDialogOpen(true);
+                      }}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button 
                     className="gap-2"
                     onClick={(e) => {
@@ -1144,6 +1169,76 @@ const PaymentQueue = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Reject from Queue Dialog (Super Admin only) */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              {language === 'id' ? 'Tolak dari Antrian Pembayaran' : 'Reject from Payment Queue'}
+            </DialogTitle>
+            <DialogDescription>
+              {rejectTarget && (
+                <>
+                  {language === 'id' 
+                    ? `Anda akan menolak ${rejectTarget.request_number}. Anggaran yang telah didebit akan dikembalikan.`
+                    : `You will reject ${rejectTarget.request_number}. The deducted budget will be restored.`
+                  }
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-destructive/10 rounded-lg p-4 space-y-1">
+              <p className="text-sm font-medium">{rejectTarget?.request_number}</p>
+              <p className="text-sm text-muted-foreground">{rejectTarget?.description}</p>
+              <p className="text-lg font-bold">{rejectTarget ? formatCurrency(rejectTarget.approved_amount || rejectTarget.amount) : ''}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rejectReason">
+                {language === 'id' ? 'Alasan Penolakan' : 'Rejection Reason'} <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="rejectReason"
+                placeholder={language === 'id' ? 'Masukkan alasan penolakan...' : 'Enter rejection reason...'}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
+              {t('action.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!rejectTarget || !rejectReason.trim()) return;
+                await rejectFromQueue.mutateAsync({
+                  id: rejectTarget.id,
+                  type: rejectTarget.type,
+                  reason: rejectReason.trim(),
+                });
+                setIsRejectDialogOpen(false);
+                setRejectTarget(null);
+                setRejectReason("");
+                setSelectedItems(prev => prev.filter(id => id !== rejectTarget.id));
+              }}
+              disabled={rejectFromQueue.isPending || !rejectReason.trim()}
+              className="gap-2"
+            >
+              {rejectFromQueue.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              {language === 'id' ? 'Tolak & Kembalikan Anggaran' : 'Reject & Restore Budget'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* PDF Preview Dialog */}
       <PDFPreviewDialog
