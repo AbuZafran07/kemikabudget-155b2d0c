@@ -350,3 +350,116 @@ export const generateCategoryAnalysisPDF = (
   addFooter(doc);
   doc.save(`Laporan_Kategori_${filters.year}_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`);
 };
+
+// ========== MEDICAL REIMBURSEMENT REPORT ==========
+
+interface MedicalEmployeeData {
+  employee: string;
+  entitlement: number;
+  used: number;
+  remaining: number;
+  claims: number;
+  utilization: number;
+}
+
+interface MedicalMonthlyData {
+  name: string;
+  claimed: number;
+  approved: number;
+  paid: number;
+  count: number;
+}
+
+interface MedicalKPI {
+  totalEntitlement: number;
+  totalUsed: number;
+  totalRemaining: number;
+  totalClaimCount: number;
+  pendingCount: number;
+  paidCount: number;
+}
+
+export const generateMedicalReportPDF = (
+  employeeData: MedicalEmployeeData[],
+  monthlyData: MedicalMonthlyData[],
+  kpi: MedicalKPI,
+  filters: { year: string }
+): void => {
+  const doc = new jsPDF();
+
+  addHeader(doc, 'LAPORAN MEDICAL REIMBURSEMENT', `Tahun ${filters.year}`);
+
+  // KPI Summary
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0);
+
+  let y = 55;
+  doc.text(`Total Hak Medis: ${formatCurrency(kpi.totalEntitlement)}`, 14, y);
+  doc.text(`Terpakai: ${formatCurrency(kpi.totalUsed)}`, 110, y);
+  y += 6;
+  doc.text(`Sisa: ${formatCurrency(kpi.totalRemaining)}`, 14, y);
+  doc.text(`Total Klaim: ${kpi.totalClaimCount} (Pending: ${kpi.pendingCount}, Dibayar: ${kpi.paidCount})`, 110, y);
+  y += 4;
+
+  // Monthly summary table
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  y += 6;
+  doc.text('Ringkasan Bulanan', 14, y);
+
+  autoTable(doc, {
+    startY: y + 4,
+    head: [['Bulan', 'Jumlah Klaim', 'Diajukan', 'Disetujui', 'Dibayar']],
+    body: monthlyData.map(m => [
+      m.name,
+      m.count.toString(),
+      formatCurrency(m.claimed),
+      formatCurrency(m.approved),
+      formatCurrency(m.paid),
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [220, 53, 69], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    bodyStyles: { fontSize: 7 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 25, halign: 'center' },
+      2: { cellWidth: 35, halign: 'right' },
+      3: { cellWidth: 35, halign: 'right' },
+      4: { cellWidth: 35, halign: 'right' },
+    },
+    alternateRowStyles: { fillColor: [255, 245, 245] },
+  });
+
+  // Employee detail table - new page
+  doc.addPage();
+  addHeader(doc, 'DETAIL PER KARYAWAN', `Tahun ${filters.year}`);
+
+  autoTable(doc, {
+    startY: 55,
+    head: [['Karyawan', 'Hak Medis', 'Terpakai', 'Sisa', 'Klaim', 'Utilisasi']],
+    body: employeeData.map(row => [
+      row.employee,
+      formatCurrency(row.entitlement),
+      formatCurrency(row.used),
+      formatCurrency(row.remaining),
+      row.claims.toString(),
+      `${row.utilization.toFixed(1)}%`,
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [220, 53, 69], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      0: { cellWidth: 45 },
+      1: { cellWidth: 30, halign: 'right' },
+      2: { cellWidth: 30, halign: 'right' },
+      3: { cellWidth: 30, halign: 'right' },
+      4: { cellWidth: 15, halign: 'center' },
+      5: { cellWidth: 25, halign: 'center' },
+    },
+    alternateRowStyles: { fillColor: [255, 245, 245] },
+  });
+
+  addFooter(doc);
+  doc.save(`Laporan_Medical_${filters.year}_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`);
+};
