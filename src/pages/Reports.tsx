@@ -54,9 +54,11 @@ import {
   generateExpenseReportPDF,
   generateOverBudgetReportPDF,
   generateCategoryAnalysisPDF,
+  generateMedicalReportPDF,
 } from '@/lib/generateReportPDF';
+import { Heart } from 'lucide-react';
 
-type ReportType = 'budget-vs-actual' | 'detail-expense' | 'over-budget' | 'category-analysis';
+type ReportType = 'budget-vs-actual' | 'detail-expense' | 'over-budget' | 'category-analysis' | 'medical-reimbursement';
 
 const Reports = () => {
   const { role, profile } = useAuth();
@@ -290,6 +292,103 @@ const Reports = () => {
     'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5,
     'Jul': 6, 'Agu': 7, 'Sep': 8, 'Okt': 9, 'Nov': 10, 'Des': 11,
   };
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+  // ========== MEDICAL REIMBURSEMENT REPORT ==========
+  const { data: medicalReport, isLoading: isLoadingMedical } = useQuery({
+    queryKey: ['report-medical', selectedYear],
+    queryFn: async () => {
+      // Fetch all medical claims for the year
+      const yearStart = `${selectedYear}-01-01`;
+      const yearEnd = `${selectedYear}-12-31`;
+
+      const { data: claims, error } = await supabase
+        .from('medical_claims')
+        .select('id, claim_number, employee_id, claim_amount, approved_amount, claim_type, patient_name, patient_relationship, status, treatment_date, approved_at, paid_at, created_at')
+        .gte('created_at', yearStart)
+        .lte('created_at', yearEnd + 'T23:59:59')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch employee names
+      const empIds = [...new Set(claims?.map(c => c.employee_id) || [])];
+      const empMap: Record<string, string> = {};
+      if (empIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles_secure')
+          .select('id, full_name')
+          .in('id', empIds);
+        profiles?.forEach(p => { if (p.id) empMap[p.id] = p.full_name || ''; });
+      }
+
+      // Fetch all employee medical budgets for the year
+      const { data: budgets } = await supabase
+        .from('employee_medical_budgets')
+        .select('id, employee_id, total_entitlement, used_amount, remaining_amount, status')
+        .eq('year', Number(selectedYear));
+
+      // Monthly breakdown
+      const monthly = monthNames.map((name, idx) => {
+        const monthClaims = claims?.filter(c => {
+          const m = new Date(c.created_at).getMonth();
+          return m === idx;
+        }) || [];
+        const totalClaimed = monthClaims.reduce((s, c) => s + Number(c.claim_amount), 0);
+        const totalApproved = monthClaims
+          .filter(c => ['approved', 'paid', 'closed'].includes(c.status))
+          .reduce((s, c) => s + Number(c.approved_amount || c.claim_amount), 0);
+        const totalPaid = monthClaims
+          .filter(c => ['paid', 'closed'].includes(c.status))
+          .reduce((s, c) => s + Number(c.approved_amount || c.claim_amount), 0);
+        return { name, claimed: totalClaimed, approved: totalApproved, paid: totalPaid, count: monthClaims.length };
+      });
+
+      // Per-employee summary
+      const employeeSummary = empIds.map(empId => {
+        const empClaims = claims?.filter(c => c.employee_id === empId) || [];
+        const budget = budgets?.find(b => b.employee_id === empId);
+        const totalClaimed = empClaims.reduce((s, c) => s + Number(c.claim_amount), 0);
+        const totalApproved = empClaims
+          .filter(c => ['approved', 'paid', 'closed'].includes(c.status))
+          .reduce((s, c) => s + Number(c.approved_amount || c.claim_amount), 0);
+        const totalPaid = empClaims
+          .filter(c => ['paid', 'closed'].includes(c.status))
+          .reduce((s, c) => s + Number(c.approved_amount || c.claim_amount), 0);
+        return {
+          employee_id: empId,
+          employee_name: empMap[empId] || '-',
+          total_entitlement: Number(budget?.total_entitlement || 0),
+          used_amount: Number(budget?.used_amount || 0),
+          remaining: Number(budget?.remaining_amount || 0),
+          claim_count: empClaims.length,
+          total_claimed: totalClaimed,
+          total_approved: totalApproved,
+          total_paid: totalPaid,
+          utilization: budget?.total_entitlement && Number(budget.total_entitlement) > 0
+            ? (Number(budget.used_amount) / Number(budget.total_entitlement)) * 100
+            : 0,
+        };
+      }).sort((a, b) => b.utilization - a.utilization);
+
+      // KPIs
+      const totalEntitlement = (budgets || []).reduce((s, b) => s + Number(b.total_entitlement), 0);
+      const totalUsed = (budgets || []).reduce((s, b) => s + Number(b.used_amount), 0);
+      const totalRemaining = totalEntitlement - totalUsed;
+      const totalClaimCount = claims?.length || 0;
+      const pendingCount = claims?.filter(c => ['submitted', 'review_hrga', 'review_finance'].includes(c.status)).length || 0;
+      const paidCount = claims?.filter(c => ['paid', 'closed'].includes(c.status)).length || 0;
+
+      return {
+        monthly,
+        employeeSummary,
+        kpi: { totalEntitlement, totalUsed, totalRemaining, totalClaimCount, pendingCount, paidCount },
+        claims: claims || [],
+        empMap,
+      };
+    },
+    enabled: reportType === 'medical-reimbursement',
+  });
 
   // Drill-down query for chart click
   const { data: drillDownTransactions = [], isLoading: isDrillDownLoading } = useQuery({
@@ -503,6 +602,16 @@ const Reports = () => {
         };
       }).filter((c: any) => c.allocated > 0);
       exportToCSV(categoryData, 'category_analysis', ['code', 'name', 'allocated', 'used', 'remaining', 'utilization']);
+    } else if (reportType === 'medical-reimbursement' && medicalReport) {
+      const exportData = medicalReport.employeeSummary.map(emp => ({
+        employee: emp.employee_name,
+        entitlement: emp.total_entitlement,
+        used: emp.used_amount,
+        remaining: emp.remaining,
+        claims: emp.claim_count,
+        utilization: emp.utilization.toFixed(1) + '%',
+      }));
+      exportToCSV(exportData, 'medical_reimbursement', ['employee', 'entitlement', 'used', 'remaining', 'claims', 'utilization']);
     }
   };
 
@@ -565,6 +674,20 @@ const Reports = () => {
         };
       }).filter((c: any) => c.allocated > 0);
       generateCategoryAnalysisPDF(categoryData, { year: selectedYear, division: divisionName });
+    } else if (reportType === 'medical-reimbursement' && medicalReport) {
+      generateMedicalReportPDF(
+        medicalReport.employeeSummary.map(emp => ({
+          employee: emp.employee_name,
+          entitlement: emp.total_entitlement,
+          used: emp.used_amount,
+          remaining: emp.remaining,
+          claims: emp.claim_count,
+          utilization: emp.utilization,
+        })),
+        medicalReport.monthly,
+        medicalReport.kpi,
+        { year: selectedYear }
+      );
     }
   };
 
@@ -719,6 +842,12 @@ const Reports = () => {
             <TabsTrigger value="category-analysis" className="gap-2 px-4">
               <PieChart className="h-4 w-4" />
               Analisis Kategori
+            </TabsTrigger>
+          )}
+          {isSuperAdminOrFinance && (
+            <TabsTrigger value="medical-reimbursement" className="gap-2 px-4">
+              <Heart className="h-4 w-4" />
+              Medical
             </TabsTrigger>
           )}
         </TabsList>
@@ -1056,6 +1185,128 @@ const Reports = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Medical Reimbursement Report */}
+        <TabsContent value="medical-reimbursement" className="space-y-6 mt-6">
+          {isLoadingMedical ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : medicalReport ? (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Total Hak Medis</p>
+                    <p className="text-lg font-bold text-foreground">{formatCurrency(medicalReport.kpi.totalEntitlement)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Terpakai</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(medicalReport.kpi.totalUsed)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Sisa</p>
+                    <p className="text-lg font-bold text-success">{formatCurrency(medicalReport.kpi.totalRemaining)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Total Klaim</p>
+                    <p className="text-lg font-bold text-foreground">{medicalReport.kpi.totalClaimCount}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Pending</p>
+                    <p className="text-lg font-bold text-warning">{medicalReport.kpi.pendingCount}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Sudah Dibayar</p>
+                    <p className="text-lg font-bold text-success">{medicalReport.kpi.paidCount}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Monthly Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">Klaim Medis Bulanan {selectedYear}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={medicalReport.monthly} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis tickFormatter={formatYAxis} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                        <Bar dataKey="claimed" name="Diajukan" fill="hsl(var(--primary) / 0.3)" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="approved" name="Disetujui" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="paid" name="Dibayar" fill="hsl(var(--success))" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Employee Summary Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">Penggunaan Medis per Karyawan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Karyawan</TableHead>
+                        <TableHead className="text-right">Hak</TableHead>
+                        <TableHead className="text-right">Terpakai</TableHead>
+                        <TableHead className="text-right">Sisa</TableHead>
+                        <TableHead className="text-center">Klaim</TableHead>
+                        <TableHead className="text-right">Utilisasi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {medicalReport.employeeSummary.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            Tidak ada data
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        medicalReport.employeeSummary.map((emp) => (
+                          <TableRow key={emp.employee_id}>
+                            <TableCell className="font-medium">{emp.employee_name}</TableCell>
+                            <TableCell className="text-right">{formatFullCurrency(emp.total_entitlement)}</TableCell>
+                            <TableCell className="text-right">{formatFullCurrency(emp.used_amount)}</TableCell>
+                            <TableCell className="text-right">{formatFullCurrency(emp.remaining)}</TableCell>
+                            <TableCell className="text-center">{emp.claim_count}</TableCell>
+                            <TableCell className="text-right">
+                              <span className={cn(
+                                "font-semibold",
+                                emp.utilization > 100 ? "text-destructive" : emp.utilization > 80 ? "text-warning" : "text-success"
+                              )}>
+                                {emp.utilization.toFixed(0)}%
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          ) : null}
         </TabsContent>
       </Tabs>
 
