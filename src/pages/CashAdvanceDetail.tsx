@@ -86,6 +86,29 @@ const CashAdvanceDetail = () => {
   const { data: events } = useCashAdvanceEvents(id || "");
   const { data: settlements } = useCashAdvanceSettlements(id || "");
 
+  // Fetch settlement items for all settlements (for PDF)
+  const { data: allSettlementItems } = useQuery({
+    queryKey: ["all-settlement-items", id, settlements?.map(s => s.id)],
+    queryFn: async () => {
+      if (!settlements || settlements.length === 0) return {};
+      const settlementIds = settlements.map(s => s.id);
+      const { data, error } = await supabase
+        .from("cash_advance_settlement_items")
+        .select("*")
+        .in("settlement_id", settlementIds)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      // Group by settlement_id
+      const grouped: Record<string, typeof data> = {};
+      data?.forEach(item => {
+        if (!grouped[item.settlement_id]) grouped[item.settlement_id] = [];
+        grouped[item.settlement_id].push(item);
+      });
+      return grouped;
+    },
+    enabled: !!settlements && settlements.length > 0,
+  });
+
   const submitCashAdvance = useSubmitCashAdvance();
   const approveCashAdvance = useApproveCashAdvance();
   const rejectCashAdvance = useRejectCashAdvance();
@@ -146,7 +169,17 @@ const CashAdvanceDetail = () => {
   const canPay = ca.status === "approved" && (role === "super_admin" || role === "finance");
   const canAddSettlement = ca.status === "paid" && ca.requester_id === user?.id;
 
-  const balance = ca.total_amount - (ca.total_realized || 0);
+  // Calculate actual realized from settlements (including submitted/approved, not just DB field)
+  const calculatedRealized = (() => {
+    if (ca.total_realized && ca.total_realized > 0) return ca.total_realized;
+    if (!settlements || settlements.length === 0) return 0;
+    // Sum total_realized from non-rejected settlements
+    return settlements
+      .filter(s => s.status !== 'rejected')
+      .reduce((sum, s) => sum + s.total_realized, 0);
+  })();
+  
+  const balance = ca.total_amount - calculatedRealized;
   const commitmentLocked = ca.status !== "draft" && ca.status !== "rejected" && ca.status !== "cancelled" && ca.status !== "settled";
 
   const handleSubmit = async () => {
@@ -264,7 +297,13 @@ const CashAdvanceDetail = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(ca.total_realized || 0)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(calculatedRealized)}</div>
+            {calculatedRealized > 0 && !ca.total_realized && (
+              <Badge variant="secondary" className="mt-1">
+                <Clock className="h-3 w-3 mr-1" />
+                Pending Approval
+              </Badge>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -595,6 +634,23 @@ const CashAdvanceDetail = () => {
             unit_price: item.unit_price,
             amount: item.amount,
             category: item.category ? { name: item.category.name, code: item.category.code } : null,
+          })),
+          settlements: settlements?.filter(s => s.status !== 'rejected').map(s => ({
+            settlement_number: s.settlement_number,
+            status: s.status,
+            total_realized: s.total_realized,
+            variance_amount: s.variance_amount,
+            notes: s.notes,
+            created_at: s.created_at,
+            items: (allSettlementItems?.[s.id] || []).map(item => ({
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              amount: item.amount,
+              receipt_number: item.receipt_number,
+              receipt_date: item.receipt_date,
+              notes: item.notes,
+            })),
           })),
         } as CashAdvancePDFData : null}
       />

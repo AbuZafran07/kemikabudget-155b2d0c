@@ -10,6 +10,26 @@ export interface CashAdvanceItem {
   category?: { name: string; code: string } | null;
 }
 
+export interface CashAdvanceSettlementItemPDF {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  receipt_number?: string | null;
+  receipt_date?: string | null;
+  notes?: string | null;
+}
+
+export interface CashAdvanceSettlementPDF {
+  settlement_number: string;
+  status: string;
+  total_realized: number;
+  variance_amount: number;
+  notes?: string | null;
+  created_at: string;
+  items: CashAdvanceSettlementItemPDF[];
+}
+
 export interface CashAdvancePDFData {
   ca_number: string;
   purpose: string;
@@ -27,6 +47,7 @@ export interface CashAdvancePDFData {
   payer?: { full_name: string; signature_url?: string | null } | null;
   funding_source?: { name: string; type: string } | null;
   items: CashAdvanceItem[];
+  settlements?: CashAdvanceSettlementPDF[];
 }
 
 const formatCurrency = (amount: number) => {
@@ -423,6 +444,87 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
       <div>${safeNotes}</div>
     </div>
     ` : ''}
+
+    ${data.settlements && data.settlements.length > 0 ? (() => {
+      const activeSettlements = data.settlements!.filter(s => s.status !== 'rejected');
+      if (activeSettlements.length === 0) return '';
+      
+      const totalRealized = activeSettlements.reduce((sum, s) => sum + s.total_realized, 0);
+      const variance = data.total_amount - totalRealized;
+      
+      const settlementSections = activeSettlements.map(settlement => {
+        const settlementItemsRows = settlement.items.map((item, index) => `
+          <tr>
+            <td class="num">${index + 1}</td>
+            <td class="description">${escapeHtml(item.description)}</td>
+            <td class="qty">${item.quantity}</td>
+            <td class="amount">Rp. ${formatCurrency(item.unit_price)}</td>
+            <td class="amount">Rp. ${formatCurrency(item.amount)}</td>
+            <td style="text-align: center; font-size: 8pt;">${item.receipt_number ? escapeHtml(item.receipt_number) : '-'}</td>
+            <td style="text-align: center; font-size: 8pt;">${item.receipt_date ? format(new Date(item.receipt_date), 'dd/MM/yy', { locale: localeId }) : '-'}</td>
+          </tr>
+        `).join('');
+
+        return `
+        <div style="margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span style="font-weight: bold; font-size: 9pt;">${escapeHtml(settlement.settlement_number)}</span>
+            <span style="font-size: 8pt; color: #555;">Status: ${escapeHtml(settlement.status.toUpperCase())} | ${format(new Date(settlement.created_at), 'dd MMM yyyy', { locale: localeId })}</span>
+          </div>
+          <table class="main-table">
+            <thead>
+              <tr>
+                <th class="num">No.</th>
+                <th>Keterangan Realisasi</th>
+                <th class="qty">Qty</th>
+                <th class="amount">Harga Satuan</th>
+                <th class="amount">Jumlah</th>
+                <th style="text-align: center; min-width: 70px;">No. Kwitansi</th>
+                <th style="text-align: center; min-width: 70px;">Tgl Kwitansi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${settlementItemsRows}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="text-align: right;">Sub Total Realisasi</td>
+                <td class="amount">Rp. ${formatCurrency(settlement.total_realized)}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        `;
+      }).join('');
+
+      return `
+      <div style="margin-top: 15px; margin-bottom: 10px; page-break-inside: avoid;">
+        <div style="background: #1a5f2a; color: white; padding: 8px 10px; font-weight: bold; font-size: 11pt;">
+          LAPORAN REALISASI
+        </div>
+        ${settlementSections}
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #333; margin-top: 5px;">
+          <tr style="background: #f5f5f5;">
+            <td style="padding: 8px 10px; border: 1px solid #333; font-weight: bold;">Total Dana Cash Advance</td>
+            <td style="padding: 8px 10px; border: 1px solid #333; text-align: right; font-weight: bold;">Rp. ${formatCurrency(data.total_amount)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 10px; border: 1px solid #333; font-weight: bold;">Total Realisasi</td>
+            <td style="padding: 8px 10px; border: 1px solid #333; text-align: right; font-weight: bold;">Rp. ${formatCurrency(totalRealized)}</td>
+          </tr>
+          <tr style="background: ${variance > 0 ? '#e6f7e6' : variance < 0 ? '#fde8e8' : '#f5f5f5'};">
+            <td style="padding: 8px 10px; border: 1px solid #333; font-weight: bold;">
+              Selisih ${variance > 0 ? '(Sisa Dikembalikan)' : variance < 0 ? '(Kurang Bayar)' : ''}
+            </td>
+            <td style="padding: 8px 10px; border: 1px solid #333; text-align: right; font-weight: bold; color: ${variance > 0 ? '#1a5f2a' : variance < 0 ? '#dc2626' : '#000'};">
+              Rp. ${formatCurrency(Math.abs(variance))}
+            </td>
+          </tr>
+        </table>
+      </div>
+      `;
+    })() : ''}
 
     <!-- 4-column signature layout matching Pengajuan Dana -->
     <table class="signature-section">
