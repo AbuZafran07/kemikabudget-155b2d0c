@@ -515,7 +515,7 @@ const CashAdvanceDetail = () => {
                       <TableRow key={settlement.id}>
                         <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                         <TableCell>
-                          <StatusBadge status={settlement.status} />
+                          <StatusBadge status={settlement.status as any} />
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(settlement.total_realized)}</TableCell>
                         <TableCell className="text-right">
