@@ -146,7 +146,17 @@ const CashAdvanceDetail = () => {
   const canPay = ca.status === "approved" && (role === "super_admin" || role === "finance");
   const canAddSettlement = ca.status === "paid" && ca.requester_id === user?.id;
 
-  const balance = ca.total_amount - (ca.total_realized || 0);
+  // Calculate actual realized from settlements (including submitted/approved, not just DB field)
+  const calculatedRealized = (() => {
+    if (ca.total_realized && ca.total_realized > 0) return ca.total_realized;
+    if (!settlements || settlements.length === 0) return 0;
+    // Sum total_realized from non-rejected settlements
+    return settlements
+      .filter(s => s.status !== 'rejected')
+      .reduce((sum, s) => sum + s.total_realized, 0);
+  })();
+  
+  const balance = ca.total_amount - calculatedRealized;
   const commitmentLocked = ca.status !== "draft" && ca.status !== "rejected" && ca.status !== "cancelled" && ca.status !== "settled";
 
   const handleSubmit = async () => {
@@ -264,7 +274,13 @@ const CashAdvanceDetail = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(ca.total_realized || 0)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(calculatedRealized)}</div>
+            {calculatedRealized > 0 && !ca.total_realized && (
+              <Badge variant="secondary" className="mt-1">
+                <Clock className="h-3 w-3 mr-1" />
+                Pending Approval
+              </Badge>
+            )}
           </CardContent>
         </Card>
         <Card>
