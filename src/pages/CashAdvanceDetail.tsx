@@ -115,6 +115,14 @@ const CashAdvanceDetail = () => {
   const approveCashAdvance = useApproveCashAdvance();
   const rejectCashAdvance = useRejectCashAdvance();
   const payCashAdvance = usePayCashAdvance();
+  const approveSettlement = useApproveSettlement();
+  const rejectSettlement = useRejectSettlement();
+
+  const [showApproveSettlementDialog, setShowApproveSettlementDialog] = useState(false);
+  const [showRejectSettlementDialog, setShowRejectSettlementDialog] = useState(false);
+  const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null);
+  const [settlementApprovalNote, setSettlementApprovalNote] = useState("");
+  const [settlementRejectionReason, setSettlementRejectionReason] = useState("");
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
