@@ -178,6 +178,7 @@ const CashAdvanceDetail = () => {
   const canApprove = (ca.status === "submitted" || ca.status === "under_review") && role === "super_admin";
   const canPay = ca.status === "approved" && (role === "super_admin" || role === "finance");
   const canAddSettlement = ca.status === "paid" && ca.requester_id === user?.id;
+  const canApproveSettlement = (role === "super_admin" || role === "finance");
 
   // Calculate actual realized from settlements (including submitted/approved, not just DB field)
   const calculatedRealized = (() => {
@@ -212,6 +213,22 @@ const CashAdvanceDetail = () => {
     await payCashAdvance.mutateAsync({ caId: ca.id, fundingSourceId: selectedFundingSource });
     setShowPayDialog(false);
     setSelectedFundingSource("");
+  };
+
+  const handleApproveSettlement = async () => {
+    if (!selectedSettlementId) return;
+    await approveSettlement.mutateAsync({ settlementId: selectedSettlementId, note: settlementApprovalNote || undefined });
+    setShowApproveSettlementDialog(false);
+    setSelectedSettlementId(null);
+    setSettlementApprovalNote("");
+  };
+
+  const handleRejectSettlement = async () => {
+    if (!selectedSettlementId) return;
+    await rejectSettlement.mutateAsync({ settlementId: selectedSettlementId, reason: settlementRejectionReason });
+    setShowRejectSettlementDialog(false);
+    setSelectedSettlementId(null);
+    setSettlementRejectionReason("");
   };
 
   return (
