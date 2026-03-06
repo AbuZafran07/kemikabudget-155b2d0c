@@ -742,6 +742,44 @@ export const useApproveSettlement = () => {
   });
 };
 
+export const useRejectSettlement = () => {
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ settlementId, reason }: { settlementId: string; reason: string }) => {
+      const { data, error } = await supabase.rpc("reject_settlement" as any, {
+        p_settlement_id: settlementId,
+        p_reason: reason,
+      });
+
+      if (error) throw error;
+      const result = data as unknown as RpcResult;
+      if (!result?.success) throw new Error(result?.error || "Failed to reject settlement");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-settlements"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-events"] });
+
+      toast({
+        title: t("cashAdvance.settlementRejectSuccess") || "Realisasi ditolak",
+        description: t("cashAdvance.settlementRejectSuccessDesc") || "Realisasi berhasil ditolak. Pemohon dapat mengajukan ulang.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: t("common.error"),
+        description: error.message,
+      });
+    },
+  });
+};
+
 export const useBudgetLedger = (divisionBudgetId?: string) => {
   return useQuery({
     queryKey: ["budget-ledger", divisionBudgetId],
