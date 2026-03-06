@@ -708,6 +708,62 @@ const CashAdvanceDetail = () => {
           })),
         } as CashAdvancePDFData : null}
       />
+
+      {/* Approve Settlement Dialog */}
+      <AlertDialog open={showApproveSettlementDialog} onOpenChange={setShowApproveSettlementDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Realisasi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menyetujui realisasi ini? Komitmen anggaran akan dilepas dan aktual akan dicatat.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Catatan Persetujuan</Label>
+            <Textarea
+              placeholder="Catatan opsional..."
+              value={settlementApprovalNote}
+              onChange={(e) => setSettlementApprovalNote(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleApproveSettlement} disabled={approveSettlement.isPending}>
+              {t("action.approve")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject Settlement Dialog */}
+      <AlertDialog open={showRejectSettlementDialog} onOpenChange={setShowRejectSettlementDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tolak Realisasi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realisasi akan ditolak dan pemohon dapat mengajukan ulang.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Alasan Penolakan *</Label>
+            <Textarea
+              placeholder="Masukkan alasan penolakan..."
+              value={settlementRejectionReason}
+              onChange={(e) => setSettlementRejectionReason(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRejectSettlement}
+              disabled={!settlementRejectionReason.trim() || rejectSettlement.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("action.reject")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
