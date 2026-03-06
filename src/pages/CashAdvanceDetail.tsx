@@ -635,6 +635,23 @@ const CashAdvanceDetail = () => {
             amount: item.amount,
             category: item.category ? { name: item.category.name, code: item.category.code } : null,
           })),
+          settlements: settlements?.filter(s => s.status !== 'rejected').map(s => ({
+            settlement_number: s.settlement_number,
+            status: s.status,
+            total_realized: s.total_realized,
+            variance_amount: s.variance_amount,
+            notes: s.notes,
+            created_at: s.created_at,
+            items: (allSettlementItems?.[s.id] || []).map(item => ({
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              amount: item.amount,
+              receipt_number: item.receipt_number,
+              receipt_date: item.receipt_date,
+              notes: item.notes,
+            })),
+          })),
         } as CashAdvancePDFData : null}
       />
     </div>
