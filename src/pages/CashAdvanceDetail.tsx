@@ -86,6 +86,29 @@ const CashAdvanceDetail = () => {
   const { data: events } = useCashAdvanceEvents(id || "");
   const { data: settlements } = useCashAdvanceSettlements(id || "");
 
+  // Fetch settlement items for all settlements (for PDF)
+  const { data: allSettlementItems } = useQuery({
+    queryKey: ["all-settlement-items", id, settlements?.map(s => s.id)],
+    queryFn: async () => {
+      if (!settlements || settlements.length === 0) return {};
+      const settlementIds = settlements.map(s => s.id);
+      const { data, error } = await supabase
+        .from("cash_advance_settlement_items")
+        .select("*")
+        .in("settlement_id", settlementIds)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      // Group by settlement_id
+      const grouped: Record<string, typeof data> = {};
+      data?.forEach(item => {
+        if (!grouped[item.settlement_id]) grouped[item.settlement_id] = [];
+        grouped[item.settlement_id].push(item);
+      });
+      return grouped;
+    },
+    enabled: !!settlements && settlements.length > 0,
+  });
+
   const submitCashAdvance = useSubmitCashAdvance();
   const approveCashAdvance = useApproveCashAdvance();
   const rejectCashAdvance = useRejectCashAdvance();
