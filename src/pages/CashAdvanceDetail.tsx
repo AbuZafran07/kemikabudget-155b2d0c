@@ -507,26 +507,53 @@ const CashAdvanceDetail = () => {
                       <TableHead className="text-right">{t("cashAdvance.totalRealized")}</TableHead>
                       <TableHead className="text-right">{t("cashAdvance.variance")}</TableHead>
                       <TableHead>{t("common.createdAt")}</TableHead>
+                      {canApproveSettlement && <TableHead className="text-right">{t("common.actions")}</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {settlements.map((settlement) => (
-                      <TableRow
-                        key={settlement.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/cash-advance/${ca.id}/settlement/${settlement.id}`)}
-                      >
+                      <TableRow key={settlement.id}>
                         <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                         <TableCell>
-                          <Badge variant={settlement.status === "approved" ? "default" : "secondary"}>
-                            {t(`status.${settlement.status}`)}
-                          </Badge>
+                          <StatusBadge status={settlement.status} />
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(settlement.total_realized)}</TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(settlement.variance_amount)}
                         </TableCell>
                         <TableCell>{formatDate(settlement.created_at)}</TableCell>
+                        {canApproveSettlement && (
+                          <TableCell className="text-right">
+                            {settlement.status === "submitted" ? (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    setSelectedSettlementId(settlement.id);
+                                    setShowRejectSettlementDialog(true);
+                                  }}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  {t("action.reject")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedSettlementId(settlement.id);
+                                    setShowApproveSettlementDialog(true);
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  {t("action.approve")}
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
