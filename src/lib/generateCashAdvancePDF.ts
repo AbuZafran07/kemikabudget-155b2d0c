@@ -10,6 +10,26 @@ export interface CashAdvanceItem {
   category?: { name: string; code: string } | null;
 }
 
+export interface CashAdvanceSettlementItemPDF {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  receipt_number?: string | null;
+  receipt_date?: string | null;
+  notes?: string | null;
+}
+
+export interface CashAdvanceSettlementPDF {
+  settlement_number: string;
+  status: string;
+  total_realized: number;
+  variance_amount: number;
+  notes?: string | null;
+  created_at: string;
+  items: CashAdvanceSettlementItemPDF[];
+}
+
 export interface CashAdvancePDFData {
   ca_number: string;
   purpose: string;
@@ -27,6 +47,7 @@ export interface CashAdvancePDFData {
   payer?: { full_name: string; signature_url?: string | null } | null;
   funding_source?: { name: string; type: string } | null;
   items: CashAdvanceItem[];
+  settlements?: CashAdvanceSettlementPDF[];
 }
 
 const formatCurrency = (amount: number) => {
