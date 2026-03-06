@@ -59,6 +59,8 @@ import {
   useApproveCashAdvance,
   useRejectCashAdvance,
   usePayCashAdvance,
+  useApproveSettlement,
+  useRejectSettlement,
 } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,6 +115,14 @@ const CashAdvanceDetail = () => {
   const approveCashAdvance = useApproveCashAdvance();
   const rejectCashAdvance = useRejectCashAdvance();
   const payCashAdvance = usePayCashAdvance();
+  const approveSettlement = useApproveSettlement();
+  const rejectSettlement = useRejectSettlement();
+
+  const [showApproveSettlementDialog, setShowApproveSettlementDialog] = useState(false);
+  const [showRejectSettlementDialog, setShowRejectSettlementDialog] = useState(false);
+  const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null);
+  const [settlementApprovalNote, setSettlementApprovalNote] = useState("");
+  const [settlementRejectionReason, setSettlementRejectionReason] = useState("");
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
@@ -168,6 +178,7 @@ const CashAdvanceDetail = () => {
   const canApprove = (ca.status === "submitted" || ca.status === "under_review") && role === "super_admin";
   const canPay = ca.status === "approved" && (role === "super_admin" || role === "finance");
   const canAddSettlement = ca.status === "paid" && ca.requester_id === user?.id;
+  const canApproveSettlement = (role === "super_admin" || role === "finance");
 
   // Calculate actual realized from settlements (including submitted/approved, not just DB field)
   const calculatedRealized = (() => {
@@ -202,6 +213,22 @@ const CashAdvanceDetail = () => {
     await payCashAdvance.mutateAsync({ caId: ca.id, fundingSourceId: selectedFundingSource });
     setShowPayDialog(false);
     setSelectedFundingSource("");
+  };
+
+  const handleApproveSettlement = async () => {
+    if (!selectedSettlementId) return;
+    await approveSettlement.mutateAsync({ settlementId: selectedSettlementId, note: settlementApprovalNote || undefined });
+    setShowApproveSettlementDialog(false);
+    setSelectedSettlementId(null);
+    setSettlementApprovalNote("");
+  };
+
+  const handleRejectSettlement = async () => {
+    if (!selectedSettlementId) return;
+    await rejectSettlement.mutateAsync({ settlementId: selectedSettlementId, reason: settlementRejectionReason });
+    setShowRejectSettlementDialog(false);
+    setSelectedSettlementId(null);
+    setSettlementRejectionReason("");
   };
 
   return (
@@ -480,26 +507,53 @@ const CashAdvanceDetail = () => {
                       <TableHead className="text-right">{t("cashAdvance.totalRealized")}</TableHead>
                       <TableHead className="text-right">{t("cashAdvance.variance")}</TableHead>
                       <TableHead>{t("common.createdAt")}</TableHead>
+                      {canApproveSettlement && <TableHead className="text-right">{t("common.actions")}</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {settlements.map((settlement) => (
-                      <TableRow
-                        key={settlement.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/cash-advance/${ca.id}/settlement/${settlement.id}`)}
-                      >
+                      <TableRow key={settlement.id}>
                         <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                         <TableCell>
-                          <Badge variant={settlement.status === "approved" ? "default" : "secondary"}>
-                            {t(`status.${settlement.status}`)}
-                          </Badge>
+                          <StatusBadge status={settlement.status as any} />
                         </TableCell>
                         <TableCell className="text-right">{formatCurrency(settlement.total_realized)}</TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(settlement.variance_amount)}
                         </TableCell>
                         <TableCell>{formatDate(settlement.created_at)}</TableCell>
+                        {canApproveSettlement && (
+                          <TableCell className="text-right">
+                            {settlement.status === "submitted" ? (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    setSelectedSettlementId(settlement.id);
+                                    setShowRejectSettlementDialog(true);
+                                  }}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  {t("action.reject")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedSettlementId(settlement.id);
+                                    setShowApproveSettlementDialog(true);
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  {t("action.approve")}
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -654,6 +708,62 @@ const CashAdvanceDetail = () => {
           })),
         } as CashAdvancePDFData : null}
       />
+
+      {/* Approve Settlement Dialog */}
+      <AlertDialog open={showApproveSettlementDialog} onOpenChange={setShowApproveSettlementDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Realisasi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menyetujui realisasi ini? Komitmen anggaran akan dilepas dan aktual akan dicatat.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Catatan Persetujuan</Label>
+            <Textarea
+              placeholder="Catatan opsional..."
+              value={settlementApprovalNote}
+              onChange={(e) => setSettlementApprovalNote(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleApproveSettlement} disabled={approveSettlement.isPending}>
+              {t("action.approve")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject Settlement Dialog */}
+      <AlertDialog open={showRejectSettlementDialog} onOpenChange={setShowRejectSettlementDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tolak Realisasi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realisasi akan ditolak dan pemohon dapat mengajukan ulang.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Alasan Penolakan *</Label>
+            <Textarea
+              placeholder="Masukkan alasan penolakan..."
+              value={settlementRejectionReason}
+              onChange={(e) => setSettlementRejectionReason(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRejectSettlement}
+              disabled={!settlementRejectionReason.trim() || rejectSettlement.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("action.reject")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

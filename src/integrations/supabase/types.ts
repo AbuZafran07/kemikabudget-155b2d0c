@@ -2404,6 +2404,10 @@ export type Database = {
         Args: { p_rejection_reason: string; p_request_id: string }
         Returns: Json
       }
+      reject_settlement: {
+        Args: { p_reason: string; p_settlement_id: string }
+        Returns: Json
+      }
       reset_otp_rate_limit: { Args: { p_user_id: string }; Returns: undefined }
       review_medical_claim_finance: {
         Args: {
