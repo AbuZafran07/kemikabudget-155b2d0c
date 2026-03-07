@@ -45,6 +45,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -123,6 +130,7 @@ const CashAdvanceDetail = () => {
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null);
   const [settlementApprovalNote, setSettlementApprovalNote] = useState("");
   const [settlementRejectionReason, setSettlementRejectionReason] = useState("");
+  const [viewSettlementId, setViewSettlementId] = useState<string | null>(null);
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
