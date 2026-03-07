@@ -520,7 +520,11 @@ const CashAdvanceDetail = () => {
                   </TableHeader>
                   <TableBody>
                     {settlements.map((settlement) => (
-                      <TableRow key={settlement.id}>
+                      <TableRow
+                        key={settlement.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setViewSettlementId(settlement.id)}
+                      >
                         <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                         <TableCell>
                           <StatusBadge status={settlement.status as any} />
@@ -538,7 +542,8 @@ const CashAdvanceDetail = () => {
                                   size="sm"
                                   variant="outline"
                                   className="text-destructive"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setSelectedSettlementId(settlement.id);
                                     setShowRejectSettlementDialog(true);
                                   }}
@@ -548,7 +553,8 @@ const CashAdvanceDetail = () => {
                                 </Button>
                                 <Button
                                   size="sm"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setSelectedSettlementId(settlement.id);
                                     setShowApproveSettlementDialog(true);
                                   }}
