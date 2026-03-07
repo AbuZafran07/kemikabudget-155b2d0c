@@ -45,6 +45,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -123,6 +130,7 @@ const CashAdvanceDetail = () => {
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null);
   const [settlementApprovalNote, setSettlementApprovalNote] = useState("");
   const [settlementRejectionReason, setSettlementRejectionReason] = useState("");
+  const [viewSettlementId, setViewSettlementId] = useState<string | null>(null);
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
@@ -512,7 +520,11 @@ const CashAdvanceDetail = () => {
                   </TableHeader>
                   <TableBody>
                     {settlements.map((settlement) => (
-                      <TableRow key={settlement.id}>
+                      <TableRow
+                        key={settlement.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setViewSettlementId(settlement.id)}
+                      >
                         <TableCell className="font-medium">{settlement.settlement_number}</TableCell>
                         <TableCell>
                           <StatusBadge status={settlement.status as any} />
@@ -530,7 +542,8 @@ const CashAdvanceDetail = () => {
                                   size="sm"
                                   variant="outline"
                                   className="text-destructive"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setSelectedSettlementId(settlement.id);
                                     setShowRejectSettlementDialog(true);
                                   }}
@@ -540,7 +553,8 @@ const CashAdvanceDetail = () => {
                                 </Button>
                                 <Button
                                   size="sm"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setSelectedSettlementId(settlement.id);
                                     setShowApproveSettlementDialog(true);
                                   }}
@@ -764,6 +778,136 @@ const CashAdvanceDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Settlement Detail Dialog */}
+      <Dialog open={!!viewSettlementId} onOpenChange={(open) => !open && setViewSettlementId(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          {(() => {
+            const settlement = settlements?.find(s => s.id === viewSettlementId);
+            const settlementItems = viewSettlementId ? (allSettlementItems?.[viewSettlementId] || []) : [];
+            if (!settlement) return null;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-3">
+                    <FileText className="h-5 w-5" />
+                    {settlement.settlement_number}
+                  </DialogTitle>
+                </DialogHeader>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <StatusBadge status={settlement.status as any} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("common.createdAt")}</p>
+                    <p className="font-medium">{formatDate(settlement.created_at)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("cashAdvance.totalRealized")}</p>
+                    <p className="font-semibold">{formatCurrency(settlement.total_realized)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("cashAdvance.variance")}</p>
+                    <p className={`font-semibold ${settlement.variance_amount < 0 ? "text-destructive" : settlement.variance_amount > 0 ? "text-green-600" : ""}`}>
+                      {formatCurrency(settlement.variance_amount)}
+                      {settlement.variance_amount > 0 && " (Sisa)"}
+                      {settlement.variance_amount < 0 && " (Kurang)"}
+                    </p>
+                  </div>
+                </div>
+
+                {settlement.notes && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Catatan</p>
+                    <p className="text-sm">{settlement.notes}</p>
+                  </div>
+                )}
+
+                {settlement.rejection_reason && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-sm font-medium text-destructive">Alasan Penolakan</p>
+                    <p className="text-sm mt-1">{settlement.rejection_reason}</p>
+                  </div>
+                )}
+
+                <Separator />
+
+                <div>
+                  <h4 className="font-semibold mb-3">Rincian Item Realisasi</h4>
+                  {settlementItems.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead>Deskripsi</TableHead>
+                          <TableHead className="text-center">Qty</TableHead>
+                          <TableHead className="text-right">Harga Satuan</TableHead>
+                          <TableHead className="text-right">Jumlah</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {settlementItems.map((item: any, idx: number) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{item.description}</p>
+                                {item.receipt_number && (
+                                  <p className="text-xs text-muted-foreground">
+                                    No. Kwitansi: {item.receipt_number}
+                                    {item.receipt_date && ` • ${format(new Date(item.receipt_date), "dd MMM yyyy", { locale: idLocale })}`}
+                                  </p>
+                                )}
+                                {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">{item.quantity}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
+                            <TableCell className="text-right font-medium">{formatCurrency(item.amount)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={4} className="font-semibold">Total Realisasi</TableCell>
+                          <TableCell className="text-right font-semibold">{formatCurrency(settlement.total_realized)}</TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">Belum ada item realisasi</p>
+                  )}
+                </div>
+
+                {/* Summary comparison */}
+                {ca && (
+                  <div className="rounded-md border bg-muted/30 p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Total Cash Advance</span>
+                      <span className="font-medium">{formatCurrency(ca.total_amount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Total Realisasi</span>
+                      <span className="font-medium">{formatCurrency(settlement.total_realized)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Selisih</span>
+                      <span className={settlement.variance_amount < 0 ? "text-destructive" : settlement.variance_amount > 0 ? "text-green-600" : ""}>
+                        {formatCurrency(Math.abs(settlement.variance_amount))}
+                        {settlement.variance_amount > 0 && " (Pengembalian)"}
+                        {settlement.variance_amount < 0 && " (Kekurangan)"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
