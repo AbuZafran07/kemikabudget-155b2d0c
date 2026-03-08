@@ -35,6 +35,7 @@ import MedicalReimbursementForm from "./pages/MedicalReimbursementForm";
 import MedicalReimbursementDetail from "./pages/MedicalReimbursementDetail";
 import EmployeeMedicalBudgets from "./pages/EmployeeMedicalBudgets";
 import Adjustments from "./pages/Adjustments";
+import BackupRestore from "./pages/BackupRestore";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
 
@@ -154,6 +155,11 @@ const App = () => (
                 <Route path="/employee-medical-budgets" element={
                   <ProtectedRoute requiredRole="super_admin">
                     <EmployeeMedicalBudgets />
+                  </ProtectedRoute>
+                } />
+                <Route path="/backup-restore" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <BackupRestore />
                   </ProtectedRoute>
                 } />
               </Route>
