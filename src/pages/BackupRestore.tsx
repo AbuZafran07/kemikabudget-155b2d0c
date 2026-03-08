@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Download, Upload, Database, AlertTriangle, CheckCircle, Loader2, FileSpreadsheet, FileJson } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, Upload, Database, AlertTriangle, CheckCircle, Loader2, FileSpreadsheet, FileJson, Clock, Timer, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 interface BackupCategory {
@@ -64,6 +66,78 @@ const BackupRestore = () => {
   const [restorePreview, setRestorePreview] = useState<any>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "xlsx">("json");
 
+  // Auto backup settings
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [autoBackupSchedule, setAutoBackupSchedule] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [autoBackupRetention, setAutoBackupRetention] = useState<number>(7);
+  const [isSavingAutoBackup, setIsSavingAutoBackup] = useState(false);
+  const [lastAutoBackup, setLastAutoBackup] = useState<string | null>(null);
+
+  // Load auto backup settings from app_settings or localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("autoBackupSettings");
+    if (saved) {
+      try {
+        const settings = JSON.parse(saved);
+        setAutoBackupEnabled(settings.enabled ?? false);
+        setAutoBackupSchedule(settings.schedule ?? "daily");
+        setAutoBackupRetention(settings.retention ?? 7);
+        setLastAutoBackup(settings.lastRun ?? null);
+      } catch {}
+    }
+  }, []);
+
+  const handleSaveAutoBackupSettings = async () => {
+    setIsSavingAutoBackup(true);
+    try {
+      const settings = {
+        enabled: autoBackupEnabled,
+        schedule: autoBackupSchedule,
+        retention: autoBackupRetention,
+        lastRun: lastAutoBackup,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem("autoBackupSettings", JSON.stringify(settings));
+
+      // Audit log
+      await supabase.from("audit_logs").insert({
+        event_type: "auto_backup_settings",
+        entity_type: "system",
+        description: `Auto backup settings updated - ${autoBackupEnabled ? "enabled" : "disabled"}, schedule: ${autoBackupSchedule}`,
+        user_id: user?.id,
+        metadata: settings as any,
+      });
+
+      toast.success(t("backup.autoBackupSaved"));
+    } catch (err: any) {
+      toast.error(t("backup.autoBackupError"));
+    } finally {
+      setIsSavingAutoBackup(false);
+    }
+  };
+
+  const getNextScheduledDate = () => {
+    const now = new Date();
+    switch (autoBackupSchedule) {
+      case "daily": {
+        const next = new Date(now);
+        next.setDate(next.getDate() + 1);
+        next.setHours(2, 0, 0, 0);
+        return next.toLocaleString();
+      }
+      case "weekly": {
+        const next = new Date(now);
+        const daysUntilMonday = (8 - next.getDay()) % 7 || 7;
+        next.setDate(next.getDate() + daysUntilMonday);
+        next.setHours(2, 0, 0, 0);
+        return next.toLocaleString();
+      }
+      case "monthly": {
+        const next = new Date(now.getFullYear(), now.getMonth() + 1, 1, 2, 0, 0);
+        return next.toLocaleString();
+      }
+    }
+  };
   const toggleCategory = (key: string) => {
     setSelectedCategories((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
@@ -408,6 +482,122 @@ const BackupRestore = () => {
               {t("backup.downloadCSV")}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Automatic Backup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Timer className="h-5 w-5" />
+            {t("backup.autoBackup")}
+          </CardTitle>
+          <CardDescription>{t("backup.autoBackupDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Enable Toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5 flex-1">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">{t("backup.enableAutoBackup")}</Label>
+                <Badge variant={autoBackupEnabled ? "default" : "secondary"}>
+                  {autoBackupEnabled ? t("backup.active") : t("backup.inactive")}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("backup.enableAutoBackupDesc")}
+              </p>
+            </div>
+            <Switch
+              checked={autoBackupEnabled}
+              onCheckedChange={setAutoBackupEnabled}
+            />
+          </div>
+
+          {autoBackupEnabled && (
+            <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+              {/* Schedule */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {t("backup.schedule")}
+                  </Label>
+                  <Select value={autoBackupSchedule} onValueChange={(v) => setAutoBackupSchedule(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">{t("backup.daily")}</SelectItem>
+                      <SelectItem value="weekly">{t("backup.weekly")}</SelectItem>
+                      <SelectItem value="monthly">{t("backup.monthly")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    {t("backup.retention")}
+                  </Label>
+                  <Select value={String(autoBackupRetention)} onValueChange={(v) => setAutoBackupRetention(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">{t("backup.retentionDays").replace("{n}", "3")}</SelectItem>
+                      <SelectItem value="7">{t("backup.retentionDays").replace("{n}", "7")}</SelectItem>
+                      <SelectItem value="14">{t("backup.retentionDays").replace("{n}", "14")}</SelectItem>
+                      <SelectItem value="30">{t("backup.retentionDays").replace("{n}", "30")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{t("backup.retentionDesc")}</p>
+                </div>
+              </div>
+
+              {/* Status Info */}
+              <div className="rounded-lg border p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">{t("backup.lastAutoBackup")}</div>
+                  <div>{lastAutoBackup ? new Date(lastAutoBackup).toLocaleString() : t("backup.neverRun")}</div>
+                  <div className="text-muted-foreground">{t("backup.nextScheduled")}</div>
+                  <div>{getNextScheduledDate()}</div>
+                  <div className="text-muted-foreground">{t("backup.selectData")}</div>
+                  <div className="flex items-center gap-1">
+                    <CheckCircle className="h-3.5 w-3.5 text-primary" />
+                    <span>{t("backup.includeAllData")}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveAutoBackupSettings}
+                disabled={isSavingAutoBackup}
+              >
+                {isSavingAutoBackup ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                {t("action.save")}
+              </Button>
+            </div>
+          )}
+
+          {!autoBackupEnabled && (
+            <Button
+              onClick={handleSaveAutoBackupSettings}
+              disabled={isSavingAutoBackup}
+              variant="outline"
+            >
+              {isSavingAutoBackup ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              {t("action.save")}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
