@@ -402,7 +402,7 @@ const BackupRestore = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 max-w-5xl mx-auto w-full">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t("backup.title")}</h1>
         <p className="text-muted-foreground">{t("backup.description")}</p>
