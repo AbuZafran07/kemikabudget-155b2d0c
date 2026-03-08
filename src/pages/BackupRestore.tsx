@@ -66,6 +66,78 @@ const BackupRestore = () => {
   const [restorePreview, setRestorePreview] = useState<any>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "xlsx">("json");
 
+  // Auto backup settings
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [autoBackupSchedule, setAutoBackupSchedule] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [autoBackupRetention, setAutoBackupRetention] = useState<number>(7);
+  const [isSavingAutoBackup, setIsSavingAutoBackup] = useState(false);
+  const [lastAutoBackup, setLastAutoBackup] = useState<string | null>(null);
+
+  // Load auto backup settings from app_settings or localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("autoBackupSettings");
+    if (saved) {
+      try {
+        const settings = JSON.parse(saved);
+        setAutoBackupEnabled(settings.enabled ?? false);
+        setAutoBackupSchedule(settings.schedule ?? "daily");
+        setAutoBackupRetention(settings.retention ?? 7);
+        setLastAutoBackup(settings.lastRun ?? null);
+      } catch {}
+    }
+  }, []);
+
+  const handleSaveAutoBackupSettings = async () => {
+    setIsSavingAutoBackup(true);
+    try {
+      const settings = {
+        enabled: autoBackupEnabled,
+        schedule: autoBackupSchedule,
+        retention: autoBackupRetention,
+        lastRun: lastAutoBackup,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem("autoBackupSettings", JSON.stringify(settings));
+
+      // Audit log
+      await supabase.from("audit_logs").insert({
+        event_type: "auto_backup_settings",
+        entity_type: "system",
+        description: `Auto backup settings updated - ${autoBackupEnabled ? "enabled" : "disabled"}, schedule: ${autoBackupSchedule}`,
+        user_id: user?.id,
+        metadata: settings as any,
+      });
+
+      toast.success(t("backup.autoBackupSaved"));
+    } catch (err: any) {
+      toast.error(t("backup.autoBackupError"));
+    } finally {
+      setIsSavingAutoBackup(false);
+    }
+  };
+
+  const getNextScheduledDate = () => {
+    const now = new Date();
+    switch (autoBackupSchedule) {
+      case "daily": {
+        const next = new Date(now);
+        next.setDate(next.getDate() + 1);
+        next.setHours(2, 0, 0, 0);
+        return next.toLocaleString();
+      }
+      case "weekly": {
+        const next = new Date(now);
+        const daysUntilMonday = (8 - next.getDay()) % 7 || 7;
+        next.setDate(next.getDate() + daysUntilMonday);
+        next.setHours(2, 0, 0, 0);
+        return next.toLocaleString();
+      }
+      case "monthly": {
+        const next = new Date(now.getFullYear(), now.getMonth() + 1, 1, 2, 0, 0);
+        return next.toLocaleString();
+      }
+    }
+  };
   const toggleCategory = (key: string) => {
     setSelectedCategories((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
