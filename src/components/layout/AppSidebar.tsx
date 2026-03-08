@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -212,13 +212,19 @@ const AppSidebar = ({ isCollapsed, onToggle }: AppSidebarProps) => {
     };
   }, [user?.id, role, refetchBadges]);
 
+  // Track previous pathname to detect actual navigation
+  const prevPathRef = useRef(location.pathname);
+  
   // Auto-close sidebar on mobile when route changes
   useEffect(() => {
-    if (window.innerWidth < 768 && !isCollapsed) {
-      onToggle();
+    if (prevPathRef.current !== location.pathname) {
+      prevPathRef.current = location.pathname;
+      if (window.innerWidth < 768 && !isCollapsed) {
+        // Small delay to let the navigation complete before closing
+        setTimeout(() => onToggle(), 50);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [location.pathname, isCollapsed, onToggle]);
 
   const menuSections = getMenuSections();
 
