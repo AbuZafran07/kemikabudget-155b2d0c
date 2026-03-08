@@ -157,6 +157,11 @@ const App = () => (
                     <EmployeeMedicalBudgets />
                   </ProtectedRoute>
                 } />
+                <Route path="/backup-restore" element={
+                  <ProtectedRoute requiredRole="super_admin">
+                    <BackupRestore />
+                  </ProtectedRoute>
+                } />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -105,6 +105,7 @@ const getMenuSections = (): MenuSection[] => [
       { titleKey: "nav.sessionManagement", icon: Shield, href: "/session-management", roles: ["super_admin", "admin"] },
       { titleKey: "nav.documentTemplates", icon: FileType, href: "/document-templates", roles: ["super_admin", "admin"] },
       { titleKey: "nav.settings", icon: Settings, href: "/settings", roles: ["super_admin", "admin"] },
+      { titleKey: "nav.backupRestore", icon: DatabaseBackup, href: "/backup-restore", roles: ["super_admin"] },
     ],
   },
   {
