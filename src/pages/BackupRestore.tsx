@@ -485,6 +485,122 @@ const BackupRestore = () => {
         </CardContent>
       </Card>
 
+      {/* Automatic Backup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Timer className="h-5 w-5" />
+            {t("backup.autoBackup")}
+          </CardTitle>
+          <CardDescription>{t("backup.autoBackupDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Enable Toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5 flex-1">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">{t("backup.enableAutoBackup")}</Label>
+                <Badge variant={autoBackupEnabled ? "default" : "secondary"}>
+                  {autoBackupEnabled ? t("backup.active") : t("backup.inactive")}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("backup.enableAutoBackupDesc")}
+              </p>
+            </div>
+            <Switch
+              checked={autoBackupEnabled}
+              onCheckedChange={setAutoBackupEnabled}
+            />
+          </div>
+
+          {autoBackupEnabled && (
+            <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+              {/* Schedule */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {t("backup.schedule")}
+                  </Label>
+                  <Select value={autoBackupSchedule} onValueChange={(v) => setAutoBackupSchedule(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">{t("backup.daily")}</SelectItem>
+                      <SelectItem value="weekly">{t("backup.weekly")}</SelectItem>
+                      <SelectItem value="monthly">{t("backup.monthly")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    {t("backup.retention")}
+                  </Label>
+                  <Select value={String(autoBackupRetention)} onValueChange={(v) => setAutoBackupRetention(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">{t("backup.retentionDays").replace("{n}", "3")}</SelectItem>
+                      <SelectItem value="7">{t("backup.retentionDays").replace("{n}", "7")}</SelectItem>
+                      <SelectItem value="14">{t("backup.retentionDays").replace("{n}", "14")}</SelectItem>
+                      <SelectItem value="30">{t("backup.retentionDays").replace("{n}", "30")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{t("backup.retentionDesc")}</p>
+                </div>
+              </div>
+
+              {/* Status Info */}
+              <div className="rounded-lg border p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">{t("backup.lastAutoBackup")}</div>
+                  <div>{lastAutoBackup ? new Date(lastAutoBackup).toLocaleString() : t("backup.neverRun")}</div>
+                  <div className="text-muted-foreground">{t("backup.nextScheduled")}</div>
+                  <div>{getNextScheduledDate()}</div>
+                  <div className="text-muted-foreground">{t("backup.selectData")}</div>
+                  <div className="flex items-center gap-1">
+                    <CheckCircle className="h-3.5 w-3.5 text-primary" />
+                    <span>{t("backup.includeAllData")}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveAutoBackupSettings}
+                disabled={isSavingAutoBackup}
+              >
+                {isSavingAutoBackup ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                {t("action.save")}
+              </Button>
+            </div>
+          )}
+
+          {!autoBackupEnabled && (
+            <Button
+              onClick={handleSaveAutoBackupSettings}
+              disabled={isSavingAutoBackup}
+              variant="outline"
+            >
+              {isSavingAutoBackup ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              {t("action.save")}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Restore Data */}
       <Card>
         <CardHeader>
