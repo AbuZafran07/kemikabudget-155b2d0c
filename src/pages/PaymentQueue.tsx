@@ -1091,7 +1091,7 @@ const PaymentQueue = () => {
             </Button>
             <Button
               onClick={confirmPay}
-              disabled={payRequest.isPending || isUpdatingFundingSource || !canProcessPayment}
+              disabled={payRequest.isPending || isUpdatingFundingSource || !canProcessPayment || (selectedPayment?.type === 'request' && (() => { const p = parseFloat(actualPaymentAmount); const a = selectedPayment?.approved_amount || selectedPayment?.amount || 0; return isNaN(p) || p <= 0 || p > a; })())}
               className="gap-2"
             >
               {(payRequest.isPending || isUpdatingFundingSource) ? (
