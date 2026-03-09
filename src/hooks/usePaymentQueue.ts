@@ -265,7 +265,7 @@ export function usePaymentQueue() {
 
   // Pay request mutation
   const payRequest = useMutation({
-    mutationFn: async ({ requestId, note, fundingSourceId, type = 'request' }: { requestId: string; note?: string; fundingSourceId?: string; type?: 'request' | 'medical_claim' | 'cash_advance' }) => {
+    mutationFn: async ({ requestId, note, fundingSourceId, type = 'request', paidAmount }: { requestId: string; note?: string; fundingSourceId?: string; type?: 'request' | 'medical_claim' | 'cash_advance'; paidAmount?: number }) => {
       if (type === 'cash_advance') {
         // Pay cash advance
         const { data: caData } = await supabase
