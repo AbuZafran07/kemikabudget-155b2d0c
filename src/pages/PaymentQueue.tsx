@@ -175,6 +175,8 @@ const PaymentQueue = () => {
   const handlePay = (payment: PaymentRequest) => {
     setSelectedPayment(payment);
     setPaymentNote("");
+    const approvedAmt = payment.approved_amount || payment.amount;
+    setActualPaymentAmount(approvedAmt.toString());
     // Pre-fill with existing funding source if available
     setSelectedFundingSourceId(payment.funding_source_id);
     setIsPayDialogOpen(true);
