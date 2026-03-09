@@ -108,6 +108,7 @@ const PaymentQueue = () => {
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [paymentNote, setPaymentNote] = useState("");
+  const [actualPaymentAmount, setActualPaymentAmount] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [batchResults, setBatchResults] = useState<{ id: string; success: boolean; error?: string }[]>([]);
