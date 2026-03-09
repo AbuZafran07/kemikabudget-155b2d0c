@@ -312,10 +312,14 @@ export function usePaymentQueue() {
         .eq('id', requestId)
         .single();
 
-      const { data, error } = await supabase.rpc('pay_request', {
+      const rpcParams: { p_request_id: string; p_payment_note: string | null; p_paid_amount?: number } = {
         p_request_id: requestId,
         p_payment_note: note || null,
-      });
+      };
+      if (paidAmount !== undefined && paidAmount !== null) {
+        rpcParams.p_paid_amount = paidAmount;
+      }
+      const { data, error } = await supabase.rpc('pay_request', rpcParams);
 
       if (error) throw error;
       
