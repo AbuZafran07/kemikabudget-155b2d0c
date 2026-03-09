@@ -1,0 +1,2 @@
+ALTER TABLE budget_movements DROP CONSTRAINT budget_movements_movement_type_check;
+ALTER TABLE budget_movements ADD CONSTRAINT budget_movements_movement_type_check CHECK (movement_type = ANY (ARRAY['allocation'::text, 'deduction'::text, 'transfer_in'::text, 'transfer_out'::text, 'adjustment'::text, 'reversal'::text]));
