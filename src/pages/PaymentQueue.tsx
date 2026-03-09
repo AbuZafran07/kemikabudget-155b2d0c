@@ -263,10 +263,16 @@ const PaymentQueue = () => {
       setIsUpdatingFundingSource(false);
     }
 
+    const approvedAmt = selectedPayment.approved_amount || selectedPayment.amount;
+    const parsedPaidAmount = parseFloat(actualPaymentAmount);
+    const paidAmountParam = (!isNaN(parsedPaidAmount) && parsedPaidAmount > 0 && parsedPaidAmount !== approvedAmt) 
+      ? parsedPaidAmount : undefined;
+
     await payRequest.mutateAsync({
       requestId: selectedPayment.id,
       note: paymentNote || undefined,
       type: 'request',
+      paidAmount: paidAmountParam,
     });
 
     setLastPaidPayment(selectedPayment);
