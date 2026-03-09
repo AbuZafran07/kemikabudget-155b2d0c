@@ -108,6 +108,7 @@ const PaymentQueue = () => {
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [paymentNote, setPaymentNote] = useState("");
+  const [actualPaymentAmount, setActualPaymentAmount] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [batchResults, setBatchResults] = useState<{ id: string; success: boolean; error?: string }[]>([]);
@@ -174,6 +175,8 @@ const PaymentQueue = () => {
   const handlePay = (payment: PaymentRequest) => {
     setSelectedPayment(payment);
     setPaymentNote("");
+    const approvedAmt = payment.approved_amount || payment.amount;
+    setActualPaymentAmount(approvedAmt.toString());
     // Pre-fill with existing funding source if available
     setSelectedFundingSourceId(payment.funding_source_id);
     setIsPayDialogOpen(true);
@@ -260,10 +263,16 @@ const PaymentQueue = () => {
       setIsUpdatingFundingSource(false);
     }
 
+    const approvedAmt = selectedPayment.approved_amount || selectedPayment.amount;
+    const parsedPaidAmount = parseFloat(actualPaymentAmount);
+    const paidAmountParam = (!isNaN(parsedPaidAmount) && parsedPaidAmount > 0 && parsedPaidAmount !== approvedAmt) 
+      ? parsedPaidAmount : undefined;
+
     await payRequest.mutateAsync({
       requestId: selectedPayment.id,
       note: paymentNote || undefined,
       type: 'request',
+      paidAmount: paidAmountParam,
     });
 
     setLastPaidPayment(selectedPayment);
@@ -1015,6 +1024,55 @@ const PaymentQueue = () => {
               </div>
             )}
 
+            {/* Actual Payment Amount - for regular requests */}
+            {selectedPayment?.type === 'request' && (
+              <div className="space-y-2">
+                <Label htmlFor="actualAmount">
+                  {language === 'id' ? 'Nilai Pembayaran Aktual' : 'Actual Payment Amount'} <span className="text-destructive">*</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rp</span>
+                  <Input
+                    id="actualAmount"
+                    type="number"
+                    min="1"
+                    max={selectedPayment.approved_amount || selectedPayment.amount}
+                    value={actualPaymentAmount}
+                    onChange={(e) => setActualPaymentAmount(e.target.value)}
+                    className="pl-10 text-right font-mono"
+                  />
+                </div>
+                {(() => {
+                  const approvedAmt = selectedPayment.approved_amount || selectedPayment.amount;
+                  const parsed = parseFloat(actualPaymentAmount);
+                  const diff = !isNaN(parsed) ? approvedAmt - parsed : 0;
+                  if (diff > 0) {
+                    return (
+                      <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'id' ? 'Disetujui' : 'Approved'}: <span className="font-semibold">{formatCurrency(approvedAmt)}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'id' ? 'Dibayar' : 'Paid'}: <span className="font-semibold">{formatCurrency(parsed)}</span>
+                        </p>
+                        <p className="text-xs font-medium text-success">
+                          {language === 'id' ? 'Selisih dikembalikan ke anggaran' : 'Difference restored to budget'}: {formatCurrency(diff)}
+                        </p>
+                      </div>
+                    );
+                  }
+                  if (!isNaN(parsed) && parsed > approvedAmt) {
+                    return (
+                      <p className="text-xs text-destructive">
+                        {language === 'id' ? 'Nilai tidak boleh melebihi yang disetujui' : 'Amount cannot exceed approved amount'}: {formatCurrency(approvedAmt)}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="paymentNote">{t('paymentQueue.paymentNote')}</Label>
               <Textarea
@@ -1033,7 +1091,7 @@ const PaymentQueue = () => {
             </Button>
             <Button
               onClick={confirmPay}
-              disabled={payRequest.isPending || isUpdatingFundingSource || !canProcessPayment}
+              disabled={payRequest.isPending || isUpdatingFundingSource || !canProcessPayment || (selectedPayment?.type === 'request' && (() => { const p = parseFloat(actualPaymentAmount); const a = selectedPayment?.approved_amount || selectedPayment?.amount || 0; return isNaN(p) || p <= 0 || p > a; })())}
               className="gap-2"
             >
               {(payRequest.isPending || isUpdatingFundingSource) ? (
