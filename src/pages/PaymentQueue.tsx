@@ -294,6 +294,7 @@ const PaymentQueue = () => {
       const { data, error } = await supabase.rpc('pay_request', {
         p_request_id: paymentId,
         p_payment_note: 'Batch payment processed',
+        p_paid_amount: null as unknown as number,
       });
 
       if (error) {
