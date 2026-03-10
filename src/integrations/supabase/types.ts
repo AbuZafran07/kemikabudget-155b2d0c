@@ -2379,19 +2379,14 @@ export type Database = {
         Returns: Json
       }
       pay_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
-      pay_request:
-        | {
-            Args: { p_payment_note?: string; p_request_id: string }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_paid_amount?: number
-              p_payment_note?: string
-              p_request_id: string
-            }
-            Returns: Json
-          }
+      pay_request: {
+        Args: {
+          p_paid_amount?: number
+          p_payment_note?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       record_otp_failure: { Args: { p_user_id: string }; Returns: undefined }
       reject_adjustment: {
         Args: { p_adjustment_id: string; p_reason: string }
