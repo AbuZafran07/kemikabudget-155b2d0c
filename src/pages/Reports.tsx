@@ -202,17 +202,14 @@ const Reports = () => {
       if (error) throw error;
 
       // Fetch requester names separately - use profiles_secure view for data masking
+      let reqProfiles: any[] = [];
       if (data && data.length > 0) {
         const requesterIds = [...new Set(data.map(d => d.requester_id))];
-        const { data: profiles } = await supabase
+        const { data: profilesData } = await supabase
           .from('profiles_secure')
           .select('id, full_name')
           .in('id', requesterIds);
-
-        return data.map(item => ({
-          ...item,
-          requester: profiles?.find(p => p.id === item.requester_id),
-        }));
+        reqProfiles = profilesData || [];
       }
 
       // Also fetch Cash Advances
@@ -269,7 +266,7 @@ const Reports = () => {
         ...item,
         effective_amount: item.approved_amount ?? item.amount,
         source_type: 'request',
-        requester: profiles?.find((p: any) => p.id === item.requester_id),
+        requester: reqProfiles.find((p: any) => p.id === item.requester_id),
       }));
 
       // Fetch requester names for CA
