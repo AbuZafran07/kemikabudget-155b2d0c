@@ -1060,8 +1060,8 @@ const Reports = () => {
                             <TableCell>{row.division?.name}</TableCell>
                             <TableCell>{row.category?.name}</TableCell>
                             <TableCell className="max-w-48 truncate">{row.description}</TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatFullCurrency(Number(row.amount))}
+                             <TableCell className="text-right font-medium">
+                               {formatFullCurrency(Number(row.effective_amount ?? row.amount))}
                             </TableCell>
                             <TableCell className="capitalize">{row.status}</TableCell>
                             <TableCell className="text-muted-foreground">
