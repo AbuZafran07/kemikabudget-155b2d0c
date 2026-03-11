@@ -643,7 +643,7 @@ const Reports = () => {
         division: row.division?.name || '',
         category: row.category?.name || '',
         description: row.description,
-        amount: row.amount,
+        amount: row.effective_amount ?? row.amount,
         status: row.status,
         requester: row.requester?.full_name || '',
         created_at: format(new Date(row.created_at), 'yyyy-MM-dd'),
