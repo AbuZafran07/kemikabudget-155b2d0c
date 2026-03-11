@@ -300,6 +300,12 @@ const CashAdvanceDetail = () => {
               <FileText className="h-4 w-4 mr-2" />
               {t("action.printPdf")}
             </Button>
+           )}
+          {role === "super_admin" && (
+            <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Hapus
+            </Button>
           )}
         </div>
       </div>
