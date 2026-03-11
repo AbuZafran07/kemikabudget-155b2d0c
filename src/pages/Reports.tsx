@@ -170,6 +170,7 @@ const Reports = () => {
           request_number,
           description,
           amount,
+          approved_amount,
           status,
           created_at,
           paid_at,
