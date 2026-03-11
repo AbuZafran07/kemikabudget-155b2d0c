@@ -170,6 +170,7 @@ const Reports = () => {
           request_number,
           description,
           amount,
+          approved_amount,
           status,
           created_at,
           paid_at,
@@ -201,20 +202,92 @@ const Reports = () => {
       if (error) throw error;
 
       // Fetch requester names separately - use profiles_secure view for data masking
+      let reqProfiles: any[] = [];
       if (data && data.length > 0) {
         const requesterIds = [...new Set(data.map(d => d.requester_id))];
-        const { data: profiles } = await supabase
+        const { data: profilesData } = await supabase
           .from('profiles_secure')
           .select('id, full_name')
           .in('id', requesterIds);
-
-        return data.map(item => ({
-          ...item,
-          requester: profiles?.find(p => p.id === item.requester_id),
-        }));
+        reqProfiles = profilesData || [];
       }
 
-      return data || [];
+      // Also fetch Cash Advances
+      let caQuery = supabase
+        .from('cash_advances')
+        .select(`
+          id,
+          ca_number,
+          purpose,
+          total_amount,
+          status,
+          created_at,
+          paid_at,
+          requester_id,
+          division:divisions(name, code),
+          category:cost_categories(name, code)
+        `)
+        .in('status', ['approved', 'paid', 'partially_settled', 'settled']);
+
+      if (selectedDivision !== 'all' && isSuperAdminOrFinance) {
+        caQuery = caQuery.eq('division_id', selectedDivision);
+      } else if (!isSuperAdminOrFinance && profile?.division_id) {
+        caQuery = caQuery.eq('division_id', profile.division_id);
+      }
+
+      if (dateFrom) {
+        caQuery = caQuery.gte('created_at', dateFrom.toISOString());
+      }
+      if (dateTo) {
+        caQuery = caQuery.lte('created_at', dateTo.toISOString());
+      }
+
+      const { data: caData } = await caQuery;
+
+      // Merge CA data into combined results
+      const caRows = (caData || []).map((ca: any) => ({
+        id: ca.id,
+        request_number: ca.ca_number,
+        description: ca.purpose,
+        amount: ca.total_amount,
+        approved_amount: ca.total_amount,
+        effective_amount: ca.total_amount,
+        status: ca.status,
+        created_at: ca.created_at,
+        paid_at: ca.paid_at,
+        requester_id: ca.requester_id,
+        division: ca.division,
+        category: ca.category,
+        source_type: 'cash_advance',
+      }));
+
+      // Map request rows with effective amount
+      const requestRows = (data || []).map((item: any) => ({
+        ...item,
+        effective_amount: item.approved_amount ?? item.amount,
+        source_type: 'request',
+        requester: reqProfiles.find((p: any) => p.id === item.requester_id),
+      }));
+
+      // Fetch requester names for CA
+      if (caData && caData.length > 0) {
+        const caRequesterIds = [...new Set(caData.map((d: any) => d.requester_id))];
+        const { data: caProfiles } = await supabase
+          .from('profiles_secure')
+          .select('id, full_name')
+          .in('id', caRequesterIds);
+
+        caRows.forEach((row: any) => {
+          row.requester = caProfiles?.find((p: any) => p.id === row.requester_id);
+        });
+      }
+
+      // Combine and sort by date desc
+      const combined = [...requestRows, ...caRows].sort((a: any, b: any) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      return combined;
     },
     enabled: reportType === 'detail-expense',
   });
@@ -570,7 +643,7 @@ const Reports = () => {
         division: row.division?.name || '',
         category: row.category?.name || '',
         description: row.description,
-        amount: row.amount,
+        amount: row.effective_amount ?? row.amount,
         status: row.status,
         requester: row.requester?.full_name || '',
         created_at: format(new Date(row.created_at), 'yyyy-MM-dd'),
@@ -638,7 +711,7 @@ const Reports = () => {
         division: row.division?.name || '',
         category: row.category?.name || '',
         description: row.description,
-        amount: Number(row.amount),
+        amount: Number(row.effective_amount ?? row.amount),
         status: row.status,
         requester: row.requester?.full_name || '',
         date: format(new Date(row.created_at), 'dd/MM/yyyy'),
@@ -951,8 +1024,8 @@ const Reports = () => {
                 <>
                   <div className="bg-primary/5 rounded-lg p-4 mb-6">
                     <p className="text-sm text-muted-foreground">Total Expense</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {formatFullCurrency(expenseReport.reduce((sum: number, r: any) => sum + Number(r.amount), 0))}
+                     <p className="text-2xl font-bold text-primary">
+                       {formatFullCurrency(expenseReport.reduce((sum: number, r: any) => sum + Number(r.effective_amount ?? r.amount), 0))}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {expenseReport.length} transaksi
@@ -987,8 +1060,8 @@ const Reports = () => {
                             <TableCell>{row.division?.name}</TableCell>
                             <TableCell>{row.category?.name}</TableCell>
                             <TableCell className="max-w-48 truncate">{row.description}</TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatFullCurrency(Number(row.amount))}
+                             <TableCell className="text-right font-medium">
+                               {formatFullCurrency(Number(row.effective_amount ?? row.amount))}
                             </TableCell>
                             <TableCell className="capitalize">{row.status}</TableCell>
                             <TableCell className="text-muted-foreground">

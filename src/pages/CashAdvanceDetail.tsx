@@ -10,6 +10,7 @@ import {
   Plus,
   Clock,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { CashAdvancePDFPreviewDialog } from "@/components/cashadvance/CashAdvancePDFPreviewDialog";
 import type { CashAdvancePDFData } from "@/lib/generateCashAdvancePDF";
@@ -68,6 +69,7 @@ import {
   usePayCashAdvance,
   useApproveSettlement,
   useRejectSettlement,
+  useDeleteCashAdvance,
 } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -124,6 +126,7 @@ const CashAdvanceDetail = () => {
   const payCashAdvance = usePayCashAdvance();
   const approveSettlement = useApproveSettlement();
   const rejectSettlement = useRejectSettlement();
+  const deleteCashAdvance = useDeleteCashAdvance();
 
   const [showApproveSettlementDialog, setShowApproveSettlementDialog] = useState(false);
   const [showRejectSettlementDialog, setShowRejectSettlementDialog] = useState(false);
@@ -131,6 +134,7 @@ const CashAdvanceDetail = () => {
   const [settlementApprovalNote, setSettlementApprovalNote] = useState("");
   const [settlementRejectionReason, setSettlementRejectionReason] = useState("");
   const [viewSettlementId, setViewSettlementId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
@@ -239,6 +243,11 @@ const CashAdvanceDetail = () => {
     setSettlementRejectionReason("");
   };
 
+  const handleDeleteCA = async () => {
+    await deleteCashAdvance.mutateAsync(ca.id);
+    navigate("/cash-advance");
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -290,6 +299,12 @@ const CashAdvanceDetail = () => {
             <Button variant="outline" onClick={() => setShowPdfPreview(true)}>
               <FileText className="h-4 w-4 mr-2" />
               {t("action.printPdf")}
+            </Button>
+           )}
+          {role === "super_admin" && (
+            <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Hapus
             </Button>
           )}
         </div>
@@ -908,6 +923,33 @@ const CashAdvanceDetail = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Cash Advance?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda akan menghapus <strong>{ca.ca_number}</strong> dengan nilai{" "}
+              <strong>{formatCurrency(ca.total_amount)}</strong>.
+              {ca.status === "paid" || ca.status === "partially_settled" || ca.status === "settled"
+                ? " Saldo kas akan dikembalikan dan semua entri anggaran terkait akan dihapus."
+                : " Semua entri commitment anggaran terkait akan dihapus."}
+              {" "}Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteCA}
+              disabled={deleteCashAdvance.isPending}
+            >
+              {deleteCashAdvance.isPending ? "Menghapus..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

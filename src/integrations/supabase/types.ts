@@ -2341,6 +2341,7 @@ export type Database = {
         Args: { p_encrypted_secret: string; p_user_id: string }
         Returns: string
       }
+      delete_cash_advance: { Args: { p_ca_id: string }; Returns: Json }
       encrypt_otp_secret: {
         Args: { p_secret: string; p_user_id: string }
         Returns: string
