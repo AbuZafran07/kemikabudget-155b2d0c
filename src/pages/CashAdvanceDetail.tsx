@@ -68,6 +68,7 @@ import {
   usePayCashAdvance,
   useApproveSettlement,
   useRejectSettlement,
+  useDeleteCashAdvance,
 } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
