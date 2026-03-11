@@ -923,6 +923,33 @@ const CashAdvanceDetail = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Cash Advance?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda akan menghapus <strong>{ca.ca_number}</strong> dengan nilai{" "}
+              <strong>{formatCurrency(ca.total_amount)}</strong>.
+              {ca.status === "paid" || ca.status === "partially_settled" || ca.status === "settled"
+                ? " Saldo kas akan dikembalikan dan semua entri anggaran terkait akan dihapus."
+                : " Semua entri commitment anggaran terkait akan dihapus."}
+              {" "}Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteCA}
+              disabled={deleteCashAdvance.isPending}
+            >
+              {deleteCashAdvance.isPending ? "Menghapus..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
