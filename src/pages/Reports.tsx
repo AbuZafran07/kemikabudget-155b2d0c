@@ -215,7 +215,82 @@ const Reports = () => {
         }));
       }
 
-      return data || [];
+      // Also fetch Cash Advances
+      let caQuery = supabase
+        .from('cash_advances')
+        .select(`
+          id,
+          ca_number,
+          purpose,
+          total_amount,
+          status,
+          created_at,
+          paid_at,
+          requester_id,
+          division:divisions(name, code),
+          category:cost_categories(name, code)
+        `)
+        .in('status', ['approved', 'paid', 'partially_settled', 'settled']);
+
+      if (selectedDivision !== 'all' && isSuperAdminOrFinance) {
+        caQuery = caQuery.eq('division_id', selectedDivision);
+      } else if (!isSuperAdminOrFinance && profile?.division_id) {
+        caQuery = caQuery.eq('division_id', profile.division_id);
+      }
+
+      if (dateFrom) {
+        caQuery = caQuery.gte('created_at', dateFrom.toISOString());
+      }
+      if (dateTo) {
+        caQuery = caQuery.lte('created_at', dateTo.toISOString());
+      }
+
+      const { data: caData } = await caQuery;
+
+      // Merge CA data into combined results
+      const caRows = (caData || []).map((ca: any) => ({
+        id: ca.id,
+        request_number: ca.ca_number,
+        description: ca.purpose,
+        amount: ca.total_amount,
+        approved_amount: ca.total_amount,
+        effective_amount: ca.total_amount,
+        status: ca.status,
+        created_at: ca.created_at,
+        paid_at: ca.paid_at,
+        requester_id: ca.requester_id,
+        division: ca.division,
+        category: ca.category,
+        source_type: 'cash_advance',
+      }));
+
+      // Map request rows with effective amount
+      const requestRows = (data || []).map((item: any) => ({
+        ...item,
+        effective_amount: item.approved_amount ?? item.amount,
+        source_type: 'request',
+        requester: profiles?.find((p: any) => p.id === item.requester_id),
+      }));
+
+      // Fetch requester names for CA
+      if (caData && caData.length > 0) {
+        const caRequesterIds = [...new Set(caData.map((d: any) => d.requester_id))];
+        const { data: caProfiles } = await supabase
+          .from('profiles_secure')
+          .select('id, full_name')
+          .in('id', caRequesterIds);
+
+        caRows.forEach((row: any) => {
+          row.requester = caProfiles?.find((p: any) => p.id === row.requester_id);
+        });
+      }
+
+      // Combine and sort by date desc
+      const combined = [...requestRows, ...caRows].sort((a: any, b: any) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      return combined;
     },
     enabled: reportType === 'detail-expense',
   });
