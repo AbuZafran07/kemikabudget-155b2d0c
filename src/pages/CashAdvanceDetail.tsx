@@ -10,6 +10,7 @@ import {
   Plus,
   Clock,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { CashAdvancePDFPreviewDialog } from "@/components/cashadvance/CashAdvancePDFPreviewDialog";
 import type { CashAdvancePDFData } from "@/lib/generateCashAdvancePDF";
