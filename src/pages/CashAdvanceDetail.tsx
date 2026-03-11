@@ -134,6 +134,7 @@ const CashAdvanceDetail = () => {
   const [settlementApprovalNote, setSettlementApprovalNote] = useState("");
   const [settlementRejectionReason, setSettlementRejectionReason] = useState("");
   const [viewSettlementId, setViewSettlementId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
