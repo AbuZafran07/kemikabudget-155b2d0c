@@ -243,6 +243,11 @@ const CashAdvanceDetail = () => {
     setSettlementRejectionReason("");
   };
 
+  const handleDeleteCA = async () => {
+    await deleteCashAdvance.mutateAsync(ca.id);
+    navigate("/cash-advance");
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
