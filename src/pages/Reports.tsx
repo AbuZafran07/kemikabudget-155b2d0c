@@ -1024,8 +1024,8 @@ const Reports = () => {
                 <>
                   <div className="bg-primary/5 rounded-lg p-4 mb-6">
                     <p className="text-sm text-muted-foreground">Total Expense</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {formatFullCurrency(expenseReport.reduce((sum: number, r: any) => sum + Number(r.amount), 0))}
+                     <p className="text-2xl font-bold text-primary">
+                       {formatFullCurrency(expenseReport.reduce((sum: number, r: any) => sum + Number(r.effective_amount ?? r.amount), 0))}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {expenseReport.length} transaksi
