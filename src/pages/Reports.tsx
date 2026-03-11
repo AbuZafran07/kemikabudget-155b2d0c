@@ -711,7 +711,7 @@ const Reports = () => {
         division: row.division?.name || '',
         category: row.category?.name || '',
         description: row.description,
-        amount: Number(row.amount),
+        amount: Number(row.effective_amount ?? row.amount),
         status: row.status,
         requester: row.requester?.full_name || '',
         date: format(new Date(row.created_at), 'dd/MM/yyyy'),
