@@ -838,3 +838,36 @@ export const useBudgetCommitment = (divisionBudgetId: string) => {
     enabled: !!divisionBudgetId,
   });
 };
+
+// Delete Cash Advance (Super Admin only)
+export const useDeleteCashAdvance = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (caId: string) => {
+      const { data, error } = await supabase.rpc("delete_cash_advance", {
+        p_ca_id: caId,
+      });
+      if (error) throw error;
+      const result = data as any;
+      if (!result?.success) {
+        throw new Error(result?.error || "Failed to delete cash advance");
+      }
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-ledger"] });
+      queryClient.invalidateQueries({ queryKey: ["funding-sources"] });
+      toast({ title: "Cash Advance berhasil dihapus" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Gagal menghapus Cash Advance",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
