@@ -719,6 +719,7 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                                 <span className="font-semibold text-warning">Dibayar: {formatCurrency(metadata.paid_amount)}</span>
                               </div>
                             </div>
+                          )}
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             <span>{event.performer?.full_name || 'System'}</span>
                             <span>•</span>
