@@ -704,6 +704,22 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                               <p className="text-xs text-muted-foreground mt-0.5">{metadata.rejection_reason}</p>
                             </div>
                           )}
+                          {event.event_type === 'paid' && metadata?.payment_note && (
+                            <div className="mt-1 p-2 bg-primary/10 rounded-md border border-primary/20">
+                              <p className="text-xs font-medium text-primary">Catatan Pembayaran</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{metadata.payment_note}</p>
+                            </div>
+                          )}
+                          {event.event_type === 'paid' && metadata?.paid_amount && metadata?.approved_amount && metadata.paid_amount !== metadata.approved_amount && (
+                            <div className="mt-1 p-2 bg-warning/10 rounded-md border border-warning/20">
+                              <p className="text-xs font-medium text-warning">Selisih Pembayaran</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                <span>Disetujui: {formatCurrency(metadata.approved_amount)}</span>
+                                <span>→</span>
+                                <span className="font-semibold text-warning">Dibayar: {formatCurrency(metadata.paid_amount)}</span>
+                              </div>
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             <span>{event.performer?.full_name || 'System'}</span>
                             <span>•</span>
@@ -746,51 +762,64 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
             );
           })()}
 
-          {request.paid_at && (
-            <div className="bg-primary/5 rounded-xl border border-primary/20 p-6">
-              <h4 className="font-medium text-primary mb-2 flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Dibayar
-              </h4>
-              <p className="text-sm text-muted-foreground mb-3">
-                {format(new Date(request.paid_at), 'dd MMMM yyyy HH:mm', { locale: localeId })}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 w-full"
-                onClick={() => {
-                  setPdfPreviewData({
-                    request_number: request.request_number,
-                    description: request.description,
-                    amount: request.amount,
-                    approved_amount: request.approved_amount,
-                    vendor: request.vendor,
-                    payment_method: request.payment_method,
-                    beneficiary_name: request.beneficiary_name,
-                    beneficiary_bank: request.beneficiary_bank,
-                    beneficiary_account: request.beneficiary_account,
-                    beneficiary_email: request.beneficiary_email,
-                    needed_date: request.needed_date,
-                    created_at: request.created_at,
-                    approved_at: request.approved_at,
-                    notes: request.notes,
-                    reference_number: request.reference_number,
-                    division: request.divisions as any,
-                    category: request.cost_categories as any,
-                    requester: request.requester as any,
-                    requesterDivision: (request as any).requesterDivision || null,
-                    approver: request.approver as any,
-                    funding_source: request.funding_sources as any,
-                  });
-                  setIsPDFPreviewOpen(true);
-                }}
-              >
-                <Receipt className="h-4 w-4" />
-                Cetak Kwitansi
-              </Button>
-            </div>
-          )}
+          {request.paid_at && (() => {
+            const paymentEvent = events.find(e => e.event_type === 'paid');
+            const paymentNote = (paymentEvent?.metadata as Record<string, any>)?.payment_note;
+            return (
+              <div className="bg-primary/5 rounded-xl border border-primary/20 p-6">
+                <h4 className="font-medium text-primary mb-2 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Dibayar
+                </h4>
+                <p className="text-sm text-foreground">
+                  Oleh {(request.payer as any)?.full_name || 'Unknown'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(request.paid_at), 'dd MMMM yyyy HH:mm', { locale: localeId })}
+                </p>
+                {paymentNote && (
+                  <div className="mt-3 pt-3 border-t border-primary/20">
+                    <p className="text-xs font-medium text-primary mb-1">Catatan Pembayaran</p>
+                    <p className="text-sm text-muted-foreground">{paymentNote}</p>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 w-full mt-3"
+                  onClick={() => {
+                    setPdfPreviewData({
+                      request_number: request.request_number,
+                      description: request.description,
+                      amount: request.amount,
+                      approved_amount: request.approved_amount,
+                      vendor: request.vendor,
+                      payment_method: request.payment_method,
+                      beneficiary_name: request.beneficiary_name,
+                      beneficiary_bank: request.beneficiary_bank,
+                      beneficiary_account: request.beneficiary_account,
+                      beneficiary_email: request.beneficiary_email,
+                      needed_date: request.needed_date,
+                      created_at: request.created_at,
+                      approved_at: request.approved_at,
+                      notes: request.notes,
+                      reference_number: request.reference_number,
+                      division: request.divisions as any,
+                      category: request.cost_categories as any,
+                      requester: request.requester as any,
+                      requesterDivision: (request as any).requesterDivision || null,
+                      approver: request.approver as any,
+                      funding_source: request.funding_sources as any,
+                    });
+                    setIsPDFPreviewOpen(true);
+                  }}
+                >
+                  <Receipt className="h-4 w-4" />
+                  Cetak Kwitansi
+                </Button>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
