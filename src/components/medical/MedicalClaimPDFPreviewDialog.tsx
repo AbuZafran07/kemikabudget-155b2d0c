@@ -190,6 +190,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
       </head>
       <body>
         <div class="page">
+          ${!isApproved ? '<div class="draft-watermark">DRAFT</div>' : ''}
           <div class="header">
             <img src="${logoKemika}" alt="Logo" />
             <div class="header-text">
