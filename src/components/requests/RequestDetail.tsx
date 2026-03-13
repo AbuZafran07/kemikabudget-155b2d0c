@@ -704,6 +704,21 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
                               <p className="text-xs text-muted-foreground mt-0.5">{metadata.rejection_reason}</p>
                             </div>
                           )}
+                          {event.event_type === 'paid' && metadata?.payment_note && (
+                            <div className="mt-1 p-2 bg-primary/10 rounded-md border border-primary/20">
+                              <p className="text-xs font-medium text-primary">Catatan Pembayaran</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{metadata.payment_note}</p>
+                            </div>
+                          )}
+                          {event.event_type === 'paid' && metadata?.paid_amount && metadata?.approved_amount && metadata.paid_amount !== metadata.approved_amount && (
+                            <div className="mt-1 p-2 bg-warning/10 rounded-md border border-warning/20">
+                              <p className="text-xs font-medium text-warning">Selisih Pembayaran</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                <span>Disetujui: {formatCurrency(metadata.approved_amount)}</span>
+                                <span>→</span>
+                                <span className="font-semibold text-warning">Dibayar: {formatCurrency(metadata.paid_amount)}</span>
+                              </div>
+                            </div>
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                             <span>{event.performer?.full_name || 'System'}</span>
                             <span>•</span>
