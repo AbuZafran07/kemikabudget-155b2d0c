@@ -134,7 +134,7 @@ const MedicalReimbursementDetail = () => {
   const canFinanceReview = false; // Disabled - no longer needed
   const canPay = isFinance && claim.status === "approved";
   const canClose = isFinance && claim.status === "paid";
-  const canPrintPDF = ["approved", "paid", "closed"].includes(claim.status);
+  const canPrintPDF = claim.status !== "draft" && claim.status !== "cancelled";
 
   const handleSubmit = async () => {
     await submitMutation.mutateAsync(claim.id);

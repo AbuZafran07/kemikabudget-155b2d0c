@@ -145,7 +145,8 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11pt; line-height: 1.4; color: #1a1a1a; background: white; }
-          .page { width: 210mm; min-height: 297mm; padding: 20mm; margin: 0 auto; background: white; }
+          .page { width: 210mm; min-height: 297mm; padding: 20mm; margin: 0 auto; background: white; position: relative; overflow: hidden; }
+          .draft-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg); font-size: 80pt; font-weight: bold; color: rgba(220, 38, 38, 0.12); letter-spacing: 10px; pointer-events: none; z-index: 0; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           
           .header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #1a365d; }
           .header img { height: 60px; }
@@ -189,6 +190,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
       </head>
       <body>
         <div class="page">
+          ${!isApproved ? '<div class="draft-watermark">DRAFT</div>' : ''}
           <div class="header">
             <img src="${logoKemika}" alt="Logo" />
             <div class="header-text">
