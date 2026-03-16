@@ -189,7 +189,7 @@ const CashAdvanceDetail = () => {
   const canSubmit = ca.status === "draft" && ca.requester_id === user?.id;
   const canApprove = (ca.status === "submitted" || ca.status === "under_review") && role === "super_admin";
   const canPay = ca.status === "approved" && (role === "super_admin" || role === "finance");
-  const canAddSettlement = ca.status === "paid" && ca.requester_id === user?.id;
+  const canAddSettlement = ca.status === "paid" && (ca.requester_id === user?.id || role === "super_admin" || role === "finance");
   const canApproveSettlement = (role === "super_admin" || role === "finance");
 
   // Calculate actual realized from settlements (including submitted/approved, not just DB field)
