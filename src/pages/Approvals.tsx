@@ -47,6 +47,8 @@ const formatCurrency = (value: number) => {
 };
 
 const Approvals = () => {
+  const navigate = useNavigate();
+
   // Enable realtime updates
   useRealtimeSubscription({
     tables: ['requests', 'cash_advances', 'medical_claims'],
