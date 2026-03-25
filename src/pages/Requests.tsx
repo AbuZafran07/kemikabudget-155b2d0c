@@ -65,6 +65,7 @@ const Requests = () => {
 
   const handleView = (request: Request) => {
     setSelectedRequest(request);
+    setViewRequestId(request.id);
     setViewMode('view');
   };
 
