@@ -260,6 +260,7 @@ const Approvals = () => {
             className={`bg-card rounded-xl border p-5 transition-all hover:shadow-card-hover cursor-pointer group ${
               item.isOverdue ? "border-destructive/40" : "border-border"
             }`}
+            onClick={() => handleView(item)}
           >
             <div className="flex flex-col lg:flex-row lg:items-center gap-4">
               {/* Main Info */}
