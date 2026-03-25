@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   CheckCircle,
@@ -6,7 +7,7 @@ import {
   Clock,
   AlertTriangle,
   ChevronRight,
-  MessageSquare,
+  Eye,
   Heart,
   Wallet,
 } from "lucide-react";
