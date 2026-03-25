@@ -122,6 +122,16 @@ const Approvals = () => {
     setIsApproveDialogOpen(true);
   };
 
+  const handleView = (item: ApprovalRequest) => {
+    if (item.type === 'medical_claim') {
+      navigate(`/medical-reimbursement/${item.id}`);
+    } else if (item.type === 'cash_advance') {
+      navigate(`/cash-advance/${item.id}`);
+    } else {
+      navigate(`/requests?view=${item.id}`);
+    }
+  };
+
   const handleReject = (request: ApprovalRequest) => {
     setSelectedRequest(request);
     setRejectionReason("");
