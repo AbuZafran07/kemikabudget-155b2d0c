@@ -269,19 +269,19 @@ const Approvals = () => {
                   <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
                     {item.request_number}
                   </code>
-                  {item.type === 'medical_claim' ? (
+                  <Badge variant="outline" className="text-xs">
+                    {item.divisions?.code || 'N/A'}
+                  </Badge>
+                  {item.type === 'medical_claim' && (
                     <Badge variant="outline" className="text-xs gap-1 bg-pink-500/10 text-pink-600 border-pink-500/30">
                       <Heart className="h-3 w-3" />
                       Medical
                     </Badge>
-                  ) : item.type === 'cash_advance' ? (
+                  )}
+                  {item.type === 'cash_advance' && (
                     <Badge variant="outline" className="text-xs gap-1 bg-blue-500/10 text-blue-600 border-blue-500/30">
                       <Wallet className="h-3 w-3" />
                       Cash Advance
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs">
-                      {item.divisions?.code || 'N/A'}
                     </Badge>
                   )}
                   {item.isOverdue && (
