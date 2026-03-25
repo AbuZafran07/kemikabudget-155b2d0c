@@ -777,6 +777,19 @@ const PaymentQueue = () => {
                       <CheckCircle className="h-3.5 w-3.5 text-success" />
                       Approved {item.daysSinceApproval} {t('paymentQueue.daysAgo')}
                     </span>
+                    {item.type === 'request' && (() => {
+                      const dateStr = format(new Date(item.submitted_at || item.approved_at || item.created_at), 'yyyyMMdd');
+                      const seq = item.request_number.split('/').pop() || '01';
+                      return (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1 font-mono text-xs">
+                            <FileText className="h-3.5 w-3.5" />
+                            PD/{dateStr}.{seq}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {item.type === 'request' && (
