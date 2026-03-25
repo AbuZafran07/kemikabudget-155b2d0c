@@ -116,8 +116,8 @@ const Requests = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {viewMode === 'view' && selectedRequest ? (
-        <RequestDetail requestId={selectedRequest.id} onBack={handleBack} />
+      {viewMode === 'view' && (selectedRequest || viewRequestId) ? (
+        <RequestDetail requestId={selectedRequest?.id || viewRequestId!} onBack={handleBack} />
       ) : (
         <>
           {/* Page Header */}
