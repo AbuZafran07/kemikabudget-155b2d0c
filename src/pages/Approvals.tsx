@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   CheckCircle,
@@ -6,7 +7,7 @@ import {
   Clock,
   AlertTriangle,
   ChevronRight,
-  MessageSquare,
+  Eye,
   Heart,
   Wallet,
 } from "lucide-react";
@@ -46,6 +47,8 @@ const formatCurrency = (value: number) => {
 };
 
 const Approvals = () => {
+  const navigate = useNavigate();
+
   // Enable realtime updates
   useRealtimeSubscription({
     tables: ['requests', 'cash_advances', 'medical_claims'],
@@ -117,6 +120,16 @@ const Approvals = () => {
     setApprovalNote("");
     setApprovedAmount(request.amount.toString());
     setIsApproveDialogOpen(true);
+  };
+
+  const handleView = (item: ApprovalRequest) => {
+    if (item.type === 'medical_claim') {
+      navigate(`/medical-reimbursement/${item.id}`);
+    } else if (item.type === 'cash_advance') {
+      navigate(`/cash-advance/${item.id}`);
+    } else {
+      navigate(`/requests?view=${item.id}`);
+    }
   };
 
   const handleReject = (request: ApprovalRequest) => {
@@ -247,6 +260,7 @@ const Approvals = () => {
             className={`bg-card rounded-xl border p-5 transition-all hover:shadow-card-hover cursor-pointer group ${
               item.isOverdue ? "border-destructive/40" : "border-border"
             }`}
+            onClick={() => handleView(item)}
           >
             <div className="flex flex-col lg:flex-row lg:items-center gap-4">
               {/* Main Info */}
@@ -304,6 +318,18 @@ const Approvals = () => {
 
               {/* Actions */}
               <div className="flex items-center gap-2 lg:border-l lg:border-border lg:pl-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(item);
+                  }}
+                  title="View Detail"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="outline"
                   className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"

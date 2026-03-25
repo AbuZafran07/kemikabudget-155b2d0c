@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,12 +28,26 @@ type ViewMode = 'list' | 'create' | 'edit' | 'view';
 
 const Requests = () => {
   const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
+  const [viewRequestId, setViewRequestId] = useState<string | null>(null);
   const [duplicateData, setDuplicateData] = useState<Partial<RequestFormData> | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Handle ?view= query parameter from Approvals page
+  useEffect(() => {
+    const viewId = searchParams.get('view');
+    if (viewId) {
+      setViewRequestId(viewId);
+      setViewMode('view');
+      // Clean up the URL
+      searchParams.delete('view');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleCreateNew = () => {
     setSelectedRequest(null);
@@ -50,6 +65,7 @@ const Requests = () => {
 
   const handleView = (request: Request) => {
     setSelectedRequest(request);
+    setViewRequestId(request.id);
     setViewMode('view');
   };
 
@@ -77,6 +93,7 @@ const Requests = () => {
 
   const handleBack = () => {
     setSelectedRequest(null);
+    setViewRequestId(null);
     setDuplicateData(null);
     setViewMode('list');
   };
@@ -85,6 +102,7 @@ const Requests = () => {
     setSheetOpen(false);
     setViewMode('list');
     setSelectedRequest(null);
+    setViewRequestId(null);
     setDuplicateData(null);
   };
 
@@ -92,13 +110,14 @@ const Requests = () => {
     setSheetOpen(false);
     setViewMode('list');
     setSelectedRequest(null);
+    setViewRequestId(null);
     setDuplicateData(null);
   };
 
   return (
     <div className="p-6 space-y-6">
-      {viewMode === 'view' && selectedRequest ? (
-        <RequestDetail requestId={selectedRequest.id} onBack={handleBack} />
+      {viewMode === 'view' && (selectedRequest || viewRequestId) ? (
+        <RequestDetail requestId={selectedRequest?.id || viewRequestId!} onBack={handleBack} />
       ) : (
         <>
           {/* Page Header */}
