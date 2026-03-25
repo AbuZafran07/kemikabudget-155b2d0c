@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,12 +28,26 @@ type ViewMode = 'list' | 'create' | 'edit' | 'view';
 
 const Requests = () => {
   const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
+  const [viewRequestId, setViewRequestId] = useState<string | null>(null);
   const [duplicateData, setDuplicateData] = useState<Partial<RequestFormData> | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Handle ?view= query parameter from Approvals page
+  useEffect(() => {
+    const viewId = searchParams.get('view');
+    if (viewId) {
+      setViewRequestId(viewId);
+      setViewMode('view');
+      // Clean up the URL
+      searchParams.delete('view');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleCreateNew = () => {
     setSelectedRequest(null);
