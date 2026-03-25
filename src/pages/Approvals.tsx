@@ -319,6 +319,18 @@ const Approvals = () => {
               {/* Actions */}
               <div className="flex items-center gap-2 lg:border-l lg:border-border lg:pl-4">
                 <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(item);
+                  }}
+                  title="View Detail"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
                   variant="outline"
                   className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
                   onClick={(e) => {
