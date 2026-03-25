@@ -93,6 +93,7 @@ const Requests = () => {
 
   const handleBack = () => {
     setSelectedRequest(null);
+    setViewRequestId(null);
     setDuplicateData(null);
     setViewMode('list');
   };
@@ -101,6 +102,7 @@ const Requests = () => {
     setSheetOpen(false);
     setViewMode('list');
     setSelectedRequest(null);
+    setViewRequestId(null);
     setDuplicateData(null);
   };
 
@@ -108,6 +110,7 @@ const Requests = () => {
     setSheetOpen(false);
     setViewMode('list');
     setSelectedRequest(null);
+    setViewRequestId(null);
     setDuplicateData(null);
   };
 
