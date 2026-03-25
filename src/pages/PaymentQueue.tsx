@@ -778,7 +778,7 @@ const PaymentQueue = () => {
                       Approved {item.daysSinceApproval} {t('paymentQueue.daysAgo')}
                     </span>
                     {item.type === 'request' && (() => {
-                      const dateStr = format(new Date(item.submitted_at || item.approved_at || item.created_at), 'yyyyMMdd');
+                      const dateStr = format(new Date(item.approved_at || item.created_at), 'yyyyMMdd');
                       const seq = item.request_number.split('/').pop() || '01';
                       return (
                         <>
