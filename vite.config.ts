@@ -106,9 +106,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
     // Prevent "Invalid hook call" / dispatcher null errors by ensuring a single React instance
-    dedupe: ["react", "react-dom", "react/jsx-runtime"],
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
   optimizeDeps: {
-    include: ["@tanstack/react-query"],
+    include: ["react", "react-dom", "@tanstack/react-query"],
   },
 }));
