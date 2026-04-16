@@ -212,7 +212,7 @@ const Reports = () => {
         reqProfiles = profilesData || [];
       }
 
-      // Also fetch Cash Advances
+      // Also fetch Cash Advances (no direct FK to cost_categories - category is on items)
       let caQuery = supabase
         .from('cash_advances')
         .select(`
@@ -225,8 +225,7 @@ const Reports = () => {
           created_at,
           paid_at,
           requester_id,
-          division:divisions(name, code),
-          category:cost_categories(name, code)
+          division:divisions(name, code)
         `)
         .in('status', ['approved', 'paid', 'partially_settled', 'settled']);
 
@@ -245,6 +244,23 @@ const Reports = () => {
 
       const { data: caData } = await caQuery;
 
+      // Fetch categories for CAs from cash_advance_items
+      let caCategoryMap: Record<string, { name: string; code: string }> = {};
+      if (caData && caData.length > 0) {
+        const caIds = caData.map((ca: any) => ca.id);
+        const { data: caItems } = await supabase
+          .from('cash_advance_items')
+          .select('cash_advance_id, category:cost_categories(name, code)')
+          .in('cash_advance_id', caIds);
+
+        // Use the first item's category as the CA's primary category
+        caItems?.forEach((item: any) => {
+          if (!caCategoryMap[item.cash_advance_id] && item.category) {
+            caCategoryMap[item.cash_advance_id] = item.category;
+          }
+        });
+      }
+
       // Merge CA data into combined results - use total_realized for settled CAs
       const caRows = (caData || []).map((ca: any) => {
         const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
@@ -261,7 +277,7 @@ const Reports = () => {
           paid_at: ca.paid_at,
           requester_id: ca.requester_id,
           division: ca.division,
-          category: ca.category,
+          category: caCategoryMap[ca.id] || null,
           source_type: 'cash_advance',
         };
       });

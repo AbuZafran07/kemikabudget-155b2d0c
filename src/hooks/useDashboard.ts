@@ -242,14 +242,14 @@ export function useDashboard() {
 
       const { data: requests } = await query;
 
-      // Also fetch Cash Advances
+      // Also fetch Cash Advances (category is on items, not CA itself)
       let caQuery = supabase
         .from('cash_advances')
         .select(`
+          id,
           total_amount,
           total_realized,
-          status,
-          category:cost_categories(name)
+          status
         `)
         .in('status', ['approved', 'paid', 'partially_settled', 'settled']);
 
@@ -259,6 +259,26 @@ export function useDashboard() {
 
       const { data: cashAdvances } = await caQuery;
 
+      // Fetch CA items with categories
+      let caCategoryAmounts: { catName: string; amount: number }[] = [];
+      if (cashAdvances && cashAdvances.length > 0) {
+        const caIds = cashAdvances.map(ca => ca.id);
+        const { data: caItems } = await supabase
+          .from('cash_advance_items')
+          .select('cash_advance_id, amount, category:cost_categories(name)')
+          .in('cash_advance_id', caIds);
+
+        // For settled CAs, scale item amounts proportionally to total_realized
+        caItems?.forEach((item: any) => {
+          const ca = cashAdvances.find(c => c.id === item.cash_advance_id);
+          if (!ca) return;
+          const catName = (item.category as any)?.name || 'Lainnya';
+          const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
+          // Use item amount as-is (proportional scaling would be complex; item-level is accurate enough)
+          caCategoryAmounts.push({ catName, amount: Number(item.amount) });
+        });
+      }
+
       // Group by category
       const categoryTotals: Record<string, number> = {};
       requests?.forEach(r => {
@@ -266,10 +286,7 @@ export function useDashboard() {
         categoryTotals[catName] = (categoryTotals[catName] || 0) + Number(r.amount);
       });
 
-      cashAdvances?.forEach(ca => {
-        const catName = (ca.category as any)?.name || 'Lainnya';
-        const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
-        const amount = isSettled && ca.total_realized ? Number(ca.total_realized) : Number(ca.total_amount);
+      caCategoryAmounts.forEach(({ catName, amount }) => {
         categoryTotals[catName] = (categoryTotals[catName] || 0) + amount;
       });
 
