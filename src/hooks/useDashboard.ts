@@ -227,6 +227,7 @@ export function useDashboard() {
   const { data: categorySpend = [] } = useQuery({
     queryKey: ['dashboard-category-spend', role, profile?.division_id],
     queryFn: async (): Promise<CategorySpend[]> => {
+      // Fetch requests
       let query = supabase
         .from('requests')
         .select(`
@@ -241,11 +242,35 @@ export function useDashboard() {
 
       const { data: requests } = await query;
 
+      // Also fetch Cash Advances
+      let caQuery = supabase
+        .from('cash_advances')
+        .select(`
+          total_amount,
+          total_realized,
+          status,
+          category:cost_categories(name)
+        `)
+        .in('status', ['approved', 'paid', 'partially_settled', 'settled']);
+
+      if (!isSuperAdminOrFinance && profile?.division_id) {
+        caQuery = caQuery.eq('division_id', profile.division_id);
+      }
+
+      const { data: cashAdvances } = await caQuery;
+
       // Group by category
       const categoryTotals: Record<string, number> = {};
       requests?.forEach(r => {
         const catName = (r.category as any)?.name || 'Lainnya';
         categoryTotals[catName] = (categoryTotals[catName] || 0) + Number(r.amount);
+      });
+
+      cashAdvances?.forEach(ca => {
+        const catName = (ca.category as any)?.name || 'Lainnya';
+        const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
+        const amount = isSettled && ca.total_realized ? Number(ca.total_realized) : Number(ca.total_amount);
+        categoryTotals[catName] = (categoryTotals[catName] || 0) + amount;
       });
 
       return Object.entries(categoryTotals)
@@ -411,7 +436,7 @@ export function useDashboard() {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
       const currentYear = new Date().getFullYear();
       
-      // Get all requests for current year grouped by month
+      // Get requests for current year
       let query = supabase
         .from('requests')
         .select('amount, status, paid_at, approved_at, created_at')
@@ -423,6 +448,19 @@ export function useDashboard() {
       }
 
       const { data: requests } = await query;
+
+      // Get Cash Advances for current year
+      let caQuery = supabase
+        .from('cash_advances')
+        .select('total_amount, total_realized, status, paid_at, approved_at, created_at')
+        .gte('created_at', `${currentYear}-01-01`)
+        .lte('created_at', `${currentYear}-12-31`);
+
+      if (!isSuperAdminOrFinance && profile?.division_id) {
+        caQuery = caQuery.eq('division_id', profile.division_id);
+      }
+
+      const { data: cashAdvances } = await caQuery;
 
       // Get budget allocation
       let budgetQuery = supabase
@@ -444,19 +482,35 @@ export function useDashboard() {
           return date.getMonth() === idx;
         }) || [];
 
-        const actual = monthRequests
+        const monthCAs = cashAdvances?.filter(ca => {
+          const date = new Date(ca.created_at);
+          return date.getMonth() === idx;
+        }) || [];
+
+        const actualReq = monthRequests
           .filter(r => ['paid', 'settled'].includes(r.status))
           .reduce((sum, r) => sum + Number(r.amount), 0);
 
-        const commitment = monthRequests
+        const actualCA = monthCAs
+          .filter(ca => ['paid', 'settled', 'partially_settled'].includes(ca.status))
+          .reduce((sum, ca) => {
+            const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
+            return sum + (isSettled && ca.total_realized ? Number(ca.total_realized) : Number(ca.total_amount));
+          }, 0);
+
+        const commitmentReq = monthRequests
           .filter(r => ['approved'].includes(r.status))
           .reduce((sum, r) => sum + Number(r.amount), 0);
+
+        const commitmentCA = monthCAs
+          .filter(ca => ['approved'].includes(ca.status))
+          .reduce((sum, ca) => sum + Number(ca.total_amount), 0);
 
         return {
           month,
           budget: monthlyBudget,
-          actual,
-          commitment,
+          actual: actualReq + actualCA,
+          commitment: commitmentReq + commitmentCA,
         };
       });
     },

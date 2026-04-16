@@ -220,6 +220,7 @@ const Reports = () => {
           ca_number,
           purpose,
           total_amount,
+          total_realized,
           status,
           created_at,
           paid_at,
@@ -244,22 +245,26 @@ const Reports = () => {
 
       const { data: caData } = await caQuery;
 
-      // Merge CA data into combined results
-      const caRows = (caData || []).map((ca: any) => ({
-        id: ca.id,
-        request_number: ca.ca_number,
-        description: ca.purpose,
-        amount: ca.total_amount,
-        approved_amount: ca.total_amount,
-        effective_amount: ca.total_amount,
-        status: ca.status,
-        created_at: ca.created_at,
-        paid_at: ca.paid_at,
-        requester_id: ca.requester_id,
-        division: ca.division,
-        category: ca.category,
-        source_type: 'cash_advance',
-      }));
+      // Merge CA data into combined results - use total_realized for settled CAs
+      const caRows = (caData || []).map((ca: any) => {
+        const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
+        const realizedAmount = isSettled && ca.total_realized ? Number(ca.total_realized) : Number(ca.total_amount);
+        return {
+          id: ca.id,
+          request_number: ca.ca_number,
+          description: ca.purpose,
+          amount: ca.total_amount,
+          approved_amount: ca.total_amount,
+          effective_amount: realizedAmount,
+          status: ca.status,
+          created_at: ca.created_at,
+          paid_at: ca.paid_at,
+          requester_id: ca.requester_id,
+          division: ca.division,
+          category: ca.category,
+          source_type: 'cash_advance',
+        };
+      });
 
       // Map request rows with effective amount
       const requestRows = (data || []).map((item: any) => ({
@@ -297,7 +302,7 @@ const Reports = () => {
     Number(b.used_amount) > Number(b.allocated_amount) && Number(b.allocated_amount) > 0
   );
 
-  // Monthly data for chart
+  // Monthly data for chart - includes both Requests and Cash Advances
   const { data: monthlyData = [] } = useQuery({
     queryKey: ['monthly-budget-data', selectedDivision, selectedYear],
     queryFn: async () => {
@@ -306,6 +311,7 @@ const Reports = () => {
       const totalBudget = budgetReport.reduce((sum: number, b: any) => sum + Number(b.allocated_amount), 0);
       const monthlyBudget = totalBudget / 12;
 
+      // Fetch paid/settled Requests
       let query = supabase
         .from('requests')
         .select('amount, paid_at')
@@ -319,15 +325,41 @@ const Reports = () => {
 
       const { data: requests } = await query;
 
+      // Fetch paid/settled Cash Advances
+      let caActualQuery = supabase
+        .from('cash_advances')
+        .select('total_amount, total_realized, status, paid_at, settled_at')
+        .in('status', ['paid', 'settled', 'partially_settled'])
+        .gte('paid_at', `${selectedYear}-01-01`)
+        .lte('paid_at', `${selectedYear}-12-31`);
+
+      if (selectedDivision !== 'all') {
+        caActualQuery = caActualQuery.eq('division_id', selectedDivision);
+      }
+
+      const { data: caActuals } = await caActualQuery;
+
       const monthlyActual = months.map((_, index) => {
         const monthRequests = requests?.filter(r => {
           if (!r.paid_at) return false;
-          const month = new Date(r.paid_at).getMonth();
-          return month === index;
+          return new Date(r.paid_at).getMonth() === index;
         }) || [];
-        return monthRequests.reduce((sum, r) => sum + Number(r.amount), 0);
+        const reqTotal = monthRequests.reduce((sum, r) => sum + Number(r.amount), 0);
+
+        // For CAs: use total_realized if settled, otherwise total_amount
+        const monthCAs = caActuals?.filter(ca => {
+          if (!ca.paid_at) return false;
+          return new Date(ca.paid_at).getMonth() === index;
+        }) || [];
+        const caTotal = monthCAs.reduce((sum, ca) => {
+          const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
+          return sum + (isSettled && ca.total_realized ? Number(ca.total_realized) : Number(ca.total_amount));
+        }, 0);
+
+        return reqTotal + caTotal;
       });
 
+      // Fetch approved (commitment) Requests
       let commitmentQuery = supabase
         .from('requests')
         .select('amount, approved_at')
@@ -341,13 +373,34 @@ const Reports = () => {
 
       const { data: commitments } = await commitmentQuery;
 
+      // Fetch approved (commitment) Cash Advances
+      let caCommitQuery = supabase
+        .from('cash_advances')
+        .select('total_amount, approved_at')
+        .eq('status', 'approved')
+        .gte('approved_at', `${selectedYear}-01-01`)
+        .lte('approved_at', `${selectedYear}-12-31`);
+
+      if (selectedDivision !== 'all') {
+        caCommitQuery = caCommitQuery.eq('division_id', selectedDivision);
+      }
+
+      const { data: caCommitments } = await caCommitQuery;
+
       const monthlyCommitment = months.map((_, index) => {
         const monthCommitments = commitments?.filter(r => {
           if (!r.approved_at) return false;
-          const month = new Date(r.approved_at).getMonth();
-          return month === index;
+          return new Date(r.approved_at).getMonth() === index;
         }) || [];
-        return monthCommitments.reduce((sum, r) => sum + Number(r.amount), 0);
+        const reqTotal = monthCommitments.reduce((sum, r) => sum + Number(r.amount), 0);
+
+        const monthCACommit = caCommitments?.filter(ca => {
+          if (!ca.approved_at) return false;
+          return new Date(ca.approved_at).getMonth() === index;
+        }) || [];
+        const caTotal = monthCACommit.reduce((sum, ca) => sum + Number(ca.total_amount), 0);
+
+        return reqTotal + caTotal;
       });
 
       return months.map((month, index) => ({
