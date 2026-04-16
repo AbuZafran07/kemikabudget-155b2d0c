@@ -286,10 +286,7 @@ export function useDashboard() {
         categoryTotals[catName] = (categoryTotals[catName] || 0) + Number(r.amount);
       });
 
-      cashAdvances?.forEach(ca => {
-        const catName = (ca.category as any)?.name || 'Lainnya';
-        const isSettled = ca.status === 'settled' || ca.status === 'partially_settled';
-        const amount = isSettled && ca.total_realized ? Number(ca.total_realized) : Number(ca.total_amount);
+      caCategoryAmounts.forEach(({ catName, amount }) => {
         categoryTotals[catName] = (categoryTotals[catName] || 0) + amount;
       });
 
