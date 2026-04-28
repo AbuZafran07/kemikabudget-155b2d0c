@@ -340,6 +340,44 @@ export function useRequests() {
     },
   });
 
+  // Delete draft request mutation (owner or super_admin, status=draft only)
+  const deleteRequest = useMutation({
+    mutationFn: async (id: string) => {
+      // Best-effort cleanup of related rows (RLS will block what user can't touch)
+      await supabase.from('request_attachments').delete().eq('request_id', id);
+      await supabase.from('request_events').delete().eq('request_id', id);
+
+      const { error } = await supabase.from('requests').delete().eq('id', id);
+      if (error) throw error;
+
+      // Audit log (fire and forget)
+      if (user?.id) {
+        supabase.from('audit_logs').insert({
+          user_id: user.id,
+          event_type: 'delete',
+          entity_type: 'request',
+          entity_id: id,
+          description: 'Draft request dihapus oleh pemilik',
+        }).then();
+      }
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      toast({
+        title: 'Dihapus',
+        description: 'Draft pengajuan telah dihapus permanen',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Gagal Menghapus',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Revision request mutation - user requests revision on submitted request
   const revisionRequest = useMutation({
     mutationFn: async (id: string) => {
@@ -438,6 +476,7 @@ export function useRequests() {
     updateRequest,
     submitRequest,
     cancelRequest,
+    deleteRequest,
     revisionRequest,
     saveDraft,
     loadDraft,
