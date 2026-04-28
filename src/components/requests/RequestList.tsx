@@ -14,7 +14,9 @@ import {
   XCircle,
   ListFilter,
   Archive,
+  Trash2,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -62,8 +64,9 @@ const ARCHIVED_STATUSES = ['approved', 'rejected', 'paid', 'settled', 'cancelled
 type TabType = 'active' | 'archived';
 
 export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: RequestListProps) {
-  const { requests, isLoading, cancelRequest } = useRequests();
+  const { requests, isLoading, cancelRequest, deleteRequest } = useRequests();
   const { t, language } = useLanguage();
+  const { user, role } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -135,6 +138,17 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
     if (confirm(t('requests.confirmCancel'))) {
       await cancelRequest.mutateAsync(id);
     }
+  };
+
+  const handleDelete = async (id: string, requestNumber: string) => {
+    if (confirm(`Hapus permanen draft ${requestNumber}? Tindakan ini tidak dapat dibatalkan.`)) {
+      await deleteRequest.mutateAsync(id);
+    }
+  };
+
+  const canDeleteDraft = (req: Request) => {
+    if (req.status !== 'draft') return false;
+    return role === 'super_admin' || req.requester_id === user?.id;
   };
 
   // Get status label based on status value
@@ -315,6 +329,15 @@ export function RequestList({ onCreateNew, onEdit, onView, onDuplicate }: Reques
                               {t('action.cancel')}
                             </DropdownMenuItem>
                           </>
+                        )}
+                        {canDeleteDraft(request) && (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDelete(request.id, request.request_number)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Hapus Draft
+                          </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
