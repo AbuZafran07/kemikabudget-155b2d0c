@@ -87,52 +87,100 @@ const addFooter = (doc: jsPDF) => {
 
 export const generateBudgetReportPDF = (
   data: BudgetReportData[],
-  filters: { year: string; division?: string }
+  filters: { year: string; division?: string; periodFrom?: Date; periodTo?: Date }
 ): void => {
   const doc = new jsPDF();
-  
-  const subtitle = `Tahun ${filters.year}${filters.division ? ` - ${filters.division}` : ''}`;
+
+  // Build subtitle with period
+  let periodLabel = `Tahun ${filters.year}`;
+  if (filters.periodFrom && filters.periodTo) {
+    const from = format(filters.periodFrom, 'd MMMM yyyy', { locale: localeId });
+    const to = format(filters.periodTo, 'd MMMM yyyy', { locale: localeId });
+    periodLabel = `Periode ${from} - ${to}`;
+  }
+  const subtitle = `${periodLabel}${filters.division ? ` | ${filters.division}` : ''}`;
   addHeader(doc, 'LAPORAN REALISASI ANGGARAN', subtitle);
-  
-  // Summary
+
+  // Group by division (preserve order of first occurrence)
+  const groupMap = new Map<string, BudgetReportData[]>();
+  data.forEach(row => {
+    if (!groupMap.has(row.division)) groupMap.set(row.division, []);
+    groupMap.get(row.division)!.push(row);
+  });
+
+  // Grand totals
   const totalAllocated = data.reduce((sum, d) => sum + d.allocated, 0);
   const totalUsed = data.reduce((sum, d) => sum + d.used, 0);
   const totalRemaining = totalAllocated - totalUsed;
   const overallUtilization = totalAllocated > 0 ? ((totalUsed / totalAllocated) * 100).toFixed(1) : '0';
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0);
-  
+
   let y = 55;
   doc.text(`Total Alokasi: ${formatCurrency(totalAllocated)}`, 14, y);
-  doc.text(`Total Terpakai: ${formatCurrency(totalUsed)}`, 100, y);
+  doc.text(`Total Terpakai: ${formatCurrency(totalUsed)}`, 110, y);
   y += 6;
   doc.text(`Total Sisa: ${formatCurrency(totalRemaining)}`, 14, y);
-  doc.text(`Tingkat Utilisasi: ${overallUtilization}%`, 100, y);
-  
-  // Table
+  doc.text(`Tingkat Utilisasi: ${overallUtilization}%`, 110, y);
+
+  // Build table body with grouping & subtotal separators
+  type Row = (string | { content: string; colSpan?: number; styles?: any })[];
+  const body: Row[] = [];
+  const divisionTotals: Array<{ division: string; allocated: number; used: number; remaining: number; util: number }> = [];
+
+  const utilColor = (pct: number): [number, number, number] => {
+    if (pct > 100) return [220, 53, 69];
+    if (pct >= 80) return [217, 119, 6];
+    return [34, 139, 34];
+  };
+
+  Array.from(groupMap.entries()).forEach(([division, rows], idx) => {
+    if (idx > 0) {
+      // Spacer row separator
+      body.push([{ content: '', colSpan: 6, styles: { fillColor: [255, 255, 255], minCellHeight: 2, lineWidth: 0 } }]);
+    }
+    rows.forEach(row => {
+      body.push([
+        row.division,
+        row.category,
+        formatCurrency(row.allocated),
+        formatCurrency(row.used),
+        formatCurrency(row.remaining),
+        row.utilization,
+      ]);
+    });
+    const sumA = rows.reduce((s, r) => s + r.allocated, 0);
+    const sumU = rows.reduce((s, r) => s + r.used, 0);
+    const sumR = sumA - sumU;
+    const util = sumA > 0 ? (sumU / sumA) * 100 : 0;
+    divisionTotals.push({ division, allocated: sumA, used: sumU, remaining: sumR, util });
+    body.push([
+      { content: `Subtotal ${division}`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [230, 240, 230] } },
+      { content: formatCurrency(sumA), styles: { fontStyle: 'bold', halign: 'right', fillColor: [230, 240, 230] } },
+      { content: formatCurrency(sumU), styles: { fontStyle: 'bold', halign: 'right', fillColor: [230, 240, 230] } },
+      { content: formatCurrency(sumR), styles: { fontStyle: 'bold', halign: 'right', fillColor: [230, 240, 230] } },
+      { content: `${util.toFixed(1)}%`, styles: { fontStyle: 'bold', halign: 'center', fillColor: [230, 240, 230], textColor: utilColor(util) } },
+    ]);
+  });
+
+  // Grand total row
+  body.push([
+    { content: 'GRAND TOTAL', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [34, 139, 34], textColor: 255 } },
+    { content: formatCurrency(totalAllocated), styles: { fontStyle: 'bold', halign: 'right', fillColor: [34, 139, 34], textColor: 255 } },
+    { content: formatCurrency(totalUsed), styles: { fontStyle: 'bold', halign: 'right', fillColor: [34, 139, 34], textColor: 255 } },
+    { content: formatCurrency(totalRemaining), styles: { fontStyle: 'bold', halign: 'right', fillColor: [34, 139, 34], textColor: 255 } },
+    { content: `${overallUtilization}%`, styles: { fontStyle: 'bold', halign: 'center', fillColor: [34, 139, 34], textColor: 255 } },
+  ]);
+
   autoTable(doc, {
     startY: y + 10,
     head: [['Divisi', 'Kategori', 'Alokasi', 'Terpakai', 'Sisa', 'Utilisasi']],
-    body: data.map(row => [
-      row.division,
-      row.category,
-      formatCurrency(row.allocated),
-      formatCurrency(row.used),
-      formatCurrency(row.remaining),
-      row.utilization,
-    ]),
+    body: body as any,
     theme: 'grid',
-    headStyles: {
-      fillColor: [34, 139, 34],
-      textColor: 255,
-      fontStyle: 'bold',
-      fontSize: 9,
-    },
-    bodyStyles: {
-      fontSize: 8,
-    },
+    headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    bodyStyles: { fontSize: 8 },
     columnStyles: {
       0: { cellWidth: 35 },
       1: { cellWidth: 35 },
@@ -141,11 +189,75 @@ export const generateBudgetReportPDF = (
       4: { cellWidth: 30, halign: 'right' },
       5: { cellWidth: 20, halign: 'center' },
     },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
   });
-  
+
+  // === Page 2: Division Summary ===
+  if (divisionTotals.length > 1) {
+    doc.addPage();
+    addHeader(doc, 'RINGKASAN TOTAL PER DIVISI', subtitle);
+
+    const sorted = [...divisionTotals].sort((a, b) => b.used - a.used);
+    autoTable(doc, {
+      startY: 55,
+      head: [['#', 'Divisi', 'Alokasi', 'Terpakai', 'Sisa', 'Utilisasi', 'Status']],
+      body: sorted.map((d, i) => [
+        (i + 1).toString(),
+        d.division,
+        formatCurrency(d.allocated),
+        formatCurrency(d.used),
+        formatCurrency(d.remaining),
+        `${d.util.toFixed(1)}%`,
+        d.util > 100 ? 'OVER BUDGET' : d.util >= 80 ? 'Mendekati Limit' : 'Sehat',
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [34, 139, 34], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 32, halign: 'right' },
+        3: { cellWidth: 32, halign: 'right' },
+        4: { cellWidth: 32, halign: 'right' },
+        5: { cellWidth: 20, halign: 'center' },
+        6: { cellWidth: 30, halign: 'center' },
+      },
+      didParseCell: (hookData) => {
+        if (hookData.section === 'body' && hookData.column.index === 6) {
+          const row = sorted[hookData.row.index];
+          hookData.cell.styles.textColor = utilColor(row.util);
+          hookData.cell.styles.fontStyle = 'bold';
+        }
+      },
+      foot: [[
+        { content: 'GRAND TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'left' } },
+        { content: formatCurrency(totalAllocated), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(totalUsed), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(totalRemaining), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: `${overallUtilization}%`, styles: { halign: 'center', fontStyle: 'bold' } },
+        { content: '', styles: {} },
+      ]],
+      footStyles: { fillColor: [34, 139, 34], textColor: 255 },
+    });
+
+    // Insight summary
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Insight & Catatan', 14, finalY);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const overCount = sorted.filter(d => d.util > 100).length;
+    const warnCount = sorted.filter(d => d.util >= 80 && d.util <= 100).length;
+    const healthyCount = sorted.filter(d => d.util < 80).length;
+    const topSpender = sorted[0];
+    let iy = finalY + 6;
+    doc.text(`• Divisi dengan pemakaian tertinggi: ${topSpender.division} (${formatCurrency(topSpender.used)} / ${topSpender.util.toFixed(1)}%)`, 14, iy);
+    iy += 5;
+    doc.text(`• Divisi sehat (<80%): ${healthyCount}  |  Mendekati limit (80-100%): ${warnCount}  |  Over budget (>100%): ${overCount}`, 14, iy);
+    iy += 5;
+    doc.text(`• Total realisasi keseluruhan: ${formatCurrency(totalUsed)} dari alokasi ${formatCurrency(totalAllocated)} (${overallUtilization}%).`, 14, iy);
+  }
+
   addFooter(doc);
   doc.save(`Laporan_Anggaran_${filters.year}_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`);
 };

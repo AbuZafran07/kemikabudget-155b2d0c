@@ -763,17 +763,24 @@ const Reports = () => {
       : undefined;
 
     if (reportType === 'budget-vs-actual') {
-      const pdfData = budgetReport.map((row: any) => ({
-        division: row.division?.name || '',
-        category: row.category?.name || '',
-        allocated: Number(row.allocated_amount),
-        used: Number(row.used_amount),
-        remaining: Number(row.allocated_amount) - Number(row.used_amount),
-        utilization: row.allocated_amount > 0
-          ? ((Number(row.used_amount) / Number(row.allocated_amount)) * 100).toFixed(1) + '%'
-          : '0%',
-      }));
-      generateBudgetReportPDF(pdfData, { year: selectedYear, division: divisionName });
+      const pdfData = [...budgetReport]
+        .sort((a: any, b: any) => (a.division?.name || '').localeCompare(b.division?.name || ''))
+        .map((row: any) => ({
+          division: row.division?.name || '',
+          category: row.category?.name || '',
+          allocated: Number(row.allocated_amount),
+          used: Number(row.used_amount),
+          remaining: Number(row.allocated_amount) - Number(row.used_amount),
+          utilization: row.allocated_amount > 0
+            ? ((Number(row.used_amount) / Number(row.allocated_amount)) * 100).toFixed(1) + '%'
+            : '0%',
+        }));
+      generateBudgetReportPDF(pdfData, {
+        year: selectedYear,
+        division: divisionName,
+        periodFrom: dateFrom,
+        periodTo: dateTo,
+      });
     } else if (reportType === 'detail-expense') {
       const pdfData = expenseReport.map((row: any) => ({
         request_number: row.request_number,
