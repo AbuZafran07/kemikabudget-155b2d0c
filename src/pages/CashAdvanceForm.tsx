@@ -235,7 +235,7 @@ const CashAdvanceForm = () => {
   // Validation: purpose + needed date + at least one valid item
   const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
-  const isValid = purpose.trim() && neededDate && allItemsHaveCategory;
+  const isValid = !!divisionId && purpose.trim() && neededDate && allItemsHaveCategory;
 
   const handleSave = async () => {
     if (!isValid) return;
@@ -246,6 +246,7 @@ const CashAdvanceForm = () => {
       purpose,
       needed_date: neededDate,
       notes: notes || undefined,
+      division_id: divisionId,
       items: validItems.map((item) => ({
         description: item.description,
         quantity: item.quantity,
@@ -270,6 +271,7 @@ const CashAdvanceForm = () => {
       purpose,
       needed_date: neededDate,
       notes: notes || undefined,
+      division_id: divisionId,
       items: validItems.map((item) => ({
         description: item.description,
         quantity: item.quantity,
