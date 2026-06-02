@@ -57,7 +57,7 @@ function formatTimeAgo(dateString: string): string {
 export function useDashboard() {
   const { user, profile, role } = useAuth();
   const queryClient = useQueryClient();
-  const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
+  const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance' || role === 'executive';
 
   // Set up real-time subscriptions for dashboard updates
   useEffect(() => {
