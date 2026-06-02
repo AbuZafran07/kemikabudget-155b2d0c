@@ -412,7 +412,7 @@ const CashAdvanceForm = () => {
                               {categories?.map((cat) => (
                                 <SelectItem key={cat.id} value={cat.id}>
                                   {cat.code} - {cat.name}
-                                  {cat.remaining <= 0 && " (belum dialokasi)"}
+                                  {cat.remaining <= 0 && " (sisa 0)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
