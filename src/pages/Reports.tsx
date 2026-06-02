@@ -63,7 +63,7 @@ type ReportType = 'budget-vs-actual' | 'detail-expense' | 'over-budget' | 'categ
 const Reports = () => {
   const { role, profile } = useAuth();
   const { language } = useLanguage();
-  const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance';
+  const isSuperAdminOrFinance = role === 'super_admin' || role === 'finance' || role === 'executive';
   const [reportType, setReportType] = useState<ReportType>('budget-vs-actual');
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');

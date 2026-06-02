@@ -67,7 +67,8 @@ const Dashboard = () => {
 
   const isSuperAdmin = role === 'super_admin';
   const isFinance = role === 'finance';
-  const isSuperAdminOrFinance = isSuperAdmin || isFinance;
+  const isExecutive = role === 'executive';
+  const isSuperAdminOrFinance = isSuperAdmin || isFinance || isExecutive;
   const utilization = kpis.totalBudget > 0 
     ? Math.round((kpis.usedBudget / kpis.totalBudget) * 100) 
     : 0;

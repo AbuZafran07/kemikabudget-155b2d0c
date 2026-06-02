@@ -63,12 +63,22 @@ interface CategoryOption {
 
 const CashAdvanceForm = () => {
   const { t } = useLanguage();
-  const { profile, user } = useAuth();
+  const { profile, user, hasRoleExact } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
 
-  const divisionId = profile?.division_id;
+  // Executive (BOD/CEO) and Super Admin can choose any division.
+  const canChooseDivision = hasRoleExact("executive") || hasRoleExact("super_admin");
+
+  const [selectedDivisionId, setSelectedDivisionId] = useState<string>(profile?.division_id || "");
+  useEffect(() => {
+    if (!selectedDivisionId && profile?.division_id) {
+      setSelectedDivisionId(profile.division_id);
+    }
+  }, [profile?.division_id, selectedDivisionId]);
+
+  const divisionId = selectedDivisionId;
 
   const [purpose, setPurpose] = useState("");
   const [neededDate, setNeededDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -81,7 +91,22 @@ const CashAdvanceForm = () => {
   const createCashAdvance = useCreateCashAdvance();
   const submitCashAdvance = useSubmitCashAdvance();
 
-  // Fetch user's division name
+  // List divisions for executive/super_admin selector
+  const { data: allDivisions } = useQuery({
+    queryKey: ["cash-advance-form-divisions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("divisions")
+        .select("id, name, code")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: canChooseDivision,
+  });
+
+  // Fetch selected division name
   const { data: userDivision } = useQuery({
     queryKey: ["user-division", divisionId],
     queryFn: async () => {
@@ -210,7 +235,7 @@ const CashAdvanceForm = () => {
   // Validation: purpose + needed date + at least one valid item
   const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
-  const isValid = purpose.trim() && neededDate && allItemsHaveCategory;
+  const isValid = !!divisionId && purpose.trim() && neededDate && allItemsHaveCategory;
 
   const handleSave = async () => {
     if (!isValid) return;
@@ -221,6 +246,7 @@ const CashAdvanceForm = () => {
       purpose,
       needed_date: neededDate,
       notes: notes || undefined,
+      division_id: divisionId,
       items: validItems.map((item) => ({
         description: item.description,
         quantity: item.quantity,
@@ -245,6 +271,7 @@ const CashAdvanceForm = () => {
       purpose,
       needed_date: neededDate,
       notes: notes || undefined,
+      division_id: divisionId,
       items: validItems.map((item) => ({
         description: item.description,
         quantity: item.quantity,
@@ -285,13 +312,35 @@ const CashAdvanceForm = () => {
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>{t("requests.division")}</Label>
-                  <Input
-                    value={userDivision ? userDivision.name : (divisionId ? t("common.loading") : t("common.notAssigned"))}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">{t("cashAdvance.divisionAutoSelected")}</p>
+                  <Label>{t("requests.division")} {canChooseDivision && "*"}</Label>
+                  {canChooseDivision ? (
+                    <>
+                      <Select value={selectedDivisionId} onValueChange={setSelectedDivisionId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("requests.division")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allDivisions?.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.code} - {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Executive/Super Admin dapat memilih divisi manapun
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={userDivision ? userDivision.name : (divisionId ? t("common.loading") : t("common.notAssigned"))}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground">{t("cashAdvance.divisionAutoSelected")}</p>
+                    </>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{t("cashAdvance.neededDate")} *</Label>

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'super_admin' | 'finance' | 'admin' | 'user';
+export type AppRole = 'super_admin' | 'executive' | 'finance' | 'admin' | 'user';
 
 interface Profile {
   id: string;
@@ -276,7 +276,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!role) return false;
     
     const roleHierarchy: Record<AppRole, number> = {
-      super_admin: 4,
+      super_admin: 5,
+      executive: 4,
       finance: 3,
       admin: 2,
       user: 1,
@@ -302,8 +303,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const canAccessDivision = (divisionId: string): boolean => {
     if (!profile || !role) return false;
     
-    // Super admin and finance can access all divisions
-    if (role === 'super_admin' || role === 'finance') return true;
+    // Super admin, executive, and finance can access all divisions
+    if (role === 'super_admin' || role === 'executive' || role === 'finance') return true;
     
     // Others can only access their own division
     return profile.division_id === divisionId;

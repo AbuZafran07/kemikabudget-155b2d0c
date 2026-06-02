@@ -92,6 +92,7 @@ const Users = () => {
 
   const roleConfig: Record<AppRole, { label: string; icon: React.ElementType; color: string }> = {
     super_admin: { label: t('role.superAdmin'), icon: ShieldAlert, color: "text-destructive" },
+    executive: { label: t('role.executive'), icon: ShieldCheck, color: "text-primary" },
     finance: { label: t('role.finance'), icon: ShieldCheck, color: "text-info" },
     admin: { label: t('role.admin'), icon: Shield, color: "text-warning" },
     user: { label: t('role.user'), icon: UserIcon, color: "text-muted-foreground" },
@@ -336,6 +337,7 @@ const Users = () => {
               <SelectContent>
                 <SelectItem value="all">{t('users.allRoles')}</SelectItem>
                 <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                <SelectItem value="executive">{t('role.executive')}</SelectItem>
                 <SelectItem value="finance">{t('role.finance')}</SelectItem>
                 <SelectItem value="admin">{t('role.admin')}</SelectItem>
                 <SelectItem value="user">{t('role.user')}</SelectItem>
@@ -591,6 +593,7 @@ const Users = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                  <SelectItem value="executive">{t('role.executive')}</SelectItem>
                   <SelectItem value="finance">{t('role.finance')}</SelectItem>
                   <SelectItem value="admin">{t('role.admin')}</SelectItem>
                   <SelectItem value="user">{t('role.user')}</SelectItem>
@@ -672,6 +675,7 @@ const Users = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                  <SelectItem value="executive">{t('role.executive')}</SelectItem>
                   <SelectItem value="finance">{t('role.finance')}</SelectItem>
                   <SelectItem value="admin">{t('role.admin')}</SelectItem>
                   <SelectItem value="user">{t('role.user')}</SelectItem>

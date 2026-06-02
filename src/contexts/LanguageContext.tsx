@@ -115,6 +115,7 @@ const translations: Translations = {
   
   // Roles
   'role.superAdmin': { id: 'Super Admin', en: 'Super Admin' },
+  'role.executive': { id: 'Executive (BOD/CEO)', en: 'Executive (BOD/CEO)' },
   'role.finance': { id: 'Finance', en: 'Finance' },
   'role.admin': { id: 'Admin', en: 'Admin' },
   'role.user': { id: 'User', en: 'User' },

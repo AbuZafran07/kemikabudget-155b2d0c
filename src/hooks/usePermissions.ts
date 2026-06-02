@@ -97,5 +97,6 @@ export function usePermissions() {
     isAdmin: hasRoleExact('admin'),
     isSuperAdmin: hasRoleExact('super_admin'),
     isFinance: hasRoleExact('finance'),
+    isExecutive: hasRoleExact('executive'),
   };
 }
