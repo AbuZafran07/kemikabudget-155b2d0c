@@ -337,6 +337,7 @@ const Users = () => {
               <SelectContent>
                 <SelectItem value="all">{t('users.allRoles')}</SelectItem>
                 <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                <SelectItem value="executive">{t('role.executive')}</SelectItem>
                 <SelectItem value="finance">{t('role.finance')}</SelectItem>
                 <SelectItem value="admin">{t('role.admin')}</SelectItem>
                 <SelectItem value="user">{t('role.user')}</SelectItem>
@@ -592,6 +593,7 @@ const Users = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                  <SelectItem value="executive">{t('role.executive')}</SelectItem>
                   <SelectItem value="finance">{t('role.finance')}</SelectItem>
                   <SelectItem value="admin">{t('role.admin')}</SelectItem>
                   <SelectItem value="user">{t('role.user')}</SelectItem>
@@ -673,6 +675,7 @@ const Users = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="super_admin">{t('role.superAdmin')}</SelectItem>
+                  <SelectItem value="executive">{t('role.executive')}</SelectItem>
                   <SelectItem value="finance">{t('role.finance')}</SelectItem>
                   <SelectItem value="admin">{t('role.admin')}</SelectItem>
                   <SelectItem value="user">{t('role.user')}</SelectItem>
