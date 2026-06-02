@@ -312,13 +312,35 @@ const CashAdvanceForm = () => {
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>{t("requests.division")}</Label>
-                  <Input
-                    value={userDivision ? userDivision.name : (divisionId ? t("common.loading") : t("common.notAssigned"))}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">{t("cashAdvance.divisionAutoSelected")}</p>
+                  <Label>{t("requests.division")} {canChooseDivision && "*"}</Label>
+                  {canChooseDivision ? (
+                    <>
+                      <Select value={selectedDivisionId} onValueChange={setSelectedDivisionId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("requests.division")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allDivisions?.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.code} - {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Executive/Super Admin dapat memilih divisi manapun
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={userDivision ? userDivision.name : (divisionId ? t("common.loading") : t("common.notAssigned"))}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <p className="text-xs text-muted-foreground">{t("cashAdvance.divisionAutoSelected")}</p>
+                    </>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{t("cashAdvance.neededDate")} *</Label>
