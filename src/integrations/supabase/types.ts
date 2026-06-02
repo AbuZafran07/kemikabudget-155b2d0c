@@ -2460,7 +2460,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "super_admin" | "finance" | "admin" | "user"
+      app_role: "super_admin" | "executive" | "finance" | "admin" | "user"
       budget_ledger_type:
         | "commitment_add"
         | "commitment_release"
@@ -2631,7 +2631,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "finance", "admin", "user"],
+      app_role: ["super_admin", "executive", "finance", "admin", "user"],
       budget_ledger_type: [
         "commitment_add",
         "commitment_release",
