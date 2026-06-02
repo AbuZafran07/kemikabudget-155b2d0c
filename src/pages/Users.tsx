@@ -92,6 +92,7 @@ const Users = () => {
 
   const roleConfig: Record<AppRole, { label: string; icon: React.ElementType; color: string }> = {
     super_admin: { label: t('role.superAdmin'), icon: ShieldAlert, color: "text-destructive" },
+    executive: { label: t('role.executive'), icon: ShieldCheck, color: "text-primary" },
     finance: { label: t('role.finance'), icon: ShieldCheck, color: "text-info" },
     admin: { label: t('role.admin'), icon: Shield, color: "text-warning" },
     user: { label: t('role.user'), icon: UserIcon, color: "text-muted-foreground" },
