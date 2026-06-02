@@ -122,42 +122,53 @@ const CashAdvanceForm = () => {
     enabled: !!divisionId,
   });
 
-  // Fetch categories with active budget allocations for user's division
+  // Fetch ALL active categories and merge with this division's allocations (if any).
+  // Categories with no allocation still appear (remaining=0) so the user can pick one;
+  // the approval step enforces the budget check.
   const { data: categories } = useQuery({
     queryKey: ["categories-with-budget", divisionId],
     queryFn: async () => {
       if (!divisionId) return [];
 
-      // Get active period
       const { data: period } = await supabase
         .from("budget_periods")
         .select("id")
         .eq("is_active", true)
         .maybeSingle();
 
-      if (!period) return [];
+      const [{ data: cats, error: catErr }, budgetsRes] = await Promise.all([
+        supabase
+          .from("cost_categories")
+          .select("id, code, name")
+          .eq("is_active", true)
+          .order("code"),
+        period
+          ? supabase
+              .from("division_budgets")
+              .select("category_id, allocated_amount, used_amount")
+              .eq("division_id", divisionId)
+              .eq("period_id", period.id)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-      // Get categories with budget allocation
-      const { data, error } = await supabase
-        .from("division_budgets")
-        .select(`
-          category_id,
-          allocated_amount,
-          used_amount,
-          category:cost_categories(id, code, name)
-        `)
-        .eq("division_id", divisionId)
-        .eq("period_id", period.id)
-        .gt("allocated_amount", 0);
+      if (catErr) throw catErr;
+      const budgetMap = new Map<string, { allocated: number; used: number }>();
+      (budgetsRes.data || []).forEach((b: any) => {
+        budgetMap.set(b.category_id, {
+          allocated: Number(b.allocated_amount) || 0,
+          used: Number(b.used_amount) || 0,
+        });
+      });
 
-      if (error) throw error;
-
-      return data?.map((d) => ({
-        id: d.category?.id,
-        code: d.category?.code,
-        name: d.category?.name,
-        remaining: d.allocated_amount - d.used_amount,
-      })).filter((c): c is CategoryOption => !!c.id) || [];
+      return (cats || []).map((c) => {
+        const b = budgetMap.get(c.id);
+        return {
+          id: c.id,
+          code: c.code,
+          name: c.name,
+          remaining: b ? b.allocated - b.used : 0,
+        } as CategoryOption;
+      });
     },
     enabled: !!divisionId,
   });
