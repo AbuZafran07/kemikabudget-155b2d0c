@@ -418,9 +418,15 @@ const CashAdvanceForm = () => {
                               <SelectValue placeholder={t("cashAdvance.selectCategory")} />
                             </SelectTrigger>
                             <SelectContent>
+                              {(!categories || categories.length === 0) && (
+                                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                  {divisionId ? "Tidak ada kategori aktif" : "Pilih divisi dahulu"}
+                                </div>
+                              )}
                               {categories?.map((cat) => (
                                 <SelectItem key={cat.id} value={cat.id}>
                                   {cat.code} - {cat.name}
+                                  {cat.remaining <= 0 && " (belum dialokasi)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
