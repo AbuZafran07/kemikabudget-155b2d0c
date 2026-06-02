@@ -63,12 +63,22 @@ interface CategoryOption {
 
 const CashAdvanceForm = () => {
   const { t } = useLanguage();
-  const { profile, user } = useAuth();
+  const { profile, user, hasRoleExact } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
 
-  const divisionId = profile?.division_id;
+  // Executive (BOD/CEO) and Super Admin can choose any division.
+  const canChooseDivision = hasRoleExact("executive") || hasRoleExact("super_admin");
+
+  const [selectedDivisionId, setSelectedDivisionId] = useState<string>(profile?.division_id || "");
+  useEffect(() => {
+    if (!selectedDivisionId && profile?.division_id) {
+      setSelectedDivisionId(profile.division_id);
+    }
+  }, [profile?.division_id, selectedDivisionId]);
+
+  const divisionId = selectedDivisionId;
 
   const [purpose, setPurpose] = useState("");
   const [neededDate, setNeededDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -81,7 +91,22 @@ const CashAdvanceForm = () => {
   const createCashAdvance = useCreateCashAdvance();
   const submitCashAdvance = useSubmitCashAdvance();
 
-  // Fetch user's division name
+  // List divisions for executive/super_admin selector
+  const { data: allDivisions } = useQuery({
+    queryKey: ["cash-advance-form-divisions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("divisions")
+        .select("id, name, code")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: canChooseDivision,
+  });
+
+  // Fetch selected division name
   const { data: userDivision } = useQuery({
     queryKey: ["user-division", divisionId],
     queryFn: async () => {
