@@ -122,9 +122,9 @@ const CashAdvanceForm = () => {
     enabled: !!divisionId,
   });
 
-  // Fetch ALL active categories and merge with this division's allocations (if any).
-  // Categories with no allocation still appear (remaining=0) so the user can pick one;
-  // the approval step enforces the budget check.
+  // Only show categories that have an allocation row in division_budgets for the
+  // active period. The submit/approve RPCs require an existing division_budget row,
+  // so categories without one would always fail at submit ("No active budget found").
   const { data: categories } = useQuery({
     queryKey: ["categories-with-budget", divisionId],
     queryFn: async () => {
@@ -136,39 +136,25 @@ const CashAdvanceForm = () => {
         .eq("is_active", true)
         .maybeSingle();
 
-      const [{ data: cats, error: catErr }, budgetsRes] = await Promise.all([
-        supabase
-          .from("cost_categories")
-          .select("id, code, name")
-          .eq("is_active", true)
-          .order("code"),
-        period
-          ? supabase
-              .from("division_budgets")
-              .select("category_id, allocated_amount, used_amount")
-              .eq("division_id", divisionId)
-              .eq("period_id", period.id)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
+      if (!period) return [];
 
-      if (catErr) throw catErr;
-      const budgetMap = new Map<string, { allocated: number; used: number }>();
-      (budgetsRes.data || []).forEach((b: any) => {
-        budgetMap.set(b.category_id, {
-          allocated: Number(b.allocated_amount) || 0,
-          used: Number(b.used_amount) || 0,
-        });
-      });
+      const { data: budgets, error: bErr } = await supabase
+        .from("division_budgets")
+        .select("allocated_amount, used_amount, cost_categories!inner(id, code, name, is_active)")
+        .eq("division_id", divisionId)
+        .eq("period_id", period.id);
 
-      return (cats || []).map((c) => {
-        const b = budgetMap.get(c.id);
-        return {
-          id: c.id,
-          code: c.code,
-          name: c.name,
-          remaining: b ? b.allocated - b.used : 0,
-        } as CategoryOption;
-      });
+      if (bErr) throw bErr;
+
+      return (budgets || [])
+        .filter((b: any) => b.cost_categories?.is_active)
+        .map((b: any) => ({
+          id: b.cost_categories.id,
+          code: b.cost_categories.code,
+          name: b.cost_categories.name,
+          remaining: (Number(b.allocated_amount) || 0) - (Number(b.used_amount) || 0),
+        } as CategoryOption))
+        .sort((a, b) => a.code.localeCompare(b.code));
     },
     enabled: !!divisionId,
   });
@@ -426,7 +412,7 @@ const CashAdvanceForm = () => {
                               {categories?.map((cat) => (
                                 <SelectItem key={cat.id} value={cat.id}>
                                   {cat.code} - {cat.name}
-                                  {cat.remaining <= 0 && " (belum dialokasi)"}
+                                  {cat.remaining <= 0 && " (sisa 0)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
