@@ -317,8 +317,8 @@ export const useCreateCashAdvance = () => {
   const { user, profile } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: CreateCashAdvanceData) => {
-      const divisionId = profile?.division_id;
+    mutationFn: async (data: CreateCashAdvanceData & { division_id?: string }) => {
+      const divisionId = data.division_id || profile?.division_id;
       if (!user?.id || !divisionId) throw new Error("Not authenticated or no division assigned");
 
       const totalAmount = data.items.reduce((sum, item) => sum + item.amount, 0);
