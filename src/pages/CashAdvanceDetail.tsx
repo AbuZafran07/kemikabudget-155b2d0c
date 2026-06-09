@@ -534,11 +534,16 @@ const CashAdvanceDetail = () => {
                       <TableHead className="text-right">{t("cashAdvance.totalRealized")}</TableHead>
                       <TableHead className="text-right">{t("cashAdvance.variance")}</TableHead>
                       <TableHead>{t("common.createdAt")}</TableHead>
-                      {canApproveSettlement && <TableHead className="text-right">{t("common.actions")}</TableHead>}
+                      <TableHead className="text-right">{t("common.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {settlements.map((settlement) => (
+                    {settlements.map((settlement) => {
+                      const isOwnDraft =
+                        settlement.status === "draft" &&
+                        (settlement as any).created_by === user?.id;
+                      const canEditDraft = isOwnDraft || (settlement.status === "draft" && role === "super_admin");
+                      return (
                       <TableRow
                         key={settlement.id}
                         className="cursor-pointer hover:bg-muted/50"
@@ -553,10 +558,37 @@ const CashAdvanceDetail = () => {
                           {formatCurrency(settlement.variance_amount)}
                         </TableCell>
                         <TableCell>{formatDate(settlement.created_at)}</TableCell>
-                        {canApproveSettlement && (
-                          <TableCell className="text-right">
-                            {settlement.status === "submitted" ? (
-                              <div className="flex justify-end gap-2">
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {canEditDraft && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/cash-advance/${ca.id}/settlement/${settlement.id}/edit`);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4 mr-1" />
+                                  {t("action.edit")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteSettlementId(settlement.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  {t("action.delete")}
+                                </Button>
+                              </>
+                            )}
+                            {canApproveSettlement && settlement.status === "submitted" && (
+                              <>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -581,14 +613,17 @@ const CashAdvanceDetail = () => {
                                   <CheckCircle className="h-4 w-4 mr-1" />
                                   {t("action.approve")}
                                 </Button>
-                              </div>
-                            ) : (
+                              </>
+                            )}
+                            {!canEditDraft && !(canApproveSettlement && settlement.status === "submitted") && (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
-                          </TableCell>
-                        )}
+                          </div>
+                        </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
+
                   </TableBody>
                 </Table>
               ) : (
