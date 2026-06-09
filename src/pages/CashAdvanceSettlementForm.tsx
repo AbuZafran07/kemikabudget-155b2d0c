@@ -211,15 +211,11 @@ const CashAdvanceSettlementForm = () => {
 
   const isValid = items.some((item) => item.description.trim() && item.amount > 0);
 
-  const handleSave = async () => {
-    if (!isValid || !caId) return;
-
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
-
-    const result = await createSettlement.mutateAsync({
-      cashAdvanceId: caId,
-      notes: notes || undefined,
-      items: validItems.map((item) => ({
+  const persist = async () => {
+    if (!isValid || !caId) return null;
+    const validItems = items
+      .filter((item) => item.description.trim() && item.amount > 0)
+      .map((item) => ({
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
@@ -227,38 +223,36 @@ const CashAdvanceSettlementForm = () => {
         receipt_number: item.receipt_number || undefined,
         receipt_date: item.receipt_date || undefined,
         notes: item.notes || undefined,
-      })),
-    });
+      }));
 
-    if (result) {
-      navigate(`/cash-advance/${caId}`);
+    if (isEditMode && settlementId) {
+      await updateSettlement.mutateAsync({
+        settlementId,
+        notes: notes || undefined,
+        items: validItems,
+      });
+      return { id: settlementId };
     }
+    return await createSettlement.mutateAsync({
+      cashAdvanceId: caId,
+      notes: notes || undefined,
+      items: validItems,
+    });
+  };
+
+  const handleSave = async () => {
+    const result = await persist();
+    if (result) navigate(`/cash-advance/${caId}`);
   };
 
   const handleSaveAndSubmit = async () => {
-    if (!isValid || !caId) return;
-
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
-
-    const result = await createSettlement.mutateAsync({
-      cashAdvanceId: caId,
-      notes: notes || undefined,
-      items: validItems.map((item) => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        amount: item.amount,
-        receipt_number: item.receipt_number || undefined,
-        receipt_date: item.receipt_date || undefined,
-        notes: item.notes || undefined,
-      })),
-    });
-
+    const result = await persist();
     if (result) {
       await submitSettlement.mutateAsync(result.id);
       navigate(`/cash-advance/${caId}`);
     }
   };
+
 
   if (!ca) {
     return null;
