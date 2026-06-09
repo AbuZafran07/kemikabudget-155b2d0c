@@ -464,7 +464,7 @@ const CashAdvanceSettlementForm = () => {
             <Button
               className="w-full"
               onClick={() => setShowSubmitDialog(true)}
-              disabled={!isValid || createSettlement.isPending || submitSettlement.isPending}
+              disabled={!isValid || createSettlement.isPending || updateSettlement.isPending || submitSettlement.isPending}
             >
               <Send className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAndSubmit")}
