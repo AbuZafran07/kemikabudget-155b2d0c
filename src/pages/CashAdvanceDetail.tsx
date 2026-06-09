@@ -989,6 +989,32 @@ const CashAdvanceDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete Settlement Confirmation */}
+      <AlertDialog open={!!deleteSettlementId} onOpenChange={(open) => !open && setDeleteSettlementId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Realisasi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realisasi draft ini akan dihapus permanen beserta seluruh item-nya. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteSettlementId) return;
+                await deleteSettlement.mutateAsync(deleteSettlementId);
+                setDeleteSettlementId(null);
+              }}
+              disabled={deleteSettlement.isPending}
+            >
+              {deleteSettlement.isPending ? "Menghapus..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
