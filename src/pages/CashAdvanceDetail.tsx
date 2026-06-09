@@ -70,6 +70,7 @@ import {
   usePayCashAdvance,
   useApproveSettlement,
   useRejectSettlement,
+  useDeleteSettlement,
   useDeleteCashAdvance,
 } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
