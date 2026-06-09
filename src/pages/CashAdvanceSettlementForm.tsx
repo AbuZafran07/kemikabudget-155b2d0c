@@ -456,7 +456,7 @@ const CashAdvanceSettlementForm = () => {
               className="w-full"
               variant="outline"
               onClick={handleSave}
-              disabled={!isValid || createSettlement.isPending}
+              disabled={!isValid || createSettlement.isPending || updateSettlement.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAsDraft")}
