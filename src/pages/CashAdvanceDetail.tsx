@@ -11,6 +11,7 @@ import {
   Clock,
   AlertTriangle,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { CashAdvancePDFPreviewDialog } from "@/components/cashadvance/CashAdvancePDFPreviewDialog";
 import type { CashAdvancePDFData } from "@/lib/generateCashAdvancePDF";
