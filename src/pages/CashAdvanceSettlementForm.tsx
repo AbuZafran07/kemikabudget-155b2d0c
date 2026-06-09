@@ -36,9 +36,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   useCashAdvance,
   useCashAdvanceItems,
+  useCashAdvanceSettlementItems,
   useCreateSettlement,
+  useUpdateSettlement,
   useSubmitSettlement,
 } from "@/hooks/useCashAdvance";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 interface SettlementItemRow {
