@@ -62,7 +62,8 @@ const CashAdvanceSettlementForm = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { id: caId } = useParams();
+  const { id: caId, settlementId } = useParams();
+  const isEditMode = !!settlementId;
 
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SettlementItemRow[]>([
@@ -80,31 +81,83 @@ const CashAdvanceSettlementForm = () => {
     },
   ]);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   const { data: ca } = useCashAdvance(caId || "");
   const { data: caItems } = useCashAdvanceItems(caId || "");
+  const { data: existingItems } = useCashAdvanceSettlementItems(settlementId || "");
+
+  // Fetch existing settlement header for edit mode
+  const { data: existingSettlement } = useQuery({
+    queryKey: ["cash-advance-settlement", settlementId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cash_advance_settlements")
+        .select("*")
+        .eq("id", settlementId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: isEditMode,
+  });
+
   const createSettlement = useCreateSettlement();
+  const updateSettlement = useUpdateSettlement();
   const submitSettlement = useSubmitSettlement();
 
-  // Pre-populate items from CA items
+  // Category lookup for displaying names of edited items (settlement items have no category_id stored)
+  const caItemByDescription = (desc: string) =>
+    caItems?.find((ci) => ci.description === desc);
+
+  // Pre-populate items
   useEffect(() => {
-    if (caItems && caItems.length > 0) {
-      setItems(
-        caItems.map((item, index) => ({
-          id: String(index + 1),
-          description: item.description,
-          category_id: item.category_id || "",
-          category_name: (item as any).category?.name || "",
-          quantity: item.quantity,
-          unit_price: 0,
-          amount: 0,
-          receipt_number: "",
-          receipt_date: format(new Date(), "yyyy-MM-dd"),
-          notes: "",
-        }))
-      );
+    if (initialized) return;
+    if (isEditMode) {
+      if (existingSettlement && existingItems) {
+        setNotes(existingSettlement.notes || "");
+        if (existingItems.length > 0) {
+          setItems(
+            existingItems.map((it, idx) => {
+              const ci = caItemByDescription(it.description);
+              return {
+                id: String(idx + 1),
+                description: it.description,
+                category_id: ci?.category_id || "",
+                category_name: (ci as any)?.category?.name || "",
+                quantity: it.quantity,
+                unit_price: Number(it.unit_price),
+                amount: Number(it.amount),
+                receipt_number: it.receipt_number || "",
+                receipt_date: it.receipt_date || format(new Date(), "yyyy-MM-dd"),
+                notes: it.notes || "",
+              };
+            })
+          );
+        }
+        setInitialized(true);
+      }
+    } else {
+      if (caItems && caItems.length > 0) {
+        setItems(
+          caItems.map((item, index) => ({
+            id: String(index + 1),
+            description: item.description,
+            category_id: item.category_id || "",
+            category_name: (item as any).category?.name || "",
+            quantity: item.quantity,
+            unit_price: 0,
+            amount: 0,
+            receipt_number: "",
+            receipt_date: format(new Date(), "yyyy-MM-dd"),
+            notes: "",
+          }))
+        );
+        setInitialized(true);
+      }
     }
-  }, [caItems]);
+  }, [isEditMode, existingSettlement, existingItems, caItems, initialized]);
+
 
   const addItem = () => {
     setItems([
