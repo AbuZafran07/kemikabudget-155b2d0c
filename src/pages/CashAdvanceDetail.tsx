@@ -11,6 +11,7 @@ import {
   Clock,
   AlertTriangle,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { CashAdvancePDFPreviewDialog } from "@/components/cashadvance/CashAdvancePDFPreviewDialog";
 import type { CashAdvancePDFData } from "@/lib/generateCashAdvancePDF";
@@ -69,6 +70,7 @@ import {
   usePayCashAdvance,
   useApproveSettlement,
   useRejectSettlement,
+  useDeleteSettlement,
   useDeleteCashAdvance,
 } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
@@ -127,6 +129,7 @@ const CashAdvanceDetail = () => {
   const approveSettlement = useApproveSettlement();
   const rejectSettlement = useRejectSettlement();
   const deleteCashAdvance = useDeleteCashAdvance();
+  const deleteSettlement = useDeleteSettlement();
 
   const [showApproveSettlementDialog, setShowApproveSettlementDialog] = useState(false);
   const [showRejectSettlementDialog, setShowRejectSettlementDialog] = useState(false);
@@ -135,6 +138,7 @@ const CashAdvanceDetail = () => {
   const [settlementRejectionReason, setSettlementRejectionReason] = useState("");
   const [viewSettlementId, setViewSettlementId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteSettlementId, setDeleteSettlementId] = useState<string | null>(null);
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
@@ -530,11 +534,16 @@ const CashAdvanceDetail = () => {
                       <TableHead className="text-right">{t("cashAdvance.totalRealized")}</TableHead>
                       <TableHead className="text-right">{t("cashAdvance.variance")}</TableHead>
                       <TableHead>{t("common.createdAt")}</TableHead>
-                      {canApproveSettlement && <TableHead className="text-right">{t("common.actions")}</TableHead>}
+                      <TableHead className="text-right">{t("common.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {settlements.map((settlement) => (
+                    {settlements.map((settlement) => {
+                      const isOwnDraft =
+                        settlement.status === "draft" &&
+                        (settlement as any).created_by === user?.id;
+                      const canEditDraft = isOwnDraft || (settlement.status === "draft" && role === "super_admin");
+                      return (
                       <TableRow
                         key={settlement.id}
                         className="cursor-pointer hover:bg-muted/50"
@@ -549,10 +558,37 @@ const CashAdvanceDetail = () => {
                           {formatCurrency(settlement.variance_amount)}
                         </TableCell>
                         <TableCell>{formatDate(settlement.created_at)}</TableCell>
-                        {canApproveSettlement && (
-                          <TableCell className="text-right">
-                            {settlement.status === "submitted" ? (
-                              <div className="flex justify-end gap-2">
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {canEditDraft && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/cash-advance/${ca.id}/settlement/${settlement.id}/edit`);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4 mr-1" />
+                                  {t("action.edit")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteSettlementId(settlement.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  {t("action.delete")}
+                                </Button>
+                              </>
+                            )}
+                            {canApproveSettlement && settlement.status === "submitted" && (
+                              <>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -577,14 +613,17 @@ const CashAdvanceDetail = () => {
                                   <CheckCircle className="h-4 w-4 mr-1" />
                                   {t("action.approve")}
                                 </Button>
-                              </div>
-                            ) : (
+                              </>
+                            )}
+                            {!canEditDraft && !(canApproveSettlement && settlement.status === "submitted") && (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
-                          </TableCell>
-                        )}
+                          </div>
+                        </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
+
                   </TableBody>
                 </Table>
               ) : (
@@ -946,6 +985,32 @@ const CashAdvanceDetail = () => {
               disabled={deleteCashAdvance.isPending}
             >
               {deleteCashAdvance.isPending ? "Menghapus..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Settlement Confirmation */}
+      <AlertDialog open={!!deleteSettlementId} onOpenChange={(open) => !open && setDeleteSettlementId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Realisasi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realisasi draft ini akan dihapus permanen beserta seluruh item-nya. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteSettlementId) return;
+                await deleteSettlement.mutateAsync(deleteSettlementId);
+                setDeleteSettlementId(null);
+              }}
+              disabled={deleteSettlement.isPending}
+            >
+              {deleteSettlement.isPending ? "Menghapus..." : "Ya, Hapus"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

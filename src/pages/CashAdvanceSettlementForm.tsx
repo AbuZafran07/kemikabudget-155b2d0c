@@ -36,9 +36,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   useCashAdvance,
   useCashAdvanceItems,
+  useCashAdvanceSettlementItems,
   useCreateSettlement,
+  useUpdateSettlement,
   useSubmitSettlement,
 } from "@/hooks/useCashAdvance";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 interface SettlementItemRow {
@@ -58,7 +62,8 @@ const CashAdvanceSettlementForm = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { id: caId } = useParams();
+  const { id: caId, settlementId } = useParams();
+  const isEditMode = !!settlementId;
 
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SettlementItemRow[]>([
@@ -76,31 +81,83 @@ const CashAdvanceSettlementForm = () => {
     },
   ]);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   const { data: ca } = useCashAdvance(caId || "");
   const { data: caItems } = useCashAdvanceItems(caId || "");
+  const { data: existingItems } = useCashAdvanceSettlementItems(settlementId || "");
+
+  // Fetch existing settlement header for edit mode
+  const { data: existingSettlement } = useQuery({
+    queryKey: ["cash-advance-settlement", settlementId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cash_advance_settlements")
+        .select("*")
+        .eq("id", settlementId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: isEditMode,
+  });
+
   const createSettlement = useCreateSettlement();
+  const updateSettlement = useUpdateSettlement();
   const submitSettlement = useSubmitSettlement();
 
-  // Pre-populate items from CA items
+  // Category lookup for displaying names of edited items (settlement items have no category_id stored)
+  const caItemByDescription = (desc: string) =>
+    caItems?.find((ci) => ci.description === desc);
+
+  // Pre-populate items
   useEffect(() => {
-    if (caItems && caItems.length > 0) {
-      setItems(
-        caItems.map((item, index) => ({
-          id: String(index + 1),
-          description: item.description,
-          category_id: item.category_id || "",
-          category_name: (item as any).category?.name || "",
-          quantity: item.quantity,
-          unit_price: 0,
-          amount: 0,
-          receipt_number: "",
-          receipt_date: format(new Date(), "yyyy-MM-dd"),
-          notes: "",
-        }))
-      );
+    if (initialized) return;
+    if (isEditMode) {
+      if (existingSettlement && existingItems) {
+        setNotes(existingSettlement.notes || "");
+        if (existingItems.length > 0) {
+          setItems(
+            existingItems.map((it, idx) => {
+              const ci = caItemByDescription(it.description);
+              return {
+                id: String(idx + 1),
+                description: it.description,
+                category_id: ci?.category_id || "",
+                category_name: (ci as any)?.category?.name || "",
+                quantity: it.quantity,
+                unit_price: Number(it.unit_price),
+                amount: Number(it.amount),
+                receipt_number: it.receipt_number || "",
+                receipt_date: it.receipt_date || format(new Date(), "yyyy-MM-dd"),
+                notes: it.notes || "",
+              };
+            })
+          );
+        }
+        setInitialized(true);
+      }
+    } else {
+      if (caItems && caItems.length > 0) {
+        setItems(
+          caItems.map((item, index) => ({
+            id: String(index + 1),
+            description: item.description,
+            category_id: item.category_id || "",
+            category_name: (item as any).category?.name || "",
+            quantity: item.quantity,
+            unit_price: 0,
+            amount: 0,
+            receipt_number: "",
+            receipt_date: format(new Date(), "yyyy-MM-dd"),
+            notes: "",
+          }))
+        );
+        setInitialized(true);
+      }
     }
-  }, [caItems]);
+  }, [isEditMode, existingSettlement, existingItems, caItems, initialized]);
+
 
   const addItem = () => {
     setItems([
@@ -154,15 +211,11 @@ const CashAdvanceSettlementForm = () => {
 
   const isValid = items.some((item) => item.description.trim() && item.amount > 0);
 
-  const handleSave = async () => {
-    if (!isValid || !caId) return;
-
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
-
-    const result = await createSettlement.mutateAsync({
-      cashAdvanceId: caId,
-      notes: notes || undefined,
-      items: validItems.map((item) => ({
+  const persist = async () => {
+    if (!isValid || !caId) return null;
+    const validItems = items
+      .filter((item) => item.description.trim() && item.amount > 0)
+      .map((item) => ({
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
@@ -170,38 +223,36 @@ const CashAdvanceSettlementForm = () => {
         receipt_number: item.receipt_number || undefined,
         receipt_date: item.receipt_date || undefined,
         notes: item.notes || undefined,
-      })),
-    });
+      }));
 
-    if (result) {
-      navigate(`/cash-advance/${caId}`);
+    if (isEditMode && settlementId) {
+      await updateSettlement.mutateAsync({
+        settlementId,
+        notes: notes || undefined,
+        items: validItems,
+      });
+      return { id: settlementId };
     }
+    return await createSettlement.mutateAsync({
+      cashAdvanceId: caId,
+      notes: notes || undefined,
+      items: validItems,
+    });
+  };
+
+  const handleSave = async () => {
+    const result = await persist();
+    if (result) navigate(`/cash-advance/${caId}`);
   };
 
   const handleSaveAndSubmit = async () => {
-    if (!isValid || !caId) return;
-
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
-
-    const result = await createSettlement.mutateAsync({
-      cashAdvanceId: caId,
-      notes: notes || undefined,
-      items: validItems.map((item) => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        amount: item.amount,
-        receipt_number: item.receipt_number || undefined,
-        receipt_date: item.receipt_date || undefined,
-        notes: item.notes || undefined,
-      })),
-    });
-
+    const result = await persist();
     if (result) {
       await submitSettlement.mutateAsync(result.id);
       navigate(`/cash-advance/${caId}`);
     }
   };
+
 
   if (!ca) {
     return null;
@@ -214,7 +265,7 @@ const CashAdvanceSettlementForm = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("cashAdvance.addRealization")}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{isEditMode ? (t("cashAdvance.editRealization") || "Edit Realisasi") : t("cashAdvance.addRealization")}</h1>
           <p className="text-muted-foreground">
             {t("cashAdvance.forCA")}: {ca.ca_number}
           </p>
@@ -405,7 +456,7 @@ const CashAdvanceSettlementForm = () => {
               className="w-full"
               variant="outline"
               onClick={handleSave}
-              disabled={!isValid || createSettlement.isPending}
+              disabled={!isValid || createSettlement.isPending || updateSettlement.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAsDraft")}
@@ -413,7 +464,7 @@ const CashAdvanceSettlementForm = () => {
             <Button
               className="w-full"
               onClick={() => setShowSubmitDialog(true)}
-              disabled={!isValid || createSettlement.isPending || submitSettlement.isPending}
+              disabled={!isValid || createSettlement.isPending || updateSettlement.isPending || submitSettlement.isPending}
             >
               <Send className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAndSubmit")}

@@ -687,6 +687,134 @@ export const useSubmitSettlement = () => {
   });
 };
 
+export const useUpdateSettlement = () => {
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      settlementId,
+      notes,
+      items,
+    }: {
+      settlementId: string;
+      notes?: string;
+      items: {
+        description: string;
+        quantity: number;
+        unit_price: number;
+        amount: number;
+        receipt_number?: string;
+        receipt_date?: string;
+        notes?: string;
+      }[];
+    }) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const totalRealized = items.reduce((sum, item) => sum + item.amount, 0);
+
+      // Update settlement header (only drafts allowed by RLS)
+      const { error: updErr } = await supabase
+        .from("cash_advance_settlements")
+        .update({
+          total_realized: totalRealized,
+          notes: notes || null,
+        })
+        .eq("id", settlementId);
+
+      if (updErr) throw updErr;
+
+      // Replace items: delete existing then insert new
+      const { error: delErr } = await supabase
+        .from("cash_advance_settlement_items")
+        .delete()
+        .eq("settlement_id", settlementId);
+      if (delErr) throw delErr;
+
+      const itemsToInsert = items.map((item) => ({
+        settlement_id: settlementId,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        amount: item.amount,
+        receipt_number: item.receipt_number || null,
+        receipt_date: item.receipt_date || null,
+        notes: item.notes || null,
+      }));
+
+      const { error: insErr } = await supabase
+        .from("cash_advance_settlement_items")
+        .insert(itemsToInsert);
+      if (insErr) throw insErr;
+
+      return { success: true, id: settlementId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-settlements"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-settlement-items"] });
+      queryClient.invalidateQueries({ queryKey: ["all-settlement-items"] });
+      toast({ title: t("cashAdvance.settlementUpdateSuccess") || "Realisasi diperbarui" });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: t("common.error"), description: error.message });
+    },
+  });
+};
+
+export const useDeleteSettlement = () => {
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (settlementId: string) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // Get info for event logging before delete
+      const { data: settlement } = await supabase
+        .from("cash_advance_settlements")
+        .select("cash_advance_id, settlement_number")
+        .eq("id", settlementId)
+        .maybeSingle();
+
+      // Delete items first (in case FK ON DELETE is not cascade)
+      await supabase
+        .from("cash_advance_settlement_items")
+        .delete()
+        .eq("settlement_id", settlementId);
+
+      const { error } = await supabase
+        .from("cash_advance_settlements")
+        .delete()
+        .eq("id", settlementId);
+      if (error) throw error;
+
+      if (settlement) {
+        await supabase.from("cash_advance_events").insert({
+          cash_advance_id: settlement.cash_advance_id,
+          event_type: "settlement_deleted",
+          description: `Settlement ${settlement.settlement_number} deleted (draft)`,
+          performed_by: user.id,
+        });
+      }
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-settlements"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-events"] });
+      queryClient.invalidateQueries({ queryKey: ["all-settlement-items"] });
+      toast({ title: t("cashAdvance.settlementDeleteSuccess") || "Realisasi dihapus" });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: t("common.error"), description: error.message });
+    },
+  });
+};
+
 export const useApproveSettlement = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
