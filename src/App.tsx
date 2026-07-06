@@ -63,6 +63,7 @@ const App = () => (
                 <Route path="/cash-advance" element={<CashAdvance />} />
                 <Route path="/cash-advance/new" element={<CashAdvanceForm />} />
                 <Route path="/cash-advance/:id" element={<CashAdvanceDetail />} />
+                <Route path="/cash-advance/:id/edit" element={<CashAdvanceForm />} />
                 <Route path="/cash-advance/:id/settlement/new" element={<CashAdvanceSettlementForm />} />
                 <Route path="/cash-advance/:id/settlement/:settlementId/edit" element={<CashAdvanceSettlementForm />} />
                 <Route path="/medical-reimbursement" element={<MedicalReimbursement />} />
