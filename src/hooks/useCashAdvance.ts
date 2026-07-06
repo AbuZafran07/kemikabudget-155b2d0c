@@ -999,3 +999,93 @@ export const useDeleteCashAdvance = () => {
     },
   });
 };
+
+export const useUpdateCashAdvance = () => {
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (
+      params: { caId: string } & CreateCashAdvanceData & { division_id?: string }
+    ) => {
+      if (!user?.id) throw new Error("Not authenticated");
+      const { caId, items, purpose, needed_date, notes, division_id } = params;
+
+      // Ensure CA exists and is still draft
+      const { data: existing, error: exErr } = await supabase
+        .from("cash_advances")
+        .select("id, status, requester_id")
+        .eq("id", caId)
+        .maybeSingle();
+      if (exErr) throw exErr;
+      if (!existing) throw new Error("Cash advance not found");
+      if (existing.status !== "draft") {
+        throw new Error("Only draft cash advances can be edited");
+      }
+
+      const totalAmount = items.reduce((sum, i) => sum + i.amount, 0);
+
+      const updatePayload: Record<string, unknown> = {
+        purpose,
+        needed_date,
+        notes: notes || null,
+        total_amount: totalAmount,
+        updated_at: new Date().toISOString(),
+      };
+      if (division_id) updatePayload.division_id = division_id;
+
+      const { error: updErr } = await supabase
+        .from("cash_advances")
+        .update(updatePayload)
+        .eq("id", caId);
+      if (updErr) throw updErr;
+
+      // Replace items
+      const { error: delErr } = await supabase
+        .from("cash_advance_items")
+        .delete()
+        .eq("cash_advance_id", caId);
+      if (delErr) throw delErr;
+
+      const itemsToInsert = items.map((item) => ({
+        cash_advance_id: caId,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        amount: item.amount,
+        notes: item.notes || null,
+        category_id: item.category_id,
+      }));
+
+      const { error: insErr } = await supabase
+        .from("cash_advance_items")
+        .insert(itemsToInsert);
+      if (insErr) throw insErr;
+
+      await supabase.from("cash_advance_events").insert({
+        cash_advance_id: caId,
+        event_type: "updated",
+        description: "Cash advance draft updated",
+        performed_by: user.id,
+      });
+
+      return { id: caId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-items", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-events", data.id] });
+      toast({ title: t("cashAdvance.updateSuccess") || "Cash advance diperbarui" });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: t("common.error"),
+        description: error.message,
+      });
+    },
+  });
+};

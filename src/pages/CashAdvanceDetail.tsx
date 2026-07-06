@@ -270,10 +270,16 @@ const CashAdvanceDetail = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           {canSubmit && (
-            <Button onClick={handleSubmit} disabled={submitCashAdvance.isPending}>
-              <Send className="h-4 w-4 mr-2" />
-              {t("action.submit")}
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => navigate(`/cash-advance/${ca.id}/edit`)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                {t("action.edit") || "Edit"}
+              </Button>
+              <Button onClick={handleSubmit} disabled={submitCashAdvance.isPending}>
+                <Send className="h-4 w-4 mr-2" />
+                {t("action.submit")}
+              </Button>
+            </>
           )}
           {canApprove && (
             <>

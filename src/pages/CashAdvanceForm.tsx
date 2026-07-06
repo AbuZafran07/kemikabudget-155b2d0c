@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCreateCashAdvance, useSubmitCashAdvance, useCashAdvance, useCashAdvanceItems } from "@/hooks/useCashAdvance";
+import { useCreateCashAdvance, useUpdateCashAdvance, useSubmitCashAdvance, useCashAdvance, useCashAdvanceItems } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -89,6 +89,7 @@ const CashAdvanceForm = () => {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
   const createCashAdvance = useCreateCashAdvance();
+  const updateCashAdvance = useUpdateCashAdvance();
   const submitCashAdvance = useSubmitCashAdvance();
 
   // List divisions for executive/super_admin selector
@@ -168,6 +169,7 @@ const CashAdvanceForm = () => {
       setPurpose(existingCa.purpose);
       setNeededDate(existingCa.needed_date);
       setNotes(existingCa.notes || "");
+      if (existingCa.division_id) setSelectedDivisionId(existingCa.division_id);
       setItems(
         existingItems.map((item, index) => ({
           id: String(index + 1),
@@ -181,6 +183,14 @@ const CashAdvanceForm = () => {
       );
     }
   }, [isEdit, existingCa, existingItems]);
+
+  // Guard: only draft can be edited
+  useEffect(() => {
+    if (isEdit && existingCa && existingCa.status !== "draft") {
+      navigate(`/cash-advance/${existingCa.id}`, { replace: true });
+    }
+  }, [isEdit, existingCa, navigate]);
+
 
   const addItem = () => {
     setItems([
@@ -234,12 +244,9 @@ const CashAdvanceForm = () => {
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
   const isValid = !!divisionId && purpose.trim() && neededDate && allItemsHaveCategory;
 
-  const handleSave = async () => {
-    if (!isValid) return;
-
+  const buildPayload = () => {
     const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
-
-    const result = await createCashAdvance.mutateAsync({
+    return {
       purpose,
       needed_date: neededDate,
       notes: notes || undefined,
@@ -252,38 +259,41 @@ const CashAdvanceForm = () => {
         notes: item.notes || undefined,
         category_id: item.category_id,
       })),
-    });
+    };
+  };
 
-    if (result) {
-      navigate(`/cash-advance/${result.id}`);
+  const handleSave = async () => {
+    if (!isValid) return;
+    const payload = buildPayload();
+
+    if (isEdit && id) {
+      await updateCashAdvance.mutateAsync({ caId: id, ...payload });
+      navigate(`/cash-advance/${id}`);
+      return;
     }
+
+    const result = await createCashAdvance.mutateAsync(payload);
+    if (result) navigate(`/cash-advance/${result.id}`);
   };
 
   const handleSaveAndSubmit = async () => {
     if (!isValid) return;
+    const payload = buildPayload();
 
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
+    if (isEdit && id) {
+      await updateCashAdvance.mutateAsync({ caId: id, ...payload });
+      await submitCashAdvance.mutateAsync(id);
+      navigate(`/cash-advance/${id}`);
+      return;
+    }
 
-    const result = await createCashAdvance.mutateAsync({
-      purpose,
-      needed_date: neededDate,
-      notes: notes || undefined,
-      division_id: divisionId,
-      items: validItems.map((item) => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        amount: item.amount,
-        notes: item.notes || undefined,
-        category_id: item.category_id,
-      })),
-    });
-
+    const result = await createCashAdvance.mutateAsync(payload);
     if (result) {
       await submitCashAdvance.mutateAsync(result.id);
       navigate(`/cash-advance/${result.id}`);
     }
   };
+
 
   return (
     <div className="space-y-6 p-6">
@@ -499,7 +509,7 @@ const CashAdvanceForm = () => {
               className="w-full"
               variant="outline"
               onClick={handleSave}
-              disabled={!isValid || createCashAdvance.isPending}
+              disabled={!isValid || createCashAdvance.isPending || updateCashAdvance.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAsDraft")}
@@ -507,7 +517,7 @@ const CashAdvanceForm = () => {
             <Button
               className="w-full"
               onClick={() => setShowSubmitDialog(true)}
-              disabled={!isValid || createCashAdvance.isPending || submitCashAdvance.isPending}
+              disabled={!isValid || createCashAdvance.isPending || updateCashAdvance.isPending || submitCashAdvance.isPending}
             >
               <Send className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAndSubmit")}
