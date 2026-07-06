@@ -169,6 +169,7 @@ const CashAdvanceForm = () => {
       setPurpose(existingCa.purpose);
       setNeededDate(existingCa.needed_date);
       setNotes(existingCa.notes || "");
+      if (existingCa.division_id) setSelectedDivisionId(existingCa.division_id);
       setItems(
         existingItems.map((item, index) => ({
           id: String(index + 1),
@@ -182,6 +183,14 @@ const CashAdvanceForm = () => {
       );
     }
   }, [isEdit, existingCa, existingItems]);
+
+  // Guard: only draft can be edited
+  useEffect(() => {
+    if (isEdit && existingCa && existingCa.status !== "draft") {
+      navigate(`/cash-advance/${existingCa.id}`, { replace: true });
+    }
+  }, [isEdit, existingCa, navigate]);
+
 
   const addItem = () => {
     setItems([
