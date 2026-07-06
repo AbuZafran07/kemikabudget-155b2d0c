@@ -244,12 +244,9 @@ const CashAdvanceForm = () => {
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
   const isValid = !!divisionId && purpose.trim() && neededDate && allItemsHaveCategory;
 
-  const handleSave = async () => {
-    if (!isValid) return;
-
+  const buildPayload = () => {
     const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
-
-    const result = await createCashAdvance.mutateAsync({
+    return {
       purpose,
       needed_date: neededDate,
       notes: notes || undefined,
@@ -262,38 +259,41 @@ const CashAdvanceForm = () => {
         notes: item.notes || undefined,
         category_id: item.category_id,
       })),
-    });
+    };
+  };
 
-    if (result) {
-      navigate(`/cash-advance/${result.id}`);
+  const handleSave = async () => {
+    if (!isValid) return;
+    const payload = buildPayload();
+
+    if (isEdit && id) {
+      await updateCashAdvance.mutateAsync({ caId: id, ...payload });
+      navigate(`/cash-advance/${id}`);
+      return;
     }
+
+    const result = await createCashAdvance.mutateAsync(payload);
+    if (result) navigate(`/cash-advance/${result.id}`);
   };
 
   const handleSaveAndSubmit = async () => {
     if (!isValid) return;
+    const payload = buildPayload();
 
-    const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
+    if (isEdit && id) {
+      await updateCashAdvance.mutateAsync({ caId: id, ...payload });
+      await submitCashAdvance.mutateAsync(id);
+      navigate(`/cash-advance/${id}`);
+      return;
+    }
 
-    const result = await createCashAdvance.mutateAsync({
-      purpose,
-      needed_date: neededDate,
-      notes: notes || undefined,
-      division_id: divisionId,
-      items: validItems.map((item) => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        amount: item.amount,
-        notes: item.notes || undefined,
-        category_id: item.category_id,
-      })),
-    });
-
+    const result = await createCashAdvance.mutateAsync(payload);
     if (result) {
       await submitCashAdvance.mutateAsync(result.id);
       navigate(`/cash-advance/${result.id}`);
     }
   };
+
 
   return (
     <div className="space-y-6 p-6">
