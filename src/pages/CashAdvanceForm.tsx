@@ -89,6 +89,7 @@ const CashAdvanceForm = () => {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
   const createCashAdvance = useCreateCashAdvance();
+  const updateCashAdvance = useUpdateCashAdvance();
   const submitCashAdvance = useSubmitCashAdvance();
 
   // List divisions for executive/super_admin selector
