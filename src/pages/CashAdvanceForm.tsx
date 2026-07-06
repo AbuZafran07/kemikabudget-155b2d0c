@@ -517,7 +517,7 @@ const CashAdvanceForm = () => {
             <Button
               className="w-full"
               onClick={() => setShowSubmitDialog(true)}
-              disabled={!isValid || createCashAdvance.isPending || submitCashAdvance.isPending}
+              disabled={!isValid || createCashAdvance.isPending || updateCashAdvance.isPending || submitCashAdvance.isPending}
             >
               <Send className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAndSubmit")}
