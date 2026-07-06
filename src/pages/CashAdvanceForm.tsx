@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCreateCashAdvance, useSubmitCashAdvance, useCashAdvance, useCashAdvanceItems } from "@/hooks/useCashAdvance";
+import { useCreateCashAdvance, useUpdateCashAdvance, useSubmitCashAdvance, useCashAdvance, useCashAdvanceItems } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
