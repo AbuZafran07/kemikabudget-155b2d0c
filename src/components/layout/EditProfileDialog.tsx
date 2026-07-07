@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveSignatureUrl } from '@/lib/signatureUrl';
 import { PasswordStrength, validatePassword } from '@/components/auth/PasswordStrength';
 
 interface EditProfileDialogProps {
@@ -55,12 +56,16 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         phone: profile.phone || '',
       });
       setAvatarUrl(profile.avatar_url);
-      setSignatureUrl((profile as any).signature_url || null);
+      // Signatures bucket is private — resolve to signed URL for preview
+      (async () => {
+        const signed = await resolveSignatureUrl(user?.id, (profile as any).signature_url);
+        setSignatureUrl(signed);
+      })();
       // Reset password fields when dialog opens
       resetPasswordForm();
       setActiveTab('profile');
     }
-  }, [profile, open]);
+  }, [profile, open, user?.id]);
 
   const resetPasswordForm = () => {
     setCurrentPassword('');
@@ -535,17 +540,17 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
                         console.error('[Signature] Upload error:', uploadError);
                         throw uploadError;
                       }
-                      const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(fileName);
-                      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                      // Store the storage path (bucket is private); consumers resolve to signed URLs.
                       const { error: updateError } = await supabase
                         .from('profiles')
-                        .update({ signature_url: newUrl, updated_at: new Date().toISOString() } as any)
+                        .update({ signature_url: fileName, updated_at: new Date().toISOString() } as any)
                         .eq('id', user.id);
                       if (updateError) {
                         console.error('[Signature] Profile update error:', updateError);
                         throw updateError;
                       }
-                      setSignatureUrl(newUrl);
+                      const signed = await resolveSignatureUrl(user.id, fileName);
+                      setSignatureUrl(signed);
                       toast({ title: 'Tanda tangan berhasil diupload' });
                     } catch (err) {
                       console.error('[Signature] Full error:', err);

@@ -45,7 +45,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
     enabled: !!claim,
   });
 
-  // Fetch requester signature
+  // Fetch requester signature (signatures bucket is private → resolve signed URL)
   const { data: requesterProfile } = useQuery({
     queryKey: ["requester-signature", claim?.employee_id],
     queryFn: async () => {
@@ -55,7 +55,9 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
         .select("signature_url")
         .eq("id", claim.employee_id)
         .single();
-      return data;
+      if (!data) return null;
+      const signed = await resolveSignatureUrl(claim.employee_id, data.signature_url);
+      return { signature_url: signed };
     },
     enabled: !!claim?.employee_id,
   });
