@@ -545,10 +545,11 @@ const CashAdvanceDetail = () => {
                   </TableHeader>
                   <TableBody>
                     {settlements.map((settlement) => {
-                      const isOwnDraft =
-                        settlement.status === "draft" &&
-                        (settlement as any).created_by === user?.id;
-                      const canEditDraft = isOwnDraft || (settlement.status === "draft" && role === "super_admin");
+                      const isPending =
+                        settlement.status === "draft" || settlement.status === "submitted";
+                      const isOwnPending =
+                        isPending && (settlement as any).created_by === user?.id;
+                      const canEditDraft = isOwnPending || (isPending && role === "super_admin");
                       return (
                       <TableRow
                         key={settlement.id}
