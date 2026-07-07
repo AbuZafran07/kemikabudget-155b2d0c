@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveSignatureUrl } from '@/lib/signatureUrl';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
@@ -149,6 +150,12 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
         .select('full_name, email, signature_url, division_id')
         .eq('id', requestData.requester_id)
         .single();
+      if (requesterProfile) {
+        (requesterProfile as any).signature_url = await resolveSignatureUrl(
+          requestData.requester_id,
+          (requesterProfile as any).signature_url,
+        );
+      }
 
       // Fetch requester's division info
       let requesterDivision = null;
@@ -169,6 +176,12 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
           .select('full_name, signature_url')
           .eq('id', requestData.approved_by)
           .single();
+        if (approver) {
+          (approver as any).signature_url = await resolveSignatureUrl(
+            requestData.approved_by,
+            (approver as any).signature_url,
+          );
+        }
         approverProfile = approver;
       }
 
@@ -180,6 +193,12 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
           .select('full_name, signature_url')
           .eq('id', requestData.paid_by)
           .single();
+        if (payer) {
+          (payer as any).signature_url = await resolveSignatureUrl(
+            requestData.paid_by,
+            (payer as any).signature_url,
+          );
+        }
         payerProfile = payer;
       }
 

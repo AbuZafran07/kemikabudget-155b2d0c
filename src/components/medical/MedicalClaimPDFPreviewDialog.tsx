@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { id as idLocale, enUS } from "date-fns/locale";
 import { exportStyledHtmlToPdf } from "@/lib/html2pdfExport";
 import { escapeHtml } from "@/lib/htmlEscape";
+import { resolveSignatureUrl } from "@/lib/signatureUrl";
 import logoKemika from "@/assets/logo-kemika.png";
 
 interface MedicalClaimPDFPreviewDialogProps {
@@ -45,7 +46,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
     enabled: !!claim,
   });
 
-  // Fetch requester signature
+  // Fetch requester signature (signatures bucket is private → resolve signed URL)
   const { data: requesterProfile } = useQuery({
     queryKey: ["requester-signature", claim?.employee_id],
     queryFn: async () => {
@@ -55,7 +56,9 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
         .select("signature_url")
         .eq("id", claim.employee_id)
         .single();
-      return data;
+      if (!data) return null;
+      const signed = await resolveSignatureUrl(claim.employee_id, data.signature_url);
+      return { signature_url: signed };
     },
     enabled: !!claim?.employee_id,
   });

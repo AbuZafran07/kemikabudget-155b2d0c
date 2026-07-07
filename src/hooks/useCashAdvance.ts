@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveSignatureUrl } from "@/lib/signatureUrl";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -186,6 +187,9 @@ export const useCashAdvance = (id: string) => {
         .select("id, full_name, email, signature_url")
         .eq("id", data.requester_id)
         .maybeSingle();
+      if (requester) {
+        (requester as any).signature_url = await resolveSignatureUrl(requester.id, (requester as any).signature_url);
+      }
 
       // Fetch approver if exists
       let approver = null;
@@ -195,6 +199,9 @@ export const useCashAdvance = (id: string) => {
           .select("id, full_name, signature_url")
           .eq("id", data.approved_by)
           .maybeSingle();
+        if (approverData) {
+          (approverData as any).signature_url = await resolveSignatureUrl(approverData.id, (approverData as any).signature_url);
+        }
         approver = approverData;
       }
 
@@ -206,6 +213,9 @@ export const useCashAdvance = (id: string) => {
           .select("id, full_name, signature_url")
           .eq("id", data.paid_by)
           .maybeSingle();
+        if (payerData) {
+          (payerData as any).signature_url = await resolveSignatureUrl(payerData.id, (payerData as any).signature_url);
+        }
         payer = payerData;
       }
 

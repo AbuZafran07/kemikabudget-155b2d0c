@@ -44,6 +44,7 @@ import { usePaymentQueue, PaymentRequest } from "@/hooks/usePaymentQueue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveSignatureUrl } from "@/lib/signatureUrl";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   generatePaymentCSV,
@@ -367,6 +368,12 @@ const PaymentQueue = () => {
       .select('full_name, email, signature_url, division_id')
       .eq('id', data.requester_id)
       .single();
+    if (profile) {
+      (profile as any).signature_url = await resolveSignatureUrl(
+        data.requester_id,
+        (profile as any).signature_url,
+      );
+    }
 
     // Fetch requester's division info
     let requesterDivision = null;
@@ -389,7 +396,8 @@ const PaymentQueue = () => {
         .single();
       
       if (approver && approver.full_name) {
-        approverProfile = { full_name: approver.full_name, signature_url: approver.signature_url };
+        const signed = await resolveSignatureUrl(data.approved_by, approver.signature_url);
+        approverProfile = { full_name: approver.full_name, signature_url: signed };
       }
       if (approverError) {
         console.warn('Could not fetch approver profile:', approverError);
@@ -406,7 +414,8 @@ const PaymentQueue = () => {
         .single();
       
       if (payer && payer.full_name) {
-        payerProfile = { full_name: payer.full_name, signature_url: payer.signature_url };
+        const signed = await resolveSignatureUrl(data.paid_by, payer.signature_url);
+        payerProfile = { full_name: payer.full_name, signature_url: signed };
       }
       if (payerError) {
         console.warn('Could not fetch payer profile:', payerError);
