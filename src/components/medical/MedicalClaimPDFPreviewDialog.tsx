@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { id as idLocale, enUS } from "date-fns/locale";
 import { exportStyledHtmlToPdf } from "@/lib/html2pdfExport";
 import { escapeHtml } from "@/lib/htmlEscape";
+import { resolveSignatureUrl } from "@/lib/signatureUrl";
 import logoKemika from "@/assets/logo-kemika.png";
 
 interface MedicalClaimPDFPreviewDialogProps {

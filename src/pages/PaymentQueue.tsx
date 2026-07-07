@@ -44,6 +44,7 @@ import { usePaymentQueue, PaymentRequest } from "@/hooks/usePaymentQueue";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveSignatureUrl } from "@/lib/signatureUrl";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   generatePaymentCSV,
