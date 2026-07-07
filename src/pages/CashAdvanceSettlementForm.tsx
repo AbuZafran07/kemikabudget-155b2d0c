@@ -461,14 +461,16 @@ const CashAdvanceSettlementForm = () => {
               <Save className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAsDraft")}
             </Button>
-            <Button
-              className="w-full"
-              onClick={() => setShowSubmitDialog(true)}
-              disabled={!isValid || createSettlement.isPending || updateSettlement.isPending || submitSettlement.isPending}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              {t("cashAdvance.saveAndSubmit")}
-            </Button>
+            {!(isEditMode && existingSettlement?.status === "submitted") && (
+              <Button
+                className="w-full"
+                onClick={() => setShowSubmitDialog(true)}
+                disabled={!isValid || createSettlement.isPending || updateSettlement.isPending || submitSettlement.isPending}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {t("cashAdvance.saveAndSubmit")}
+              </Button>
+            )}
           </div>
         </div>
       </div>
