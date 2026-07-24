@@ -20,12 +20,14 @@ const getAllowedOrigins = (): string[] => {
   return defaultOrigins;
 };
 
-// Check if origin is from Lovable domains
+// Check if origin is from Lovable domains or the Kemika custom domain
 function isLovableOrigin(origin: string): boolean {
   return origin.endsWith('.lovable.app') || 
          origin.endsWith('.lovableproject.com') ||
          origin.includes('lovable.app') ||
-         origin.includes('lovableproject.com');
+         origin.includes('lovableproject.com') ||
+         origin === 'https://budget.kemika.web.id' ||
+         origin.endsWith('.kemika.web.id');
 }
 
 export function getCorsHeaders(requestOrigin: string | null): Record<string, string> {
