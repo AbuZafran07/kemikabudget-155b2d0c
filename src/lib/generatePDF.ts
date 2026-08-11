@@ -15,6 +15,7 @@ interface RequestData {
   beneficiary_name?: string | null;
   beneficiary_bank?: string | null;
   beneficiary_account?: string | null;
+  beneficiary_email?: string | null;
   approved_at?: string | null;
   paid_at?: string | null;
   division?: { name: string; code: string };
