@@ -309,7 +309,7 @@ export const generateRequestPDF = (request: RequestData): void => {
       <div class="amount-words">Terbilang: ${terbilang(request.amount)} Rupiah</div>
     </div>
 
-    ${request.beneficiary_name ? `
+    ${(beneficiaryDisplayName || request.beneficiary_bank || request.beneficiary_account) ? `
     <div class="section-title">Informasi Penerima</div>
     <div class="beneficiary-box">
       <table class="info-table" style="margin: 0;">
