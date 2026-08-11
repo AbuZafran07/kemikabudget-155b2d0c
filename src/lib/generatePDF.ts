@@ -69,7 +69,8 @@ export const generateRequestPDF = (request: RequestData): void => {
   const safeVendor = escapeHtml(request.vendor);
   const safeNotes = escapeHtml(request.notes);
   const safePaymentMethod = escapeHtml(request.payment_method);
-  const safeBeneficiaryName = escapeHtml(request.beneficiary_name);
+  const beneficiaryDisplayName = request.beneficiary_name || request.beneficiary_email || '';
+  const safeBeneficiaryName = escapeHtml(beneficiaryDisplayName);
   const safeBeneficiaryBank = escapeHtml(request.beneficiary_bank);
   const safeBeneficiaryAccount = escapeHtml(request.beneficiary_account);
   const safeDivisionName = escapeHtml(request.division?.name);
