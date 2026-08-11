@@ -459,15 +459,15 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         <tr>
           <td>
             <div class="sub-label">Atas Nama</div>
-            <div class="sub-value">${isTransfer ? safeBeneficiaryEmail : '-'}</div>
+            <div class="sub-value">${safeBeneficiaryEmail}</div>
           </td>
           <td>
             <div class="sub-label">Nama Bank</div>
-            <div class="sub-value">${isTransfer ? safeBeneficiaryBank : '-'}</div>
+            <div class="sub-value">${safeBeneficiaryBank}</div>
           </td>
           <td>
             <div class="sub-label">No. Rekening</div>
-            <div class="sub-value">${isTransfer ? safeBeneficiaryAccount : '-'}</div>
+            <div class="sub-value">${safeBeneficiaryAccount}</div>
           </td>
           <td>
             <div class="sub-label">Nilai Transfer</div>
