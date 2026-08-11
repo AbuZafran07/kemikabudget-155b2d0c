@@ -15,6 +15,7 @@ interface RequestData {
   beneficiary_name?: string | null;
   beneficiary_bank?: string | null;
   beneficiary_account?: string | null;
+  beneficiary_email?: string | null;
   approved_at?: string | null;
   paid_at?: string | null;
   division?: { name: string; code: string };
@@ -68,7 +69,8 @@ export const generateRequestPDF = (request: RequestData): void => {
   const safeVendor = escapeHtml(request.vendor);
   const safeNotes = escapeHtml(request.notes);
   const safePaymentMethod = escapeHtml(request.payment_method);
-  const safeBeneficiaryName = escapeHtml(request.beneficiary_name);
+  const beneficiaryDisplayName = request.beneficiary_name || request.beneficiary_email || '';
+  const safeBeneficiaryName = escapeHtml(beneficiaryDisplayName);
   const safeBeneficiaryBank = escapeHtml(request.beneficiary_bank);
   const safeBeneficiaryAccount = escapeHtml(request.beneficiary_account);
   const safeDivisionName = escapeHtml(request.division?.name);
@@ -307,7 +309,7 @@ export const generateRequestPDF = (request: RequestData): void => {
       <div class="amount-words">Terbilang: ${terbilang(request.amount)} Rupiah</div>
     </div>
 
-    ${request.beneficiary_name ? `
+    ${(beneficiaryDisplayName || request.beneficiary_bank || request.beneficiary_account) ? `
     <div class="section-title">Informasi Penerima</div>
     <div class="beneficiary-box">
       <table class="info-table" style="margin: 0;">

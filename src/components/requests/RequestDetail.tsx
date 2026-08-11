@@ -574,14 +574,14 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
             </div>
 
             {/* Beneficiary Info */}
-            {request.beneficiary_name && (
+            {(request.beneficiary_name || request.beneficiary_email || request.beneficiary_bank || request.beneficiary_account) && (
               <>
                 <Separator className="my-4" />
                 <h4 className="font-medium text-foreground mb-3">Informasi Penerima</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Nama</p>
-                    <p className="font-medium text-foreground">{request.beneficiary_name}</p>
+                    <p className="text-sm text-muted-foreground">Atas Nama</p>
+                    <p className="font-medium text-foreground">{request.beneficiary_name || request.beneficiary_email || '-'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Bank</p>
