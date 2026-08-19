@@ -1114,7 +1114,7 @@ const Reports = () => {
                         <TableHead>No. Request</TableHead>
                         <TableHead>Divisi</TableHead>
                         <TableHead>Kategori</TableHead>
-                        <TableHead>Deskripsi</TableHead>
+                        <TableHead className="min-w-[280px]">Deskripsi</TableHead>
                         <TableHead className="text-right">Jumlah</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Tanggal</TableHead>
@@ -1135,7 +1135,9 @@ const Reports = () => {
                             </TableCell>
                             <TableCell>{row.division?.name}</TableCell>
                             <TableCell>{row.category?.name}</TableCell>
-                            <TableCell className="max-w-48 truncate">{row.description}</TableCell>
+                            <TableCell className="min-w-[280px] whitespace-normal break-words align-top">
+                              {row.description}
+                            </TableCell>
                              <TableCell className="text-right font-medium">
                                {formatFullCurrency(Number(row.effective_amount ?? row.amount))}
                             </TableCell>
