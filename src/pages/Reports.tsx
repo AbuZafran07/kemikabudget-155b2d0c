@@ -1114,7 +1114,7 @@ const Reports = () => {
                         <TableHead>No. Request</TableHead>
                         <TableHead>Divisi</TableHead>
                         <TableHead>Kategori</TableHead>
-                        <TableHead>Deskripsi</TableHead>
+                        <TableHead className="min-w-[280px]">Deskripsi</TableHead>
                         <TableHead className="text-right">Jumlah</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Tanggal</TableHead>
