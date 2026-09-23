@@ -11,6 +11,7 @@ export type RequestStatus =
   | "paid"
   | "partially_settled"
   | "settled"
+  | "revised"
   | "cancelled";
 
 interface StatusBadgeProps {
@@ -57,6 +58,10 @@ const statusConfig: Record<
   settled: {
     label: "Selesai",
     className: "bg-accent/20 text-accent-foreground border-accent/30",
+  },
+  revised: {
+    label: "Direvisi",
+    className: "bg-orange-500/10 text-orange-600 border-orange-500/20",
   },
   cancelled: {
     label: "Dibatalkan",

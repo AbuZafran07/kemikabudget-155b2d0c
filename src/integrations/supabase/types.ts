@@ -2507,7 +2507,12 @@ export type Database = {
         | "paid"
         | "settled"
         | "cancelled"
-      settlement_status: "draft" | "submitted" | "approved" | "rejected"
+      settlement_status:
+        | "draft"
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "revised"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2683,7 +2688,13 @@ export const Constants = {
         "settled",
         "cancelled",
       ],
-      settlement_status: ["draft", "submitted", "approved", "rejected"],
+      settlement_status: [
+        "draft",
+        "submitted",
+        "approved",
+        "rejected",
+        "revised",
+      ],
     },
   },
 } as const
