@@ -448,8 +448,11 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
     ${data.settlements && data.settlements.length > 0 ? (() => {
       const activeSettlements = data.settlements!.filter(s => s.status !== 'rejected');
       if (activeSettlements.length === 0) return '';
-      
-      const totalRealized = activeSettlements.reduce((sum, s) => sum + s.total_realized, 0);
+
+      // Revised settlements are historical copies only: they must NOT be counted
+      // in the realization total, otherwise the amount is double-counted.
+      const countedSettlements = activeSettlements.filter(s => s.status !== 'revised');
+      const totalRealized = countedSettlements.reduce((sum, s) => sum + s.total_realized, 0);
       const variance = data.total_amount - totalRealized;
       
       const settlementSections = activeSettlements.map(settlement => {
@@ -469,7 +472,7 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
         <div style="margin-bottom: 8px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
             <span style="font-weight: bold; font-size: 9pt;">${escapeHtml(settlement.settlement_number)}</span>
-            <span style="font-size: 8pt; color: #555;">Status: ${escapeHtml(settlement.status.toUpperCase())} | ${format(new Date(settlement.created_at), 'dd MMM yyyy', { locale: localeId })}</span>
+            <span style="font-size: 8pt; color: #555;">Status: ${escapeHtml(settlement.status.toUpperCase())}${settlement.status === 'revised' ? ' (RIWAYAT - TIDAK DIHITUNG)' : ''} | ${format(new Date(settlement.created_at), 'dd MMM yyyy', { locale: localeId })}</span>
           </div>
           <table class="main-table">
             <thead>
