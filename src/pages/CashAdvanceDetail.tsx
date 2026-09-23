@@ -132,6 +132,7 @@ const CashAdvanceDetail = () => {
   const rejectSettlement = useRejectSettlement();
   const deleteCashAdvance = useDeleteCashAdvance();
   const deleteSettlement = useDeleteSettlement();
+  const unlockSettlement = useUnlockSettlement();
 
   const [showApproveSettlementDialog, setShowApproveSettlementDialog] = useState(false);
   const [showRejectSettlementDialog, setShowRejectSettlementDialog] = useState(false);
