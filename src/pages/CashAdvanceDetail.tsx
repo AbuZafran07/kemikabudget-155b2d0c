@@ -1056,7 +1056,7 @@ const CashAdvanceDetail = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Buka Kunci Realisasi untuk Revisi?</AlertDialogTitle>
             <AlertDialogDescription>
-              Realisasi yang sudah disetujui akan kembali ke status Diajukan agar bisa diedit. Pemakaian anggaran aktual dibatalkan dan komitmen kas bon dipasang ulang. Alasan revisi akan tercatat di Timeline sehingga pemohon dapat melihatnya.
+              Realisasi yang sudah disetujui tidak dihapus — statusnya berubah menjadi "Direvisi" dan tetap tersimpan sebagai riwayat. Sistem otomatis membuat salinan Draft baru yang bisa diedit dan diajukan ulang. Pemakaian anggaran aktual dibatalkan dan komitmen kas bon dipasang ulang. Alasan revisi akan tercatat di Timeline sehingga pemohon dapat melihatnya.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
