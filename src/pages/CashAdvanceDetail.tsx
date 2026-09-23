@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Trash2,
   Pencil,
+  Unlock,
 } from "lucide-react";
 import { CashAdvancePDFPreviewDialog } from "@/components/cashadvance/CashAdvancePDFPreviewDialog";
 import type { CashAdvancePDFData } from "@/lib/generateCashAdvancePDF";
@@ -71,6 +72,7 @@ import {
   useApproveSettlement,
   useRejectSettlement,
   useDeleteSettlement,
+  useUnlockSettlement,
   useDeleteCashAdvance,
 } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
