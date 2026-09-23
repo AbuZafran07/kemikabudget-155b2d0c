@@ -684,7 +684,7 @@ const Reports = () => {
   const exportToCSV = (data: any[], filename: string, headers: string[]) => {
     const csvContent = [
       headers.join(','),
-      ...data.map(row => headers.map(h => `"${row[h] || ''}"`).join(',')),
+      ...data.map(row => headers.map(h => csvCell(row[h] ?? '')).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

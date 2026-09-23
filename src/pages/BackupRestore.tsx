@@ -261,14 +261,7 @@ const BackupRestore = () => {
         for (const row of result.data) {
           csvContent +=
             headers
-              .map((h) => {
-                const val = row[h];
-                if (val === null || val === undefined) return "";
-                const str = String(val);
-                return str.includes(",") || str.includes('"') || str.includes("\n")
-                  ? `"${str.replace(/"/g, '""')}"`
-                  : str;
-              })
+              .map((h) => csvCell(row[h]))
               .join(",") + "\n";
         }
       }
