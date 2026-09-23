@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.export-medical-reimbursements]
 verify_jwt = false
+
+[functions.kemi-export]
+verify_jwt = false
