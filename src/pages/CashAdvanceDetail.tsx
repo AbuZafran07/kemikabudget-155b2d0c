@@ -1049,6 +1049,35 @@ const CashAdvanceDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Unlock Settlement Dialog (Super Admin) */}
+      <AlertDialog open={!!unlockSettlementId} onOpenChange={(open) => { if (!open) { setUnlockSettlementId(null); setUnlockReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Buka Kunci Realisasi untuk Revisi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realisasi yang sudah disetujui akan kembali ke status Diajukan agar bisa diedit. Pemakaian anggaran aktual dibatalkan dan komitmen kas bon dipasang ulang. Alasan revisi akan tercatat di Timeline sehingga pemohon dapat melihatnya.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Alasan Revisi *</Label>
+            <Textarea
+              placeholder="Contoh: nominal item transport tidak sesuai bukti"
+              value={unlockReason}
+              onChange={(e) => setUnlockReason(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnlockSettlement}
+              disabled={!unlockReason.trim() || unlockSettlement.isPending}
+            >
+              {unlockSettlement.isPending ? "Memproses..." : "Buka Kunci"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
