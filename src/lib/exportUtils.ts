@@ -117,14 +117,14 @@ export function generateAuditLogCSV(data: AuditLogExportRow[]): string {
   ];
 
   const rows = data.map((row) => [
-    format(new Date(row.created_at), 'dd MMM yyyy HH:mm:ss', { locale: localeId }),
-    row.event_type,
-    row.entity_type,
-    row.entity_id || '-',
-    `"${row.description.replace(/"/g, '""')}"`,
-    row.user_name || 'System',
-    row.user_email || '-',
-    row.ip_address || '-',
+    csvCell(format(new Date(row.created_at), 'dd MMM yyyy HH:mm:ss', { locale: localeId })),
+    csvCell(row.event_type),
+    csvCell(row.entity_type),
+    csvCell(row.entity_id || '-'),
+    csvCell(row.description),
+    csvCell(row.user_name || 'System'),
+    csvCell(row.user_email || '-'),
+    csvCell(row.ip_address || '-'),
   ]);
 
   const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
