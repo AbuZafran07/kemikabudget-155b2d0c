@@ -825,6 +825,42 @@ export const useDeleteSettlement = () => {
   });
 };
 
+export const useUnlockSettlement = () => {
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ settlementId, reason }: { settlementId: string; reason: string }) => {
+      const { data, error } = await supabase.rpc("unlock_settlement", {
+        p_settlement_id: settlementId,
+        p_reason: reason,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string };
+      if (!result?.success) throw new Error(result?.error || "Gagal membuka kunci realisasi");
+
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-settlements"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advance-events"] });
+      queryClient.invalidateQueries({ queryKey: ["all-settlement-items"] });
+      toast({
+        title: "Realisasi dibuka untuk revisi",
+        description: "Status realisasi kembali menjadi Diajukan dan dapat diedit.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: t("common.error"), description: error.message });
+    },
+  });
+};
+
 export const useApproveSettlement = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
