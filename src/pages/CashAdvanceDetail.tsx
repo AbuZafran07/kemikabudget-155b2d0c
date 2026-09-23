@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Trash2,
   Pencil,
+  Unlock,
 } from "lucide-react";
 import { CashAdvancePDFPreviewDialog } from "@/components/cashadvance/CashAdvancePDFPreviewDialog";
 import type { CashAdvancePDFData } from "@/lib/generateCashAdvancePDF";
@@ -71,6 +72,7 @@ import {
   useApproveSettlement,
   useRejectSettlement,
   useDeleteSettlement,
+  useUnlockSettlement,
   useDeleteCashAdvance,
 } from "@/hooks/useCashAdvance";
 import { useQuery } from "@tanstack/react-query";
@@ -130,6 +132,7 @@ const CashAdvanceDetail = () => {
   const rejectSettlement = useRejectSettlement();
   const deleteCashAdvance = useDeleteCashAdvance();
   const deleteSettlement = useDeleteSettlement();
+  const unlockSettlement = useUnlockSettlement();
 
   const [showApproveSettlementDialog, setShowApproveSettlementDialog] = useState(false);
   const [showRejectSettlementDialog, setShowRejectSettlementDialog] = useState(false);
@@ -139,6 +142,8 @@ const CashAdvanceDetail = () => {
   const [viewSettlementId, setViewSettlementId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteSettlementId, setDeleteSettlementId] = useState<string | null>(null);
+  const [unlockSettlementId, setUnlockSettlementId] = useState<string | null>(null);
+  const [unlockReason, setUnlockReason] = useState("");
 
   // Fetch funding sources for payment
   const { data: fundingSources } = useQuery({
@@ -245,6 +250,13 @@ const CashAdvanceDetail = () => {
     setShowRejectSettlementDialog(false);
     setSelectedSettlementId(null);
     setSettlementRejectionReason("");
+  };
+
+  const handleUnlockSettlement = async () => {
+    if (!unlockSettlementId) return;
+    await unlockSettlement.mutateAsync({ settlementId: unlockSettlementId, reason: unlockReason });
+    setUnlockSettlementId(null);
+    setUnlockReason("");
   };
 
   const handleDeleteCA = async () => {
@@ -622,7 +634,22 @@ const CashAdvanceDetail = () => {
                                 </Button>
                               </>
                             )}
-                            {!canEditDraft && !(canApproveSettlement && settlement.status === "submitted") && (
+                            {role === "super_admin" && settlement.status === "approved" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUnlockSettlementId(settlement.id);
+                                }}
+                              >
+                                <Unlock className="h-4 w-4 mr-1" />
+                                Buka Kunci
+                              </Button>
+                            )}
+                            {!canEditDraft &&
+                              !(canApproveSettlement && settlement.status === "submitted") &&
+                              !(role === "super_admin" && settlement.status === "approved") && (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </div>
@@ -1018,6 +1045,35 @@ const CashAdvanceDetail = () => {
               disabled={deleteSettlement.isPending}
             >
               {deleteSettlement.isPending ? "Menghapus..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unlock Settlement Dialog (Super Admin) */}
+      <AlertDialog open={!!unlockSettlementId} onOpenChange={(open) => { if (!open) { setUnlockSettlementId(null); setUnlockReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Buka Kunci Realisasi untuk Revisi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Realisasi yang sudah disetujui akan kembali ke status Diajukan agar bisa diedit. Pemakaian anggaran aktual dibatalkan dan komitmen kas bon dipasang ulang. Alasan revisi akan tercatat di Timeline sehingga pemohon dapat melihatnya.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Alasan Revisi *</Label>
+            <Textarea
+              placeholder="Contoh: nominal item transport tidak sesuai bukti"
+              value={unlockReason}
+              onChange={(e) => setUnlockReason(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnlockSettlement}
+              disabled={!unlockReason.trim() || unlockSettlement.isPending}
+            >
+              {unlockSettlement.isPending ? "Memproses..." : "Buka Kunci"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

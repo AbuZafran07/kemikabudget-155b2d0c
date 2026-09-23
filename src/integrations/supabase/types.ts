@@ -2454,6 +2454,10 @@ export type Database = {
             }
             Returns: Json
           }
+      unlock_settlement: {
+        Args: { p_reason: string; p_settlement_id: string }
+        Returns: Json
+      }
       verify_user_otp: {
         Args: { p_otp_code: string; p_user_id: string }
         Returns: boolean
