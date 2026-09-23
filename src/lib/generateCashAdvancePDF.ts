@@ -472,7 +472,7 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
         <div style="margin-bottom: 8px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
             <span style="font-weight: bold; font-size: 9pt;">${escapeHtml(settlement.settlement_number)}</span>
-            <span style="font-size: 8pt; color: #555;">Status: ${escapeHtml(settlement.status.toUpperCase())} | ${format(new Date(settlement.created_at), 'dd MMM yyyy', { locale: localeId })}</span>
+            <span style="font-size: 8pt; color: #555;">Status: ${escapeHtml(settlement.status.toUpperCase())}${settlement.status === 'revised' ? ' (RIWAYAT - TIDAK DIHITUNG)' : ''} | ${format(new Date(settlement.created_at), 'dd MMM yyyy', { locale: localeId })}</span>
           </div>
           <table class="main-table">
             <thead>
