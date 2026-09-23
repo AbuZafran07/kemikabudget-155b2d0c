@@ -448,8 +448,11 @@ export const generateCashAdvanceHTML = (data: CashAdvancePDFData, logoBase64?: s
     ${data.settlements && data.settlements.length > 0 ? (() => {
       const activeSettlements = data.settlements!.filter(s => s.status !== 'rejected');
       if (activeSettlements.length === 0) return '';
-      
-      const totalRealized = activeSettlements.reduce((sum, s) => sum + s.total_realized, 0);
+
+      // Revised settlements are historical copies only: they must NOT be counted
+      // in the realization total, otherwise the amount is double-counted.
+      const countedSettlements = activeSettlements.filter(s => s.status !== 'revised');
+      const totalRealized = countedSettlements.reduce((sum, s) => sum + s.total_realized, 0);
       const variance = data.total_amount - totalRealized;
       
       const settlementSections = activeSettlements.map(settlement => {
