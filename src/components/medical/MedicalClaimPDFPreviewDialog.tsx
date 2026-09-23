@@ -249,7 +249,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               </div>
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Jenis Klaim" : "Claim Type"}</span>
-                <span class="info-value">: ${getClaimTypeLabel(claim.claim_type)}</span>
+                <span class="info-value">: ${escapeHtml(getClaimTypeLabel(claim.claim_type))}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Nama Pasien" : "Patient Name"}</span>
@@ -257,7 +257,7 @@ const MedicalClaimPDFPreviewDialog = ({ open, onOpenChange, claim }: MedicalClai
               </div>
               <div class="info-item">
                 <span class="info-label">${language === "id" ? "Hubungan" : "Relationship"}</span>
-                <span class="info-value">: ${getRelationshipLabel(claim.patient_relationship)}</span>
+                <span class="info-value">: ${escapeHtml(getRelationshipLabel(claim.patient_relationship))}</span>
               </div>
               ${
                 claim.hospital_clinic

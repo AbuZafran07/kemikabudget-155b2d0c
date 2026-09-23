@@ -20,14 +20,30 @@ const getAllowedOrigins = (): string[] => {
   return defaultOrigins;
 };
 
-// Check if origin is from Lovable domains or the Kemika custom domain
+// Check if origin is from Lovable domains or the Kemika custom domain.
+// Strict: must be https and the hostname must exactly match or be a subdomain
+// of a trusted apex domain (no substring matching, which is spoofable).
+const TRUSTED_APEX_DOMAINS = [
+  'lovable.app',
+  'lovableproject.com',
+  'kemika.web.id',
+];
+
 function isLovableOrigin(origin: string): boolean {
-  return origin.endsWith('.lovable.app') || 
-         origin.endsWith('.lovableproject.com') ||
-         origin.includes('lovable.app') ||
-         origin.includes('lovableproject.com') ||
-         origin === 'https://budget.kemika.web.id' ||
-         origin.endsWith('.kemika.web.id');
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+
+  if (url.protocol !== 'https:') return false;
+  if (url.port) return false;
+
+  const host = url.hostname.toLowerCase();
+  return TRUSTED_APEX_DOMAINS.some(
+    (apex) => host === apex || host.endsWith(`.${apex}`)
+  );
 }
 
 export function getCorsHeaders(requestOrigin: string | null): Record<string, string> {

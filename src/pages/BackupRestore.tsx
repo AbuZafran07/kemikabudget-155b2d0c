@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Upload, Database, AlertTriangle, CheckCircle, Loader2, FileSpreadsheet, FileJson, Clock, Timer, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { csvCell } from "@/lib/exportUtils";
 
 interface BackupCategory {
   key: string;
@@ -261,14 +262,7 @@ const BackupRestore = () => {
         for (const row of result.data) {
           csvContent +=
             headers
-              .map((h) => {
-                const val = row[h];
-                if (val === null || val === undefined) return "";
-                const str = String(val);
-                return str.includes(",") || str.includes('"') || str.includes("\n")
-                  ? `"${str.replace(/"/g, '""')}"`
-                  : str;
-              })
+              .map((h) => csvCell(row[h]))
               .join(",") + "\n";
         }
       }

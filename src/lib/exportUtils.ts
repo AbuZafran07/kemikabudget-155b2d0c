@@ -1,6 +1,20 @@
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 
+/**
+ * Sanitize a value for safe inclusion in a CSV cell.
+ * - Neutralizes spreadsheet formula injection (=, +, -, @, tab, CR) with a leading apostrophe
+ * - Always quotes and escapes embedded quotes
+ */
+export function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '""';
+  let str = String(value);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
 export interface PaymentExportRow {
   request_number: string;
   description: string;
@@ -33,18 +47,18 @@ export function generatePaymentCSV(data: PaymentExportRow[]): string {
   ];
 
   const rows = data.map((row) => [
-    row.request_number,
-    `"${row.description.replace(/"/g, '""')}"`,
-    row.division_name,
-    row.category_name,
-    row.amount.toString(),
-    row.vendor || '-',
-    row.funding_source,
-    row.beneficiary_name || '-',
-    row.beneficiary_bank || '-',
-    row.beneficiary_account || '-',
-    row.requester_name,
-    row.approved_at ? format(new Date(row.approved_at), 'dd MMM yyyy HH:mm', { locale: localeId }) : '-',
+    csvCell(row.request_number),
+    csvCell(row.description),
+    csvCell(row.division_name),
+    csvCell(row.category_name),
+    csvCell(row.amount.toString()),
+    csvCell(row.vendor || '-'),
+    csvCell(row.funding_source),
+    csvCell(row.beneficiary_name || '-'),
+    csvCell(row.beneficiary_bank || '-'),
+    csvCell(row.beneficiary_account || '-'),
+    csvCell(row.requester_name),
+    csvCell(row.approved_at ? format(new Date(row.approved_at), 'dd MMM yyyy HH:mm', { locale: localeId }) : '-'),
   ]);
 
   const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -103,14 +117,14 @@ export function generateAuditLogCSV(data: AuditLogExportRow[]): string {
   ];
 
   const rows = data.map((row) => [
-    format(new Date(row.created_at), 'dd MMM yyyy HH:mm:ss', { locale: localeId }),
-    row.event_type,
-    row.entity_type,
-    row.entity_id || '-',
-    `"${row.description.replace(/"/g, '""')}"`,
-    row.user_name || 'System',
-    row.user_email || '-',
-    row.ip_address || '-',
+    csvCell(format(new Date(row.created_at), 'dd MMM yyyy HH:mm:ss', { locale: localeId })),
+    csvCell(row.event_type),
+    csvCell(row.entity_type),
+    csvCell(row.entity_id || '-'),
+    csvCell(row.description),
+    csvCell(row.user_name || 'System'),
+    csvCell(row.user_email || '-'),
+    csvCell(row.ip_address || '-'),
   ]);
 
   const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');

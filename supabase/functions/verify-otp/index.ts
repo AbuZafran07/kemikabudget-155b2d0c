@@ -235,6 +235,28 @@ Deno.serve(async (req: Request) => {
       // userId already validated above, assert type
       const validUserId = userId as string;
 
+      // Require a valid session: the caller may only verify their OWN OTP.
+      // Password login already established a session before this step.
+      const verifyAuthHeader = req.headers.get('Authorization');
+      const verifyToken = verifyAuthHeader?.toLowerCase().startsWith('bearer ')
+        ? verifyAuthHeader.slice(7).trim()
+        : '';
+
+      if (!verifyToken) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        );
+      }
+
+      const { data: verifyAuth, error: verifyAuthError } = await supabase.auth.getUser(verifyToken);
+      if (verifyAuthError || !verifyAuth?.user || verifyAuth.user.id !== validUserId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        );
+      }
+
       // Validate OTP - use generic error to prevent enumeration
       if (!otp || typeof otp !== 'string' || !/^\d{6}$/.test(otp)) {
         return new Response(

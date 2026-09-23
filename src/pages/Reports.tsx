@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfYear } from 'date-fns';
 import { id as localeId, enUS } from 'date-fns/locale';
+import { csvCell } from '@/lib/exportUtils';
 import {
   Download,
   Loader2,
@@ -683,7 +684,7 @@ const Reports = () => {
   const exportToCSV = (data: any[], filename: string, headers: string[]) => {
     const csvContent = [
       headers.join(','),
-      ...data.map(row => headers.map(h => `"${row[h] || ''}"`).join(',')),
+      ...data.map(row => headers.map(h => csvCell(row[h] ?? '')).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
