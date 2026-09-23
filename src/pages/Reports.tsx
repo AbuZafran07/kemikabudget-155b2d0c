@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfYear } from 'date-fns';
 import { id as localeId, enUS } from 'date-fns/locale';
+import { csvCell } from '@/lib/exportUtils';
 import {
   Download,
   Loader2,
