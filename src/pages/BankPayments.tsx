@@ -177,14 +177,14 @@ const BankPayments = () => {
     ];
 
     const csvRows = selectedItems.map((item, index) => [
-      index + 1,
-      `"${item.beneficiary_name || ''}"`,
-      `"${item.beneficiary_bank || ''}"`,
-      `"${item.beneficiary_account || ''}"`,
-      item.amount,
-      `"${item.request_number}"`,
-      `"${item.description.substring(0, 50)}"`,
-      `"${item.beneficiary_email || ''}"`,
+      csvCell(index + 1),
+      csvCell(item.beneficiary_name || ''),
+      csvCell(item.beneficiary_bank || ''),
+      csvCell(item.beneficiary_account || ''),
+      csvCell(item.amount),
+      csvCell(item.request_number),
+      csvCell(item.description.substring(0, 50)),
+      csvCell(item.beneficiary_email || ''),
     ]);
 
     const csvContent = [
