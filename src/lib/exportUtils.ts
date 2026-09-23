@@ -1,6 +1,20 @@
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 
+/**
+ * Sanitize a value for safe inclusion in a CSV cell.
+ * - Neutralizes spreadsheet formula injection (=, +, -, @, tab, CR) with a leading apostrophe
+ * - Always quotes and escapes embedded quotes
+ */
+export function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '""';
+  let str = String(value);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
 export interface PaymentExportRow {
   request_number: string;
   description: string;
