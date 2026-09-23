@@ -252,6 +252,13 @@ const CashAdvanceDetail = () => {
     setSettlementRejectionReason("");
   };
 
+  const handleUnlockSettlement = async () => {
+    if (!unlockSettlementId) return;
+    await unlockSettlement.mutateAsync({ settlementId: unlockSettlementId, reason: unlockReason });
+    setUnlockSettlementId(null);
+    setUnlockReason("");
+  };
+
   const handleDeleteCA = async () => {
     await deleteCashAdvance.mutateAsync(ca.id);
     navigate("/cash-advance");
@@ -627,7 +634,22 @@ const CashAdvanceDetail = () => {
                                 </Button>
                               </>
                             )}
-                            {!canEditDraft && !(canApproveSettlement && settlement.status === "submitted") && (
+                            {role === "super_admin" && settlement.status === "approved" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUnlockSettlementId(settlement.id);
+                                }}
+                              >
+                                <Unlock className="h-4 w-4 mr-1" />
+                                Buka Kunci
+                              </Button>
+                            )}
+                            {!canEditDraft &&
+                              !(canApproveSettlement && settlement.status === "submitted") &&
+                              !(role === "super_admin" && settlement.status === "approved") && (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </div>
