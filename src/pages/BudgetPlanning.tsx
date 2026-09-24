@@ -55,6 +55,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { TablePagination } from "@/components/common/TablePagination";
 import { useAuth } from "@/contexts/AuthContext";
+import { csvCell, downloadCSV } from "@/lib/exportUtils";
+import { format } from "date-fns";
 
 
 const formatCurrency = (value: number) => {
@@ -134,6 +136,20 @@ const BudgetPlanning = () => {
   const filteredTotalAllocated = filteredBudgets.reduce((sum, b) => sum + b.allocated_amount, 0);
   const draftCount = 0; // These would be tracked if we add status column
   const approvedCount = totalBudgets; // Currently all budgets are "approved" when created
+
+  const handleExport = () => {
+    const headers = ['Periode', 'Tahun', 'Kode Divisi', 'Divisi', 'Kode Kategori', 'Kategori', 'Alokasi (IDR)', 'Terpakai (IDR)', 'Sisa (IDR)', 'Utilisasi (%)'];
+    const rows = filteredBudgets.map((b) => {
+      const remaining = b.allocated_amount - b.used_amount;
+      const util = b.allocated_amount > 0 ? ((b.used_amount / b.allocated_amount) * 100).toFixed(1) : '0';
+      return [
+        b.budget_periods?.name, b.budget_periods?.year, b.divisions?.code, b.divisions?.name,
+        b.cost_categories?.code, b.cost_categories?.name, b.allocated_amount, b.used_amount, remaining, util,
+      ].map(csvCell).join(',');
+    });
+    const csv = [headers.map(csvCell).join(','), ...rows].join('\n');
+    downloadCSV(csv, `rencana_anggaran_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
+  };
 
   // Group by division for "Per Divisi" tab
   const groupedBudgets = filteredBudgets.reduce((acc, budget) => {
