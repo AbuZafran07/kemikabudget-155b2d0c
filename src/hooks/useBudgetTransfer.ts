@@ -171,6 +171,84 @@ export function useBudgetTransfer() {
     },
   });
 
+  // Update draft transfer (requester or super_admin, status=draft only per RLS)
+  const updateTransferMutation = useMutation({
+    mutationFn: async ({ transferId, ...update }: {
+      transferId: string;
+      from_budget_id: string;
+      to_budget_id: string;
+      amount: number;
+      reason: string;
+      division_id: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('budget_transfers')
+        .update({
+          division_id: update.division_id,
+          from_budget_id: update.from_budget_id,
+          to_budget_id: update.to_budget_id,
+          amount: update.amount,
+          reason: update.reason,
+        })
+        .eq('id', transferId)
+        .eq('status', 'draft')
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['budget-transfers'] });
+      toast({ title: 'Transfer berhasil diperbarui' });
+      logBudgetTransfer('updated', data.id, data.transfer_number);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Gagal memperbarui transfer',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete draft transfer (requester or super_admin, status=draft only per RLS)
+  const deleteTransferMutation = useMutation({
+    mutationFn: async (transfer: { id: string; transfer_number: string }) => {
+      const { error } = await supabase
+        .from('budget_transfers')
+        .delete()
+        .eq('id', transfer.id)
+        .eq('status', 'draft');
+
+      if (error) throw error;
+
+      // Audit log (fire and forget)
+      if (user?.id) {
+        supabase.from('audit_logs').insert({
+          user_id: user.id,
+          event_type: 'delete',
+          entity_type: 'budget_transfer',
+          entity_id: transfer.id,
+          description: `Draft transfer anggaran ${transfer.transfer_number} dihapus`,
+        }).then();
+      }
+      return transfer;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['budget-transfers'] });
+      toast({ title: 'Draft transfer berhasil dihapus' });
+      logBudgetTransfer('deleted', data.id, data.transfer_number);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Gagal menghapus transfer',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Submit transfer
   const submitTransferMutation = useMutation({
     mutationFn: async (transferId: string) => {
@@ -263,6 +341,8 @@ export function useBudgetTransfer() {
     divisionBudgets,
     isLoadingTransfers,
     createTransfer: createTransferMutation.mutate,
+    updateTransfer: updateTransferMutation.mutate,
+    deleteTransfer: deleteTransferMutation.mutate,
     submitTransfer: submitTransferMutation.mutate,
     approveTransfer: approveTransferMutation.mutate,
     rejectTransfer: rejectTransferMutation.mutate,
