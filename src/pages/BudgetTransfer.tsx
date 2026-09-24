@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ArrowLeftRight, Search, Check, X, ArrowRight } from "lucide-react";
+import { Plus, ArrowLeftRight, Search, Check, X, ArrowRight, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useBudgetTransfer } from "@/hooks/useBudgetTransfer";
+import { useBudgetTransfer, type BudgetTransfer } from "@/hooks/useBudgetTransfer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -45,10 +45,14 @@ const BudgetTransfer = () => {
     divisionBudgets,
     isLoadingTransfers,
     createTransfer,
+    updateTransfer,
+    deleteTransfer,
     submitTransfer,
     approveTransfer,
     rejectTransfer,
     isCreating,
+    isUpdating,
+    isDeleting,
     isApproving,
     isRejecting,
   } = useBudgetTransfer();
@@ -66,6 +70,8 @@ const BudgetTransfer = () => {
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [editingTransfer, setEditingTransfer] = useState<BudgetTransfer | null>(null);
+  const [deletingTransfer, setDeletingTransfer] = useState<BudgetTransfer | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -93,25 +99,64 @@ const BudgetTransfer = () => {
     }).format(amount);
   };
 
-  const handleCreate = () => {
+  const resetForm = () => {
+    setFormData({ from_budget_id: "", to_budget_id: "", amount: "", reason: "" });
+    setEditingTransfer(null);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setIsCreateOpen(true);
+  };
+
+  const openEdit = (transfer: BudgetTransfer) => {
+    setEditingTransfer(transfer);
+    setFormData({
+      from_budget_id: transfer.from_budget_id,
+      to_budget_id: transfer.to_budget_id,
+      amount: String(transfer.amount),
+      reason: transfer.reason,
+    });
+    setIsCreateOpen(true);
+  };
+
+  const handleSave = () => {
     if (!formData.from_budget_id || !formData.to_budget_id || !formData.amount || !formData.reason) {
       return;
     }
 
     const fromBudget = divisionBudgets.find(b => b.id === formData.from_budget_id);
-    
-    createTransfer({
+    const payload = {
       division_id: (fromBudget?.division as any)?.id || profile?.division_id || '',
       from_budget_id: formData.from_budget_id,
       to_budget_id: formData.to_budget_id,
       amount: parseFloat(formData.amount),
       reason: formData.reason,
-    }, {
-      onSuccess: () => {
-        setIsCreateOpen(false);
-        setFormData({ from_budget_id: "", to_budget_id: "", amount: "", reason: "" });
-      },
-    });
+    };
+
+    if (editingTransfer) {
+      updateTransfer({ transferId: editingTransfer.id, ...payload }, {
+        onSuccess: () => {
+          setIsCreateOpen(false);
+          resetForm();
+        },
+      });
+    } else {
+      createTransfer(payload, {
+        onSuccess: () => {
+          setIsCreateOpen(false);
+          resetForm();
+        },
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (deletingTransfer) {
+      deleteTransfer({ id: deletingTransfer.id, transfer_number: deletingTransfer.transfer_number }, {
+        onSuccess: () => setDeletingTransfer(null),
+      });
+    }
   };
 
   const handleSubmit = (transferId: string) => {
@@ -156,7 +201,7 @@ const BudgetTransfer = () => {
             {t('budgetTransfer.description')}
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
+        <Button className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           {language === 'id' ? 'Buat Transfer' : 'Create Transfer'}
         </Button>
@@ -260,12 +305,30 @@ const BudgetTransfer = () => {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       {transfer.status === 'draft' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleSubmit(transfer.id)}
-                        >
-                          {t('action.submit')}
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEdit(transfer)}
+                            title={language === 'id' ? 'Edit draft' : 'Edit draft'}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setDeletingTransfer(transfer)}
+                            title={language === 'id' ? 'Hapus draft' : 'Delete draft'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleSubmit(transfer.id)}
+                          >
+                            {t('action.submit')}
+                          </Button>
+                        </>
                       )}
                       {transfer.status === 'submitted' && isSuperAdmin && (
                         <>
@@ -296,11 +359,15 @@ const BudgetTransfer = () => {
         </Table>
       </div>
 
-      {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      {/* Create/Edit Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{language === 'id' ? 'Buat Transfer Budget' : 'Create Budget Transfer'}</DialogTitle>
+            <DialogTitle>
+              {editingTransfer
+                ? (language === 'id' ? `Edit Draft Transfer ${editingTransfer.transfer_number}` : `Edit Draft Transfer ${editingTransfer.transfer_number}`)
+                : (language === 'id' ? 'Buat Transfer Budget' : 'Create Budget Transfer')}
+            </DialogTitle>
             <DialogDescription>
               {language === 'id' 
                 ? 'Transfer anggaran dari satu kategori ke kategori lain dalam divisi yang sama'
@@ -376,11 +443,37 @@ const BudgetTransfer = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
               {t('action.cancel')}
             </Button>
-            <Button onClick={handleCreate} disabled={isCreating}>
-              {isCreating ? t('common.loading') : (language === 'id' ? 'Buat Transfer' : 'Create Transfer')}
+            <Button onClick={handleSave} disabled={isCreating || isUpdating}>
+              {(isCreating || isUpdating)
+                ? t('common.loading')
+                : editingTransfer
+                  ? (language === 'id' ? 'Simpan Perubahan' : 'Save Changes')
+                  : (language === 'id' ? 'Buat Transfer' : 'Create Transfer')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingTransfer} onOpenChange={(open) => { if (!open) setDeletingTransfer(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{language === 'id' ? 'Hapus Draft Transfer' : 'Delete Draft Transfer'}</DialogTitle>
+            <DialogDescription>
+              {language === 'id'
+                ? `Draft transfer ${deletingTransfer?.transfer_number} akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.`
+                : `Draft transfer ${deletingTransfer?.transfer_number} will be permanently deleted. This action cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingTransfer(null)}>
+              {t('action.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? t('common.loading') : (language === 'id' ? 'Hapus' : 'Delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

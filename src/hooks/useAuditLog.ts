@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export type AuditEventType =
   | 'created'
+  | 'deleted'
   | 'updated'
   | 'submitted'
   | 'approved'
@@ -99,13 +100,15 @@ export function useAuditLog() {
   };
 
   const logBudgetTransfer = async (
-    eventType: 'created' | 'submitted' | 'approved' | 'rejected',
+    eventType: 'created' | 'submitted' | 'approved' | 'rejected' | 'updated' | 'deleted',
     transferId: string,
     transferNumber: string,
     additionalInfo?: string
   ) => {
     const descriptions: Record<string, string> = {
       created: `Transfer anggaran ${transferNumber} dibuat`,
+      updated: `Draft transfer anggaran ${transferNumber} diperbarui`,
+      deleted: `Draft transfer anggaran ${transferNumber} dihapus`,
       submitted: `Transfer anggaran ${transferNumber} diajukan`,
       approved: `Transfer anggaran ${transferNumber} disetujui`,
       rejected: `Transfer anggaran ${transferNumber} ditolak${additionalInfo ? `: ${additionalInfo}` : ''}`,
