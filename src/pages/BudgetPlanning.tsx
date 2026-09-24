@@ -153,6 +153,19 @@ const BudgetPlanning = () => {
     downloadCSV(csv, `rencana_anggaran_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
   };
 
+  const handleExportPDF = () => {
+    const periodLabel = yearFilter === "active"
+      ? `${activePeriod?.name || ''} (${activePeriod?.year || ''})`
+      : (() => {
+          const p = periods?.find(p => p.id === yearFilter);
+          return p ? `${p.name} (${p.year})` : '-';
+        })();
+    const divisionLabel = divisionFilter === "all"
+      ? undefined
+      : divisions?.find(d => d.id === divisionFilter)?.name;
+    generateBudgetPlanningPDF(filteredBudgets, { periodLabel, divisionLabel });
+  };
+
   // Group by division for "Per Divisi" tab
   const groupedBudgets = filteredBudgets.reduce((acc, budget) => {
     const divisionName = budget.divisions?.name || 'Unknown';
