@@ -242,7 +242,14 @@ const CashAdvanceForm = () => {
   // Validation: purpose + needed date + at least one valid item
   const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
-  const isValid = !!divisionId && purpose.trim() && neededDate && allItemsHaveCategory;
+  // Per-category total must not exceed the remaining budget of that pos
+  const overBudget = (categories || [])
+    .map((cat) => {
+      const used = validItems.filter((i) => i.category_id === cat.id).reduce((s, i) => s + i.amount, 0);
+      return { cat, used, short: used - cat.remaining };
+    })
+    .filter((x) => x.used > 0 && x.short > 0);
+  const isValid = !!divisionId && purpose.trim() && neededDate && allItemsHaveCategory && overBudget.length === 0;
 
   const buildPayload = () => {
     const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
@@ -420,9 +427,9 @@ const CashAdvanceForm = () => {
                                 </div>
                               )}
                               {categories?.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id}>
-                                  {cat.code} - {cat.name}
-                                  {cat.remaining <= 0 && " (sisa 0)"}
+                                <SelectItem key={cat.id} value={cat.id} disabled={cat.remaining <= 0}>
+                                  {cat.code} - {cat.name} — sisa {formatCurrency(Math.max(cat.remaining, 0))}
+                                  {cat.remaining <= 0 && " (habis)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
