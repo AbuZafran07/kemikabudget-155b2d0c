@@ -508,6 +508,16 @@ const CashAdvanceForm = () => {
                 <span className="text-muted-foreground">{t("cashAdvance.totalAmount")}</span>
                 <span className="font-bold text-lg">{formatCurrency(totalAmount)}</span>
               </div>
+              {overBudget.length > 0 && (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive space-y-1">
+                  <p className="font-semibold">Sisa anggaran pos tidak mencukupi:</p>
+                  {overBudget.map((x) => (
+                    <p key={x.cat.id}>
+                      {x.cat.name}: kurang {formatCurrency(x.short)}. Pecah ke pos lain atau ajukan Transfer Anggaran.
+                    </p>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
