@@ -207,7 +207,7 @@ const CashAdvanceDetail = () => {
     if (!settlements || settlements.length === 0) return 0;
     // Sum total_realized from non-rejected settlements
     return settlements
-      .filter(s => s.status !== 'rejected')
+      .filter(s => s.status !== 'rejected' && s.status !== 'revised')
       .reduce((sum, s) => sum + s.total_realized, 0);
   })();
   
