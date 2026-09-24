@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export type AuditEventType =
   | 'created'
+  | 'deleted'
   | 'updated'
   | 'submitted'
   | 'approved'
