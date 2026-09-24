@@ -249,7 +249,7 @@ const BudgetPlanning = () => {
               <Upload className="h-4 w-4" />
               Import
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={filteredBudgets.length === 0}>
               <Download className="h-4 w-4" />
               Export
             </Button>
