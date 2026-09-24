@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ArrowLeftRight, Search, Check, X, ArrowRight } from "lucide-react";
+import { Plus, ArrowLeftRight, Search, Check, X, ArrowRight, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -45,10 +45,14 @@ const BudgetTransfer = () => {
     divisionBudgets,
     isLoadingTransfers,
     createTransfer,
+    updateTransfer,
+    deleteTransfer,
     submitTransfer,
     approveTransfer,
     rejectTransfer,
     isCreating,
+    isUpdating,
+    isDeleting,
     isApproving,
     isRejecting,
   } = useBudgetTransfer();
@@ -66,6 +70,8 @@ const BudgetTransfer = () => {
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [editingTransfer, setEditingTransfer] = useState<BudgetTransfer | null>(null);
+  const [deletingTransfer, setDeletingTransfer] = useState<BudgetTransfer | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
