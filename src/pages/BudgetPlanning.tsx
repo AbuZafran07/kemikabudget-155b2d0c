@@ -56,7 +56,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { TablePagination } from "@/components/common/TablePagination";
 import { useAuth } from "@/contexts/AuthContext";
 import { csvCell, downloadCSV } from "@/lib/exportUtils";
+import { generateBudgetPlanningPDF } from "@/lib/generateBudgetPlanningPDF";
 import { format } from "date-fns";
+import { FileText } from "lucide-react";
 
 
 const formatCurrency = (value: number) => {
@@ -268,6 +270,10 @@ const BudgetPlanning = () => {
             <Button variant="outline" className="gap-2" onClick={handleExport} disabled={filteredBudgets.length === 0}>
               <Download className="h-4 w-4" />
               Export
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={handleExportPDF} disabled={filteredBudgets.length === 0}>
+              <FileText className="h-4 w-4" />
+              Export PDF
             </Button>
             <Button className="gap-2" onClick={openCreateDialog}>
               <Plus className="h-4 w-4" />
