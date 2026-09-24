@@ -347,6 +347,8 @@ export function useBudgetTransfer() {
     approveTransfer: approveTransferMutation.mutate,
     rejectTransfer: rejectTransferMutation.mutate,
     isCreating: createTransferMutation.isPending,
+    isUpdating: updateTransferMutation.isPending,
+    isDeleting: deleteTransferMutation.isPending,
     isSubmitting: submitTransferMutation.isPending,
     isApproving: approveTransferMutation.isPending,
     isRejecting: rejectTransferMutation.isPending,

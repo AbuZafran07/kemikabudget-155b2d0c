@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useBudgetTransfer } from "@/hooks/useBudgetTransfer";
+import { useBudgetTransfer, type BudgetTransfer } from "@/hooks/useBudgetTransfer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
