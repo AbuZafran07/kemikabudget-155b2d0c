@@ -99,25 +99,64 @@ const BudgetTransfer = () => {
     }).format(amount);
   };
 
-  const handleCreate = () => {
+  const resetForm = () => {
+    setFormData({ from_budget_id: "", to_budget_id: "", amount: "", reason: "" });
+    setEditingTransfer(null);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setIsCreateOpen(true);
+  };
+
+  const openEdit = (transfer: BudgetTransfer) => {
+    setEditingTransfer(transfer);
+    setFormData({
+      from_budget_id: transfer.from_budget_id,
+      to_budget_id: transfer.to_budget_id,
+      amount: String(transfer.amount),
+      reason: transfer.reason,
+    });
+    setIsCreateOpen(true);
+  };
+
+  const handleSave = () => {
     if (!formData.from_budget_id || !formData.to_budget_id || !formData.amount || !formData.reason) {
       return;
     }
 
     const fromBudget = divisionBudgets.find(b => b.id === formData.from_budget_id);
-    
-    createTransfer({
+    const payload = {
       division_id: (fromBudget?.division as any)?.id || profile?.division_id || '',
       from_budget_id: formData.from_budget_id,
       to_budget_id: formData.to_budget_id,
       amount: parseFloat(formData.amount),
       reason: formData.reason,
-    }, {
-      onSuccess: () => {
-        setIsCreateOpen(false);
-        setFormData({ from_budget_id: "", to_budget_id: "", amount: "", reason: "" });
-      },
-    });
+    };
+
+    if (editingTransfer) {
+      updateTransfer({ transferId: editingTransfer.id, ...payload }, {
+        onSuccess: () => {
+          setIsCreateOpen(false);
+          resetForm();
+        },
+      });
+    } else {
+      createTransfer(payload, {
+        onSuccess: () => {
+          setIsCreateOpen(false);
+          resetForm();
+        },
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (deletingTransfer) {
+      deleteTransfer({ id: deletingTransfer.id, transfer_number: deletingTransfer.transfer_number }, {
+        onSuccess: () => setDeletingTransfer(null),
+      });
+    }
   };
 
   const handleSubmit = (transferId: string) => {
