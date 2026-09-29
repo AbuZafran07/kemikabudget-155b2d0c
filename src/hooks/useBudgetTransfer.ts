@@ -193,9 +193,12 @@ export function useBudgetTransfer() {
         .eq('id', transferId)
         .eq('status', 'draft')
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error('Anda tidak memiliki izin mengubah draft ini, atau draft sudah tidak berstatus draft.');
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -215,13 +218,17 @@ export function useBudgetTransfer() {
   // Delete draft transfer (requester or super_admin, status=draft only per RLS)
   const deleteTransferMutation = useMutation({
     mutationFn: async (transfer: { id: string; transfer_number: string }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('budget_transfers')
         .delete()
         .eq('id', transfer.id)
-        .eq('status', 'draft');
+        .eq('status', 'draft')
+        .select('id');
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Anda tidak memiliki izin menghapus draft ini, atau draft sudah tidak berstatus draft.');
+      }
 
       // Audit log (fire and forget)
       if (user?.id) {
