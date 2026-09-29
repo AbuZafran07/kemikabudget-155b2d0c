@@ -36,7 +36,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 type TransferStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 
 const BudgetTransfer = () => {
-  const { profile, role } = useAuth();
+  const { user, profile, role } = useAuth();
   const { t, language } = useLanguage();
   
   
@@ -306,22 +306,26 @@ const BudgetTransfer = () => {
                     <div className="flex justify-end gap-2">
                       {transfer.status === 'draft' && (
                         <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEdit(transfer)}
-                            title={language === 'id' ? 'Edit draft' : 'Edit draft'}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => setDeletingTransfer(transfer)}
-                            title={language === 'id' ? 'Hapus draft' : 'Delete draft'}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {(isSuperAdmin || transfer.requester_id === user?.id) && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openEdit(transfer)}
+                                title={language === 'id' ? 'Edit draft' : 'Edit draft'}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setDeletingTransfer(transfer)}
+                                title={language === 'id' ? 'Hapus draft' : 'Delete draft'}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                           <Button
                             size="sm"
                             onClick={() => handleSubmit(transfer.id)}
