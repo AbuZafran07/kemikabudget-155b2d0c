@@ -193,9 +193,12 @@ export function useBudgetTransfer() {
         .eq('id', transferId)
         .eq('status', 'draft')
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error('Anda tidak memiliki izin mengubah draft ini, atau draft sudah tidak berstatus draft.');
+      }
       return data;
     },
     onSuccess: (data) => {
