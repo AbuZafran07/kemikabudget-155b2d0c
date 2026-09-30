@@ -648,6 +648,7 @@ const translations: Translations = {
   'common.active': { id: 'Aktif', en: 'Active' },
   'common.inactive': { id: 'Nonaktif', en: 'Inactive' },
   'common.status': { id: 'Status', en: 'Status' },
+  'common.date': { id: 'Tanggal', en: 'Date' },
   'common.category': { id: 'Kategori', en: 'Category' },
   'common.actions': { id: 'Aksi', en: 'Actions' },
   'common.description': { id: 'Deskripsi', en: 'Description' },
