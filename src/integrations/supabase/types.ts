@@ -2342,6 +2342,7 @@ export type Database = {
         Returns: string
       }
       delete_cash_advance: { Args: { p_ca_id: string }; Returns: Json }
+      delete_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
       encrypt_otp_secret: {
         Args: { p_secret: string; p_user_id: string }
         Returns: string
