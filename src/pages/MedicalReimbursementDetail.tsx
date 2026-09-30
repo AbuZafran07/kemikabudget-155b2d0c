@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, FileText, Send, CheckCircle, XCircle, CreditCard, Lock, Printer, Image, File, ExternalLink } from "lucide-react";
+import { ArrowLeft, Heart, FileText, Send, CheckCircle, XCircle, CreditCard, Lock, Printer, Image, File, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,8 @@ const MedicalStatusBadge = ({ status }: { status: string }) => {
 };
 
 const MedicalReimbursementDetail = () => {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams();
   const { t, language } = useLanguage();
@@ -128,6 +130,19 @@ const MedicalReimbursementDetail = () => {
   const isFinance = role === "finance" || role === "super_admin";
   const canEdit = isOwner && ["draft", "submitted", "review_hrga"].includes(claim.status) && !claim.is_locked;
   const canSubmit = isOwner && claim.status === "draft";
+  const canDelete = claim.status === "draft" && (isOwner || role === "super_admin");
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    const { data, error } = await supabase.rpc("delete_medical_claim" as any, { p_claim_id: claim.id });
+    setIsDeleting(false);
+    const res = data as { success?: boolean; error?: string } | null;
+    if (error || !res?.success) {
+      toast.error(res?.error || "Gagal menghapus draft klaim");
+      return;
+    }
+    toast.success("Draft klaim berhasil dihapus");
+    navigate("/medical-reimbursement");
+  };
   // HRGA now directly approves/rejects (no finance review step)
   const canHRGAReview = isHRGA && (claim.status === "submitted" || claim.status === "review_hrga");
   // Finance step removed - HRGA directly approves
@@ -214,6 +229,12 @@ const MedicalReimbursementDetail = () => {
           {canEdit && (
             <Button variant="outline" onClick={() => navigate(`/medical-reimbursement/${claim.id}/edit`)}>
               {t("action.edit")}
+            </Button>
+          )}
+          {canDelete && (
+            <Button variant="outline" className="text-destructive" onClick={() => setShowDeleteDialog(true)}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Hapus Draft
             </Button>
           )}
           {canSubmit && (
@@ -689,6 +710,18 @@ const MedicalReimbursementDetail = () => {
         onOpenChange={setShowPdfPreview}
         claim={claim}
       />
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Draft Klaim?</AlertDialogTitle>
+            <AlertDialogDescription>Draft {claim.claim_number} beserta lampirannya akan dihapus permanen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction disabled={isDeleting} onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
