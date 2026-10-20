@@ -38,6 +38,7 @@ import Adjustments from "./pages/Adjustments";
 import BackupRestore from "./pages/BackupRestore";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/layout/AppLayout";
+import OAuthConsent from './pages/OAuthConsent';
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Login />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route
                 element={
                   <ProtectedRoute>
