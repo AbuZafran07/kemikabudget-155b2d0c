@@ -13,7 +13,7 @@
   "mcp": {
     "server": {
       "name": "budget-expense",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Budget Expense"
     },
     "tools": [
@@ -105,6 +105,104 @@
               "description": "Maximum number of budget rows to return."
             }
           },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_budget_reference",
+        "title": "Find divisions, categories and budget periods",
+        "description": "Find accessible division names and IDs, category names and fiscal periods for use in budget reports.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "summarize_division_budgets",
+        "title": "Budget usage by division and category",
+        "description": "Read full-period allocated, recorded used, remaining and outstanding CA commitments by accessible division/category. Used is not cash paid; commitments are shown separately.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Fiscal period ID from list_budget_reference; required to avoid combining years."
+            },
+            "division_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Optional accessible division ID; omit for all accessible divisions."
+            }
+          },
+          "required": [
+            "period_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "summarize_person_usage",
+        "title": "Budget usage attributed to each requester",
+        "description": "Read request budget charges net of reversals and CA actuals/commitments per recorded requester and historical transaction division. This is attribution, not a personal budget allowance; excludes medical claims and unattributed adjustments.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Required fiscal period ID from list_budget_reference."
+            },
+            "division_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Optional accessible transaction division ID."
+            },
+            "requester_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Optional requester ID from a prior summary; never grants additional access."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0,
+              "description": "Number of person/division summary rows to skip."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "description": "Maximum person/division summary rows to return."
+            }
+          },
+          "required": [
+            "period_id"
+          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
