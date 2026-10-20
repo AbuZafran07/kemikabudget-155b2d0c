@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { oauthReturnPath } from '@/lib/oauth-return-path';
 import { Eye, EyeOff, Mail, Lock, Loader2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,10 @@ import logoKemika from "@/assets/logo-kemika.png";
 import appIcon from "@/assets/app-icon.png";
 const Login = () => {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const validatedNext = oauthReturnPath(params.get('next'));
+  const next = validatedNext === '/' ? '/dashboard' : validatedNext;
+  const loginInProgress = useRef(false);
   const {
     user,
     signIn,
@@ -33,10 +38,10 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user && !authLoading) {
-      navigate("/dashboard");
+    if (user && !authLoading && !showOtp && !loginInProgress.current) {
+      navigate(next, { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, next, showOtp]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -48,12 +53,14 @@ const Login = () => {
       return;
     }
     setIsLoading(true);
+    loginInProgress.current = true;
     const {
       error,
       requiresOtp
     } = await signIn(email, password);
     setIsLoading(false);
     if (error) {
+      loginInProgress.current = false;
       toast({
         title: language === 'id' ? "Login Gagal" : "Login Failed",
         description: getErrorMessage(error.message),
@@ -63,13 +70,15 @@ const Login = () => {
     }
     if (requiresOtp) {
       setShowOtp(true);
+      loginInProgress.current = false;
       return;
     }
+    loginInProgress.current = false;
     toast({
       title: language === 'id' ? "Login Berhasil" : "Login Successful",
       description: language === 'id' ? "Selamat datang kembali!" : "Welcome back!"
     });
-    navigate("/dashboard");
+    navigate(next, { replace: true });
   };
   const getErrorMessage = (message: string): string => {
     if (message.includes("Invalid login credentials")) {
@@ -89,7 +98,7 @@ const Login = () => {
       title: language === 'id' ? "Verifikasi Berhasil" : "Verification Successful",
       description: language === 'id' ? "Selamat datang, Super Admin!" : "Welcome, Super Admin!"
     });
-    navigate("/dashboard");
+    navigate(next, { replace: true });
   };
   const handleOtpCancel = () => {
     setShowOtp(false);

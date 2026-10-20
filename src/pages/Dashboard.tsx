@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useWebMCP } from 'use-webmcp-tool';
+import { runWebMCPTool } from '@/lib/webmcp-telemetry';
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -194,6 +196,21 @@ const Dashboard = () => {
     return '';
   };
 
+  const openRequests = () => navigate('/requests');
+  useWebMCP({
+    name: 'read_dashboard',
+    description: 'Read the budget totals and task counters currently shown on the Dashboard.',
+    enabled: Boolean(role && profile),
+    annotations: { readOnlyHint: true },
+    execute: () => runWebMCPTool('read_dashboard', () => isLoadingKpis ? 'Dashboard data is loading.' : `Budget IDR ${kpis.totalBudget}; used IDR ${kpis.usedBudget}; remaining IDR ${kpis.remainingBudget}; utilization ${utilization}%; pending approvals ${kpis.pendingApprovals}; pending payments ${kpis.pendingPayments}; overdue approvals ${kpis.overdueApprovals}; overdue payments ${kpis.overduePayments}; requests this month ${kpis.thisMonthRequests}.`),
+  });
+  useWebMCP({
+    name: 'open_requests',
+    description: 'Open the Requests page using the Dashboard Create Request control; does not submit or create any record.',
+    enabled: Boolean(role && profile) && !isLoadingKpis,
+    execute: () => runWebMCPTool('open_requests', () => { openRequests(); return 'Opened Requests.'; }),
+  });
+
   if (isLoadingKpis) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -217,7 +234,7 @@ const Dashboard = () => {
             {isSuperAdmin || isFinance ? t('dashboard.overviewAllDivisions') : `${t('dashboard.overview')} ${profile?.full_name || ''}`}
           </p>
         </div>
-        <Button className="gap-2 shadow-primary" onClick={() => navigate('/requests')}>
+        <Button className="gap-2 shadow-primary" onClick={openRequests}>
           <Plus className="h-4 w-4" />
           {t('dashboard.createRequest')}
         </Button>
