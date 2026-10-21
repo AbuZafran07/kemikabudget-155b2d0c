@@ -181,6 +181,8 @@ const CashAdvance = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("cashAdvance.caNumber")}</TableHead>
+                  <TableHead>{t("cashAdvance.createdDate")}</TableHead>
+
                   <TableHead>{t("common.division")}</TableHead>
                   <TableHead>{t("cashAdvance.requester")}</TableHead>
                   <TableHead>{t("common.category")}</TableHead>
@@ -196,7 +198,7 @@ const CashAdvance = () => {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 10 }).map((_, j) => (
+                      {Array.from({ length: 11 }).map((_, j) => (
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
@@ -205,7 +207,7 @@ const CashAdvance = () => {
                   ))
                 ) : paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       {t("common.noData")}
                     </TableCell>
                   </TableRow>
@@ -217,6 +219,10 @@ const CashAdvance = () => {
                       onClick={() => navigate(`/cash-advance/${ca.id}`)}
                     >
                       <TableCell className="font-medium">{ca.ca_number}</TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {formatDate(ca.created_at)}
+                      </TableCell>
+
                       <TableCell>
                         <Badge variant="outline">{ca.division?.code}</Badge>
                       </TableCell>

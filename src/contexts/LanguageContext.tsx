@@ -714,6 +714,8 @@ const translations: Translations = {
   'cashAdvance.formDescription': { id: 'Isi form berikut untuk mengajukan kas bon', en: 'Fill in the form to submit a cash advance request' },
   'cashAdvance.searchPlaceholder': { id: 'Cari no. kas bon atau tujuan...', en: 'Search CA number or purpose...' },
   'cashAdvance.caNumber': { id: 'No. Kas Bon', en: 'CA Number' },
+  'cashAdvance.createdDate': { id: 'Tgl Dibuat', en: 'Created Date' },
+
   'cashAdvance.requester': { id: 'Pemohon', en: 'Requester' },
   'cashAdvance.totalCA': { id: 'Total Kas Bon', en: 'Total CA' },
   'cashAdvance.paidDate': { id: 'Tgl Bayar', en: 'Paid Date' },
