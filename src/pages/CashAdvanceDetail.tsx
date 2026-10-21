@@ -469,6 +469,11 @@ const CashAdvanceDetail = () => {
                   <dd className="font-medium">{ca.requester?.full_name}</dd>
                 </div>
                 <div>
+                  <dt className="text-sm text-muted-foreground">{t("cashAdvance.createdDate")}</dt>
+                  <dd className="font-medium">{formatDate(ca.created_at)}</dd>
+                </div>
+
+                <div>
                   <dt className="text-sm text-muted-foreground">{t("cashAdvance.neededDate")}</dt>
                   <dd className="font-medium">{format(new Date(ca.needed_date), "dd MMM yyyy")}</dd>
                 </div>
