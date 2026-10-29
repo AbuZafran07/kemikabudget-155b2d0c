@@ -418,6 +418,11 @@ export const useSubmitCashAdvance = () => {
       if (!result?.success) throw new Error(result?.error || "Failed to submit");
       return result;
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["ca-budget-options"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-commitment"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-ledger"] });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
       queryClient.invalidateQueries({ queryKey: ["cash-advance"] });
@@ -1073,7 +1078,7 @@ export const useUpdateCashAdvance = () => {
 
       const totalAmount = items.reduce((sum, i) => sum + i.amount, 0);
 
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: Database["public"]["Tables"]["cash_advances"]["Update"] = {
         purpose,
         needed_date,
         notes: notes || null,

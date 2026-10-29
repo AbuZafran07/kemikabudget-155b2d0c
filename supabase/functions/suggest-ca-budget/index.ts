@@ -14,6 +14,7 @@ const outputSchema = z.object({ suggestions: z.array(z.object({ item_id: z.strin
 
 Deno.serve(async (req) => {
   let headers = new Headers({ ...corsHeaders, ...getCorsHeaders(req.headers.get("origin")), "Content-Type": "application/json" });
+  if (req.headers.get("origin") === "http://localhost:8080") headers.set("Access-Control-Allow-Origin", "http://localhost:8080");
   if (req.method === "OPTIONS") return new Response(null, { headers });
   const reply = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers });
   if (req.method !== "POST") return reply({ error: "Method not allowed" }, 405);

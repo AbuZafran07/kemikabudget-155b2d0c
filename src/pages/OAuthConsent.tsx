@@ -34,7 +34,7 @@ export default function OAuthConsent() {
         const { data, error: lookupError } = await supabase.auth.oauth.getAuthorizationDetails(id);
         if (!active) return;
         if (lookupError || !data) throw new Error(copy('Permintaan koneksi tidak tersedia. Mulai koneksi kembali dari aplikasi agen.', 'This connection request is unavailable. Start the connection again from your agent app.'));
-        if (data.redirect_url) { window.location.assign(data.redirect_url); return; }
+        if ('redirect_url' in data) { window.location.assign(data.redirect_url); return; }
         setDetails(data);
       } catch (failure) {
         if (active) setError(failure instanceof Error ? failure.message : copy('Tidak dapat memuat permintaan koneksi.', 'Could not load the connection request.'));
