@@ -397,6 +397,27 @@ export type Database = {
           },
         ]
       }
+      ca_ai_gateway_state: {
+        Row: {
+          id: string
+          message: string
+          status: number
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          message: string
+          status: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          message?: string
+          status?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cash_advance_events: {
         Row: {
           cash_advance_id: string
@@ -2346,6 +2367,19 @@ export type Database = {
       encrypt_otp_secret: {
         Args: { p_secret: string; p_user_id: string }
         Returns: string
+      }
+      get_ca_budget_options: {
+        Args: { p_division_id: string }
+        Returns: {
+          allocated: number
+          code: string
+          commitment: number
+          id: string
+          name: string
+          period_id: string
+          remaining: number
+          used: number
+        }[]
       }
       get_funding_source_options: {
         Args: never

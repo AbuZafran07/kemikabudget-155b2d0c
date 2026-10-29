@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793242471137,
+      "tag": "0000_ca_available_budget_submission_lock",
+      "breakpoints": true
+    }
+  ]
+}
