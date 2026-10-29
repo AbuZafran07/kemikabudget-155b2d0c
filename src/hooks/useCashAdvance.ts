@@ -418,6 +418,11 @@ export const useSubmitCashAdvance = () => {
       if (!result?.success) throw new Error(result?.error || "Failed to submit");
       return result;
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["ca-budget-options"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-commitment"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-ledger"] });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
       queryClient.invalidateQueries({ queryKey: ["cash-advance"] });
