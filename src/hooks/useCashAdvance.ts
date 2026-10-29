@@ -1078,7 +1078,7 @@ export const useUpdateCashAdvance = () => {
 
       const totalAmount = items.reduce((sum, i) => sum + i.amount, 0);
 
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: Database["public"]["Tables"]["cash_advances"]["Update"] = {
         purpose,
         needed_date,
         notes: notes || null,
