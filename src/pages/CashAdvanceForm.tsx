@@ -43,6 +43,8 @@ import { useCreateCashAdvance, useUpdateCashAdvance, useSubmitCashAdvance, useCa
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { checkCaBudget } from "@/lib/ca-budget-validation";
+import { CaBudgetSuggestions, type CaSuggestion } from "@/components/cash-advance/CaBudgetSuggestions";
 
 interface CashAdvanceItemRow {
   id: string;
@@ -62,7 +64,7 @@ interface CategoryOption {
 }
 
 const CashAdvanceForm = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { profile, user, hasRoleExact } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
@@ -87,6 +89,9 @@ const CashAdvanceForm = () => {
     { id: "1", description: "", category_id: "", quantity: 1, unit_price: 0, amount: 0, notes: "" },
   ]);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [savedDraftId, setSavedDraftId] = useState<string>();
+  const [actionError, setActionError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const createCashAdvance = useCreateCashAdvance();
   const updateCashAdvance = useUpdateCashAdvance();
@@ -126,38 +131,18 @@ const CashAdvanceForm = () => {
   // Only show categories that have an allocation row in division_budgets for the
   // active period. The submit/approve RPCs require an existing division_budget row,
   // so categories without one would always fail at submit ("No active budget found").
-  const { data: categories } = useQuery({
-    queryKey: ["categories-with-budget", divisionId],
+  const { data: categories, isSuccess: budgetReady, isFetching: budgetFetching, error: budgetError, refetch: refreshBudget } = useQuery({
+    queryKey: ["ca-budget-options", divisionId],
     queryFn: async () => {
       if (!divisionId) return [];
-
-      const { data: period } = await supabase
-        .from("budget_periods")
-        .select("id")
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (!period) return [];
-
-      const { data: budgets, error: bErr } = await supabase
-        .from("division_budgets")
-        .select("allocated_amount, used_amount, cost_categories!inner(id, code, name, is_active)")
-        .eq("division_id", divisionId)
-        .eq("period_id", period.id);
-
-      if (bErr) throw bErr;
-
-      return (budgets || [])
-        .filter((b: any) => b.cost_categories?.is_active)
-        .map((b: any) => ({
-          id: b.cost_categories.id,
-          code: b.cost_categories.code,
-          name: b.cost_categories.name,
-          remaining: (Number(b.allocated_amount) || 0) - (Number(b.used_amount) || 0),
-        } as CategoryOption))
-        .sort((a, b) => a.code.localeCompare(b.code));
+      const { data, error } = await supabase.rpc("get_ca_budget_options", { p_division_id: divisionId });
+      if (error) throw error;
+      return (data || []).map((row): CategoryOption => ({ id: row.id, code: row.code, name: row.name, remaining: Number(row.remaining) }));
     },
     enabled: !!divisionId,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+    retry: false,
   });
 
   // Load existing cash advance data if editing
@@ -231,6 +216,19 @@ const CashAdvanceForm = () => {
 
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
+  const applySuggestion = (suggestion: CaSuggestion) => {
+    if (!categories?.some((category) => category.id === suggestion.category_id)) return;
+    if (suggestion.item_id && items.some((item) => item.id === suggestion.item_id)) {
+      updateItem(suggestion.item_id, "category_id", suggestion.category_id);
+      return;
+    }
+    setItems((previous) => {
+      const empty = previous.find((item) => !item.description.trim() && !item.category_id && item.amount === 0);
+      if (empty) return previous.map((item) => item.id === empty.id ? {...item, description: suggestion.description, category_id: suggestion.category_id} : item);
+      return [...previous, {id: crypto.randomUUID(), description: suggestion.description, category_id: suggestion.category_id, quantity: 1, unit_price: 0, amount: 0, notes: ""}];
+    });
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -242,14 +240,10 @@ const CashAdvanceForm = () => {
   // Validation: purpose + needed date + at least one valid item
   const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
-  // Per-category total must not exceed the remaining budget of that pos
-  const overBudget = (categories || [])
-    .map((cat) => {
-      const used = validItems.filter((i) => i.category_id === cat.id).reduce((s, i) => s + i.amount, 0);
-      return { cat, used, short: used - cat.remaining };
-    })
-    .filter((x) => x.used > 0 && x.short > 0);
-  const isValid = !!divisionId && purpose.trim() && neededDate && allItemsHaveCategory && overBudget.length === 0;
+  const budgetCheck = checkCaBudget(items, categories || [], budgetReady && !budgetError && !budgetFetching);
+  const isDraftValid = !!divisionId && !!purpose.trim() && !!neededDate && allItemsHaveCategory;
+  const rowsComplete = items.every((item) => item.description.trim() && item.category_id && Number.isFinite(item.amount) && item.amount > 0 && item.quantity > 0 && item.unit_price > 0);
+  const isValid = isDraftValid && rowsComplete && !budgetCheck.blocked;
 
   const buildPayload = () => {
     const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
@@ -270,35 +264,43 @@ const CashAdvanceForm = () => {
   };
 
   const handleSave = async () => {
-    if (!isValid) return;
+    if (!isDraftValid) return;
     const payload = buildPayload();
-
-    if (isEdit && id) {
-      await updateCashAdvance.mutateAsync({ caId: id, ...payload });
-      navigate(`/cash-advance/${id}`);
-      return;
-    }
-
-    const result = await createCashAdvance.mutateAsync(payload);
-    if (result) navigate(`/cash-advance/${result.id}`);
+    setActionError("");
+    try {
+      const draftId = id || savedDraftId;
+      if (draftId) {
+        await updateCashAdvance.mutateAsync({ caId: draftId, ...payload });
+        navigate(`/cash-advance/${draftId}`);
+        return;
+      }
+      const result = await createCashAdvance.mutateAsync(payload);
+      if (result) navigate(`/cash-advance/${result.id}`);
+    } catch (error) { setActionError(error instanceof Error ? error.message : "Gagal menyimpan draft"); }
   };
 
   const handleSaveAndSubmit = async () => {
-    if (!isValid) return;
+    if (!isValid || submitting) return;
     const payload = buildPayload();
-
-    if (isEdit && id) {
-      await updateCashAdvance.mutateAsync({ caId: id, ...payload });
-      await submitCashAdvance.mutateAsync(id);
-      navigate(`/cash-advance/${id}`);
-      return;
-    }
-
-    const result = await createCashAdvance.mutateAsync(payload);
-    if (result) {
-      await submitCashAdvance.mutateAsync(result.id);
-      navigate(`/cash-advance/${result.id}`);
-    }
+    setSubmitting(true);
+    setActionError("");
+    try {
+      const fresh = await refreshBudget();
+      if (fresh.error || checkCaBudget(items, fresh.data || [], fresh.isSuccess).blocked) throw new Error(language === "en" ? "Budget changed or is insufficient. Check availability for each post." : "Saldo berubah atau tidak cukup. Periksa anggaran tersedia pada setiap pos.");
+      let draftId = id || savedDraftId;
+      if (draftId) await updateCashAdvance.mutateAsync({ caId: draftId, ...payload });
+      else {
+        const result = await createCashAdvance.mutateAsync(payload);
+        draftId = result?.id;
+        setSavedDraftId(draftId);
+      }
+      if (!draftId) throw new Error("Draft tidak berhasil disimpan");
+      await submitCashAdvance.mutateAsync(draftId);
+      navigate(`/cash-advance/${draftId}`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Pengajuan gagal");
+      await refreshBudget();
+    } finally { setSubmitting(false); setShowSubmitDialog(false); }
   };
 
 
@@ -374,6 +376,7 @@ const CashAdvanceForm = () => {
                   onChange={(e) => setPurpose(e.target.value)}
                   rows={3}
                 />
+                <CaBudgetSuggestions divisionId={divisionId} purpose={purpose} items={items.map((item) => ({id: item.id, description: item.description}))} onApply={applySuggestion} />
               </div>
               <div className="space-y-2">
                 <Label>{t("common.notes")}</Label>
@@ -508,16 +511,15 @@ const CashAdvanceForm = () => {
                 <span className="text-muted-foreground">{t("cashAdvance.totalAmount")}</span>
                 <span className="font-bold text-lg">{formatCurrency(totalAmount)}</span>
               </div>
-              {overBudget.length > 0 && (
-                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive space-y-1">
-                  <p className="font-semibold">Sisa anggaran pos tidak mencukupi:</p>
-                  {overBudget.map((x) => (
-                    <p key={x.cat.id}>
-                      {x.cat.name}: kurang {formatCurrency(x.short)}. Pecah ke pos lain atau ajukan Transfer Anggaran.
-                    </p>
-                  ))}
-                </div>
-              )}
+              {(budgetFetching || !budgetReady) && !budgetError && <p className="text-sm text-muted-foreground">{language === "en" ? "Checking available budget…" : "Memeriksa anggaran tersedia…"}</p>}
+              {budgetError && <p role="alert" className="text-sm text-destructive">{language === "en" ? "Budget unavailable. Submission locked." : "Saldo anggaran belum dapat dimuat. Pengajuan terkunci."}</p>}
+              {budgetCheck.rows.map((row) => <div key={row.id} className="border-t pt-3 text-sm space-y-1">
+                <p className="font-medium break-words">{row.name}</p>
+                <p>{language === "en" ? "Needed" : "Kebutuhan"}: {formatCurrency(row.needed)}</p>
+                <p>{language === "en" ? "Available" : "Tersedia"}: {formatCurrency(row.available)}</p>
+                {(row.shortage > 0 || row.missing) && <p role="alert" className="font-semibold text-destructive">{row.missing ? (language === "en" ? "Post unavailable in this division." : "Pos tidak tersedia pada divisi ini.") : `${language === "en" ? "Shortage" : "Kekurangan"}: ${formatCurrency(row.shortage)}`}</p>}
+              </div>)}
+              {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
             </CardContent>
           </Card>
 
@@ -526,7 +528,7 @@ const CashAdvanceForm = () => {
               className="w-full"
               variant="outline"
               onClick={handleSave}
-              disabled={!isValid || createCashAdvance.isPending || updateCashAdvance.isPending}
+              disabled={!isDraftValid || submitting || createCashAdvance.isPending || updateCashAdvance.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAsDraft")}
@@ -534,7 +536,7 @@ const CashAdvanceForm = () => {
             <Button
               className="w-full"
               onClick={() => setShowSubmitDialog(true)}
-              disabled={!isValid || createCashAdvance.isPending || updateCashAdvance.isPending || submitCashAdvance.isPending}
+              disabled={!isValid || submitting || createCashAdvance.isPending || updateCashAdvance.isPending || submitCashAdvance.isPending}
             >
               <Send className="h-4 w-4 mr-2" />
               {t("cashAdvance.saveAndSubmit")}
@@ -558,7 +560,7 @@ const CashAdvanceForm = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSaveAndSubmit}>
+            <AlertDialogAction disabled={!isValid || submitting} onClick={handleSaveAndSubmit}>
               {t("action.submit")}
             </AlertDialogAction>
           </AlertDialogFooter>

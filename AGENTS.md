@@ -4,3 +4,5 @@
 - MCP division usage uses stored budget balances; requester attribution nets request movements and signed CA ledger entries, with commitments separate and revision reversals retained. Bounded complete reads must fail rather than silently truncate totals.
 - Browser agent tools belong to the screen owning their controls and use shared actions plus fail-open, content-free telemetry.
 - OAuth consent returns through the existing password and OTP login flow using one canonical local return-path validator; no new self-registration flow.
+- CA submission checks server-aggregated availability (stored usage plus net ledger commitments) under ordered budget locks and parent-locked item writes; this prevents duplicate reservations and partial submissions.
+- CA AI suggestions run only in an authenticated Edge Function using caller-scoped budget options and validated category IDs; model output is advisory, and terminal gateway access pauses persist server-side to prevent billed retries.
