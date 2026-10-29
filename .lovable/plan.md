@@ -1,95 +1,38 @@
-## Tujuan
+# Saran Pos AI dan Pengaman Anggaran Cash Advance
 
-Menambahkan role baru **`executive`** untuk BOD / CEO / Komisaris. Role ini bisa **menggunakan budget semua divisi** (pilih divisi manapun saat input Request, Cash Advance, Medical), tapi **tidak punya hak Approve, Pay, atau master-data**. User-nya sudah ada di sistem — Super Admin tinggal mengubah role-nya lewat Users page.
+## Hasil yang ditambahkan
 
-## Cakupan
+### 1. Saran pos berdasarkan uraian kebutuhan
+- Gunakan kolom Keperluan CA yang sudah ada; tidak perlu memasukkan uraian dua kali.
+- Tambahkan tombol **Sarankan Pos dengan AI**. Lovable AI menyarankan kategori/pos untuk rincian kebutuhan berdasarkan daftar pos pada divisi dan periode anggaran yang tersedia.
+- Tampilkan nama pos, alasan singkat, dan saldo tersedia. Pemohon memilih apakah akan menerapkan saran; saran tidak mengubah rincian atau mengirim pengajuan secara otomatis.
+- AI tidak membuat pos baru dan tidak memindahkan pembebanan otomatis ke pos yang tidak sesuai hanya karena saldonya lebih besar.
+- Tampilkan proses, hasil, dan kegagalan dengan jelas; input pemohon tetap tersimpan di formulir. Penggunaan Lovable AI memakai kredit workspace.
 
-### 1. Database
-- Tambah nilai `'executive'` ke enum `public.app_role` (di posisi setelah `super_admin`, sebelum `finance`).
-- Update semua SECURITY DEFINER helper functions yang melakukan cek "boleh lintas divisi" agar memasukkan `executive`:
-  - `can_access_all_divisions(uid)` / `is_privileged_user(uid)` / fungsi sejenis yang dipakai RLS untuk requests, cash_advances, medical_claims, budget_ledger, dll.
-  - Tambahkan policy SELECT/INSERT untuk role executive pada tabel `requests`, `cash_advances`, `medical_claims`, `request_attachments`, `request_events`, `approvals` (read-only) — INSERT diizinkan ke divisi manapun, UPDATE hanya untuk record miliknya sendiri saat masih `draft`.
-- **Tidak** memberikan hak: approve, reject, pay, settle, edit master data, hapus data.
+### 2. Kunci pengajuan sejak nominal diisi
+- Hitung saldo tersedia per pos: alokasi dikurangi pemakaian tercatat dan komitmen CA yang masih aktif, tanpa menghitung pemakaian yang sama dua kali.
+- Jumlahkan semua baris yang memakai pos sama, termasuk nominal pada baris yang uraiannya belum lengkap.
+- Tampilkan nilai kebutuhan, saldo tersedia, dan kekurangan per pos langsung saat angka berubah.
+- Kunci **Ajukan** apabila ada pos kurang, pos tidak tersedia, atau saldo belum berhasil dimuat. **Simpan Draft** tetap tersedia untuk rincian yang valid meskipun anggarannya kurang.
+- Muat ulang saldo berkala dan saat hendak mengajukan. Pemeriksaan saat realisasi tetap ada jika nilai realisasi bertambah.
 
-### 2. Auth & Hierarki
-- `src/contexts/AuthContext.tsx`:
-  - `AppRole` → `'super_admin' | 'executive' | 'finance' | 'admin' | 'user'`.
-  - `roleHierarchy`: super_admin=5, executive=4, finance=3, admin=2, user=1.
-  - `canAccessDivision`: tambahkan `executive` ke daftar yang akses semua divisi.
-- `src/hooks/usePermissions.ts`:
-  - `canEdit/canDelete/canCreate (master)/canApprove/canPay/canManageUsers/canManageMasterData` → semua **false** untuk executive (kecuali edit draft miliknya sendiri yang sudah ditangani di form-level).
-  - Expose `isExecutive`.
+### 3. Aman ketika dikirim bersamaan
+- Periksa ulang saldo dan cadangkan anggaran dalam satu transaksi saat pengiriman CA.
+- Kunci pos terkait dalam urutan konsisten agar dua pengajuan bersamaan tidak memakai sisa anggaran yang sama.
+- Tolak seluruh pengajuan jika salah satu pos tidak cukup; jangan mencatat komitmen sebagian, memotong kas, atau meninggalkan status diajukan yang gagal.
+- Pengajuan dari halaman detail juga harus mengikuti pengaman yang sama.
 
-### 3. Form Input (cross-division)
-- `RequestForm.tsx` → `isPrivilegedUser = hasRoleOrHigher('admin')` sudah otomatis include executive karena posisi hierarki lebih tinggi. **Verifikasi** load divisi & budget jalan untuk executive (tidak hardcode skip).
-- `CashAdvanceForm.tsx` → saat ini `divisionId = profile?.division_id` (terkunci). Ubah agar executive bisa memilih divisi (selector divisi seperti di RequestForm).
-- `MedicalReimbursementForm.tsx` → cek serupa; medical biasanya per-employee, jadi executive boleh ajukan untuk diri sendiri (tetap pakai division_id sendiri) — **tidak diubah** kecuali user minta.
+## Detail teknis
+- Lanjutkan komitmen CA melalui `budget_ledger`; telusuri aturan yang sudah berjalan sebelum mengubah `submit_cash_advance` untuk menghindari pencadangan ganda.
+- Gunakan pembacaan saldo bersama untuk formulir dan daftar pos AI, dengan pemeriksaan sesi, divisi, dan periode di server.
+- Panggilan AI berada pada Edge Function terautentikasi melalui AI Gateway, AI SDK Responses streaming, dan model default `openai/gpt-6-astra`.
+- Ambil pilihan pos dari database menggunakan hak akses pemohon; validasi semua ID hasil AI terhadap pilihan tersebut. Jangan mengirim data bank, identitas pribadi, atau dokumen lampiran ke model.
+- Pertahankan aturan akses, persetujuan, pembayaran, revisi, dan histori yang sudah ada. Tangani kegagalan AI tanpa pengulangan otomatis untuk kegagalan permanen.
 
-### 4. UI Visibility
-- `AppSidebar.tsx`: executive melihat menu Dashboard, Requests, Cash Advance, Medical Reimbursement, Reports, Audit Logs (read). **Sembunyikan**: Approvals, Payment Queue, Petty Cash, Bank Payments, Budget Planning/Transfer, Master Data (Divisions, Categories, Funding, Users, Templates), Settings admin-only.
-- Dashboard: tampilkan KPI semua divisi (sama seperti super_admin tapi tanpa "Pending Approvals to act on").
-- Reports: aktifkan filter semua divisi untuk executive.
-- `Users.tsx`: tambahkan opsi role `executive` di dropdown create/edit user (hanya super_admin yang lihat).
-
-### 5. Tidak Diubah
-- Workflow approval (executive tetap butuh super_admin/admin approve request mereka — sesuai prinsip segregation of duties).
-- Logic budget deduction (tetap on approve), cash deduction (tetap on payment).
-- Audit logs immutability.
-
-## Detail Teknis
-
-```text
-Role hierarchy (UI only):
-super_admin (5) ──► full control
-executive   (4) ──► cross-division input + read-only semua data
-finance     (3) ──► pay/settle/petty-cash
-admin       (2) ──► approve dalam divisi
-user        (1) ──► input dalam divisi sendiri
-```
-
-RLS pattern baru (contoh `requests`):
-```sql
--- view: executive bisa lihat semua
-CREATE POLICY "executive_view_all_requests"
-ON public.requests FOR SELECT TO authenticated
-USING (public.has_role(auth.uid(), 'executive'));
-
--- insert: executive bisa insert ke divisi manapun selama dia requester
-CREATE POLICY "executive_insert_requests"
-ON public.requests FOR INSERT TO authenticated
-WITH CHECK (
-  public.has_role(auth.uid(), 'executive')
-  AND requester_id = auth.uid()
-);
-
--- update: hanya draft miliknya
-CREATE POLICY "executive_update_own_draft"
-ON public.requests FOR UPDATE TO authenticated
-USING (
-  public.has_role(auth.uid(), 'executive')
-  AND requester_id = auth.uid()
-  AND status = 'draft'
-);
-```
-
-Helper function update:
-```sql
-CREATE OR REPLACE FUNCTION public.can_access_all_divisions(_uid uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-  SELECT public.has_role(_uid, 'super_admin')
-      OR public.has_role(_uid, 'finance')
-      OR public.has_role(_uid, 'executive');
-$$;
-```
-
-## Langkah Implementasi
-
-1. **Migrasi DB** — tambah enum value, update helper functions, tambah RLS policies untuk executive di tabel transaksi.
-2. **Update AuthContext + usePermissions** — role baru di hierarki.
-3. **Update CashAdvanceForm** — division selector untuk privileged user.
-4. **Update AppSidebar + Users page dropdown** — visibility & opsi role.
-5. **Smoke test** — buat 1 user dummy executive lewat Users page, verifikasi: bisa pilih divisi di Request form, tidak lihat menu Approvals/Payment.
-
-## Catatan
-
-User BOD/CEO/Komisaris sudah ada di database — Super Admin tinggal ubah role-nya menjadi `executive` di halaman **Users** setelah migrasi selesai.
+## Pengujian
+- Nominal di bawah saldo, tepat sama dengan saldo, dan melebihi saldo.
+- Dua baris dalam pos sama; CA multi-pos dengan satu pos tidak cukup; komitmen CA lain mengurangi saldo tersedia.
+- Simpan draft saat kekurangan dan larangan mengajukan saat saldo gagal dimuat.
+- Dua pengiriman bersamaan yang bersama-sama melebihi saldo: hanya pengajuan yang masih cukup yang berhasil.
+- Saran AI melalui panggilan nyata: pilihan hanya dari pos yang diizinkan dan penerapan memerlukan pilihan pemohon.
+- Uji formulir dengan sesi pengguna dan pastikan perubahan terbaca kembali melalui aplikasi; laporkan bagian yang tidak dapat diverifikasi.
