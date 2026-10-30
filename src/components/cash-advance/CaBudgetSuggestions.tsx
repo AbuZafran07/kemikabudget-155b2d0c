@@ -25,9 +25,14 @@ export function CaBudgetSuggestions({ divisionId, purpose, items, onApply }: {
   const [error, setError] = useState("");
   const [suggestions, setSuggestions] = useState<CaSuggestion[] | null>(null);
   const [applied, setApplied] = useState<number[]>([]);
+  const appliedItemChange = useRef(false);
   const current = useRef(0);
   const itemText = JSON.stringify(items);
   useEffect(() => {
+    if (appliedItemChange.current) {
+      appliedItemChange.current = false;
+      return;
+    }
     current.current += 1;
     setSuggestions(null);
     setApplied([]);
@@ -76,7 +81,7 @@ export function CaBudgetSuggestions({ divisionId, purpose, items, onApply }: {
             {english ? "Available" : "Tersedia"}: {new Intl.NumberFormat("id-ID", {style: "currency", currency: "IDR", maximumFractionDigits: 0}).format(s.remaining)}
           </p>
         </div>
-        <Button size="sm" variant="outline" disabled={applied.includes(index)} onClick={() => {setApplied((previous) => [...previous, index]); onApply(s);}}>
+        <Button size="sm" variant="outline" disabled={applied.includes(index)} onClick={() => {appliedItemChange.current = s.item_id === null; setApplied((previous) => [...previous, index]); onApply(s);}}>
           <Check className="mr-2 h-4 w-4" />{english ? "Apply" : "Terapkan"}
         </Button>
       </div>)}

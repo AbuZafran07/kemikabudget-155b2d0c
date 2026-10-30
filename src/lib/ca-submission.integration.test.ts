@@ -17,12 +17,13 @@ function submit(id: string) {
     execFile("psql", [database, "-X", "-v", "ON_ERROR_STOP=1", "-At", "-c", `SELECT public.submit_cash_advance('${id}');`], (error) => resolve(!error));
   });
 }
-test("concurrent CA reservations cannot overspend; missing posts roll back every reservation", async () => {
+test.skipIf(!database)("concurrent CA reservations cannot overspend; missing posts roll back every reservation", async () => {
   sql(`CREATE SCHEMA auth;
     CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT '${user}'::uuid $$;
     CREATE FUNCTION public.check_session_valid() RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
     CREATE FUNCTION public.can_access_division(uuid,uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
+    CREATE FUNCTION public.has_role(uuid,text) RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
     CREATE TYPE public.cash_advance_status AS ENUM('draft','submitted');
     CREATE TABLE profiles(id uuid, is_active boolean);
     CREATE TABLE budget_periods(id uuid PRIMARY KEY,is_active boolean,is_closed boolean);
@@ -37,6 +38,7 @@ test("concurrent CA reservations cannot overspend; missing posts roll back every
     INSERT INTO cost_categories VALUES('${category}','TRAVEL','Travel',true);
     INSERT INTO division_budgets VALUES(gen_random_uuid(),'${division}','${category}','${period}',1000000,0);`);
   sql(readFileSync("drizzle/migrations/0000_ca_available_budget_submission_lock.sql", "utf8"));
+  sql(readFileSync("drizzle/migrations/0001_preserve_admin_ca_deletion_guard.sql", "utf8"));
   const ids = [crypto.randomUUID(), crypto.randomUUID()];
   for (const id of ids) sql(`INSERT INTO cash_advances(id,requester_id,division_id,status,purpose,total_amount,ca_number) VALUES('${id}','${user}','${division}','draft','Test CA',700000,'TEST'); INSERT INTO cash_advance_items(cash_advance_id,category_id,description,quantity,unit_price,amount) VALUES('${id}','${category}','Travel',1,700000,700000);`);
   const outcomes = await Promise.all(ids.map(submit));
