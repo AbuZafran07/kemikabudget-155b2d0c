@@ -416,6 +416,9 @@ const handler = async (req: Request): Promise<Response> => {
       sent_at: result.success ? new Date().toISOString() : null,
     });
 
+    // Email delivery is best-effort and non-blocking: a provider rejection
+    // (e.g. invalid API key) is recorded in notification_logs and reported in
+    // the body, but is not a server fault, so we don't return 5xx.
     return new Response(
       JSON.stringify({
         success: result.success,
@@ -424,7 +427,7 @@ const handler = async (req: Request): Promise<Response> => {
         error: result.success ? undefined : 'Failed to send notifications',
       }),
       {
-        status: result.success ? 200 : 500,
+        status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
