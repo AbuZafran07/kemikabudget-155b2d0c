@@ -3,15 +3,15 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@3.1.1";
 
 // src/lib/mcp/tools/list-requests.ts
-import { defineTool, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { defineTool, ToolError as ToolError2 } from "npm:@lovable.dev/mcp-js@3.1.1";
 import { z } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/supabase.ts
 import { createClient } from "npm:@supabase/supabase-js@^2.90.1";
-import { ToolError } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { ToolError } from "npm:@lovable.dev/mcp-js@3.1.1";
 function runtimeEnv(name) {
   const runtime = globalThis;
   return runtime.Deno?.env?.get?.(name) ?? runtime.process?.env?.[name];
@@ -94,7 +94,7 @@ var list_requests_default = defineTool({
 });
 
 // src/lib/mcp/tools/list-budgets.ts
-import { defineTool as defineTool2, ToolError as ToolError3 } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { defineTool as defineTool2, ToolError as ToolError3 } from "npm:@lovable.dev/mcp-js@3.1.1";
 import { z as z2 } from "npm:zod@^3.25.76";
 var list_budgets_default = defineTool2({
   name: "list_budgets",
@@ -122,10 +122,10 @@ var list_budgets_default = defineTool2({
 });
 
 // src/lib/mcp/tools/list-budget-reference.ts
-import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@3.1.1";
 
 // src/lib/mcp/read-pages.ts
-import { ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { ToolError as ToolError4 } from "npm:@lovable.dev/mcp-js@3.1.1";
 async function readPages(fetchPage) {
   const rows = [];
   for (let offset = 0; offset <= 2e4; offset += 500) {
@@ -161,11 +161,11 @@ var list_budget_reference_default = defineTool3({
 });
 
 // src/lib/mcp/tools/summarize-division-budgets.ts
-import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@3.1.1";
 import { z as z3 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/usage-data.ts
-import { ToolError as ToolError5 } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { ToolError as ToolError5 } from "npm:@lovable.dev/mcp-js@3.1.1";
 async function usageData(ctx, periodId, requestedDivision) {
   const access = await supabaseForUser(ctx);
   const { client, divisionId, crossDivision } = access;
@@ -229,7 +229,7 @@ var summarize_division_budgets_default = defineTool4({
 });
 
 // src/lib/mcp/tools/summarize-person-usage.ts
-import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@3.3.1";
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@3.1.1";
 import { z as z4 } from "npm:zod@^3.25.76";
 var summarize_person_usage_default = defineTool5({
   name: "summarize_person_usage",
@@ -317,5 +317,5 @@ var mcp_default = defineMcp({
 });
 
 // lovable-mcp-supabase-entry.ts
-import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@3.3.1/stacks/supabase";
+import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@3.1.1/stacks/supabase";
 Deno.serve(createSupabaseHandler(mcp_default, { functionName: "mcp" }));
