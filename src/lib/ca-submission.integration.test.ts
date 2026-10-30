@@ -19,7 +19,7 @@ function submit(id: string) {
 }
 test.skipIf(!database)("concurrent CA reservations cannot overspend; missing posts roll back every reservation", async () => {
   sql(`CREATE SCHEMA auth;
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon; END IF; IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated; END IF; IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role; END IF; END $$;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT '${user}'::uuid $$;
     CREATE FUNCTION public.check_session_valid() RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
     CREATE FUNCTION public.can_access_division(uuid,uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
