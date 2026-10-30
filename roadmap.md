@@ -1,7 +1,7 @@
 # Cash Advance safeguards and AI
-- [ ] Add authenticated Lovable AI category suggestions from the request description and available division budget posts.
-- [ ] Check live per-category availability including commitments while entering amounts; preserve draft saving and block insufficient submissions.
-- [ ] Enforce concurrent-safe submission checks and test entry, grouping, permissions, and competing submissions.
+- [x] Add authenticated Lovable AI category suggestions from the request description and authorized division budget posts; live model response and application of suggestions verified.
+- [x] Check live per-category availability including commitments; signed-in UI verified shortage lock, equality boundary and draft readback. Test draft removed through the UI.
+- [x] Enforce concurrent-safe submission checks; isolated PostgreSQL test proves one of two competing reservations succeeds and missing posts leave zero partial reservations. Unit tests cover grouped totals and unavailable balances.
 
 # Agent integrations
 - [x] Add division/category and requester usage summaries plus reference lookup; five tests passed, real caller-scoped reports returned 6 divisions/23 categories/31 person-division rows, authenticated budget screen verified. External OAuth tool calls await republication.

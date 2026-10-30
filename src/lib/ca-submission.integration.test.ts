@@ -53,4 +53,9 @@ test.skipIf(!database)("concurrent CA reservations cannot overspend; missing pos
   expect(sql(`SELECT count(*) FROM budget_ledger WHERE reference_id='${missingCa}'`)).toBe("0");
   expect(sql(`SELECT status FROM cash_advances WHERE id='${missingCa}'`)).toBe("draft");
   expect(sql("SELECT used_amount FROM division_budgets")).toBe("0");
+  sql("CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT NULL::uuid $$");
+  expect(await submit(missingCa)).toBe(false);
+  sql(`CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT '${user}'::uuid $$; CREATE OR REPLACE FUNCTION public.can_access_division(uuid,uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$`);
+  expect(await submit(missingCa)).toBe(false);
+  expect(sql(`SELECT count(*) FROM budget_ledger WHERE reference_id='${missingCa}'`)).toBe("0");
 });
