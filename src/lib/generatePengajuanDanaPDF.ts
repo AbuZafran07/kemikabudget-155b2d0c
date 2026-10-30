@@ -363,7 +363,7 @@ export const generatePengajuanDanaHTML = (data: PengajuanDanaData, logoBase64?: 
         ${logoImg}
       </div>
       <div class="doc-info">
-        <div class="doc-title">PENGAJUAN BUDGET</div>
+        <div class="doc-title">PENGAJUAN DANA</div>
         <div class="doc-info-box">
           <table>
             <tr>
