@@ -242,7 +242,10 @@ const CashAdvanceForm = () => {
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
   const budgetCheck = checkCaBudget(items, categories || [], budgetReady && !budgetError && !budgetFetching);
   const isDraftValid = !!divisionId && !!purpose.trim() && !!neededDate && allItemsHaveCategory;
-  const rowsComplete = items.every((item) => item.description.trim() && item.category_id && Number.isFinite(item.amount) && item.amount > 0 && item.quantity > 0 && item.unit_price > 0);
+  // Fully blank rows (e.g. added via "add item" and never filled) are ignored, like buildPayload does.
+  const filledRows = items.filter((item) => item.description.trim() || item.category_id || item.amount > 0);
+  const incompleteRowCount = filledRows.filter((item) => !(item.description.trim() && item.category_id && Number.isFinite(item.amount) && item.amount > 0 && item.quantity > 0 && item.unit_price > 0)).length;
+  const rowsComplete = filledRows.length > 0 && incompleteRowCount === 0;
   const isValid = isDraftValid && rowsComplete && !budgetCheck.blocked;
 
   const buildPayload = () => {
@@ -519,6 +522,7 @@ const CashAdvanceForm = () => {
                 <p>{language === "en" ? "Available" : "Tersedia"}: {formatCurrency(row.available)}</p>
                 {(row.shortage > 0 || row.missing) && <p role="alert" className="font-semibold text-destructive">{row.missing ? (language === "en" ? "Post unavailable in this division." : "Pos tidak tersedia pada divisi ini.") : `${language === "en" ? "Shortage" : "Kekurangan"}: ${formatCurrency(row.shortage)}`}</p>}
               </div>)}
+              {incompleteRowCount > 0 && <p role="alert" className="text-sm text-destructive">{language === "en" ? `${incompleteRowCount} item row(s) are incomplete. Fill in post, description, and unit price, or remove the row.` : `${incompleteRowCount} baris rincian belum lengkap. Lengkapi pos, uraian, dan harga satuan, atau hapus barisnya.`}</p>}
               {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
             </CardContent>
           </Card>
