@@ -52,7 +52,7 @@ export function useBudgetTransfer() {
         .from('budget_transfers')
         .select(`
           *,
-          division:divisions(name, code),
+          division:divisions!budget_transfers_division_id_fkey(name, code),
           from_budget:division_budgets!budget_transfers_from_budget_id_fkey(
             id,
             allocated_amount,
