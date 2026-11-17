@@ -8,6 +8,7 @@ export interface BudgetTransfer {
   id: string;
   transfer_number: string;
   division_id: string;
+  to_division_id?: string | null;
   from_budget_id: string;
   to_budget_id: string;
   amount: number;
@@ -69,7 +70,7 @@ export function useBudgetTransfer() {
 
       // Filter by division for non-super_admin/finance users
       if (role !== 'super_admin' && role !== 'finance' && profile?.division_id) {
-        query = query.eq('division_id', profile.division_id);
+        query = query.or(`division_id.eq.${profile.division_id},to_division_id.eq.${profile.division_id}`);
       }
 
       const { data, error } = await query;
@@ -128,6 +129,23 @@ export function useBudgetTransfer() {
         query = query.eq('division_id', profile.division_id);
       }
 
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Target budgets: all divisions in active period (cross-division transfers)
+  const { data: targetBudgets = [] } = useQuery({
+    queryKey: ['division-budgets-transfer-targets'],
+    queryFn: async () => {
+      const { data: activePeriod } = await supabase
+        .from('budget_periods').select('id').eq('is_active', true).maybeSingle();
+      let query = supabase
+        .from('division_budgets')
+        .select(`id, allocated_amount, used_amount, division:divisions(id, name, code), category:cost_categories(id, name, code), period:budget_periods(id, name, is_active)`);
+      if (activePeriod) query = query.eq('period_id', activePeriod.id);
       const { data, error } = await query;
       if (error) throw error;
       return data;
@@ -346,6 +364,7 @@ export function useBudgetTransfer() {
     transfers,
     pendingTransfers,
     divisionBudgets,
+    targetBudgets,
     isLoadingTransfers,
     createTransfer: createTransferMutation.mutate,
     updateTransfer: updateTransferMutation.mutate,

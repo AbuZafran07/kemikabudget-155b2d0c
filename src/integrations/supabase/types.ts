@@ -332,6 +332,7 @@ export type Database = {
           status: string
           submitted_at: string | null
           to_budget_id: string
+          to_division_id: string | null
           transfer_number: string
           updated_at: string
         }
@@ -351,6 +352,7 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           to_budget_id: string
+          to_division_id?: string | null
           transfer_number: string
           updated_at?: string
         }
@@ -370,6 +372,7 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           to_budget_id?: string
+          to_division_id?: string | null
           transfer_number?: string
           updated_at?: string
         }
@@ -393,6 +396,13 @@ export type Database = {
             columns: ["to_budget_id"]
             isOneToOne: false
             referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_transfers_to_division_id_fkey"
+            columns: ["to_division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
             referencedColumns: ["id"]
           },
         ]

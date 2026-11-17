@@ -43,6 +43,7 @@ const BudgetTransfer = () => {
   const {
     transfers,
     divisionBudgets,
+    targetBudgets,
     isLoadingTransfers,
     createTransfer,
     updateTransfer,
@@ -80,6 +81,7 @@ const BudgetTransfer = () => {
     amount: "",
     reason: "",
   });
+  const [toDivisionId, setToDivisionId] = useState("");
 
   const isSuperAdmin = role === 'super_admin';
 
@@ -101,6 +103,7 @@ const BudgetTransfer = () => {
 
   const resetForm = () => {
     setFormData({ from_budget_id: "", to_budget_id: "", amount: "", reason: "" });
+    setToDivisionId("");
     setEditingTransfer(null);
   };
 
@@ -117,6 +120,7 @@ const BudgetTransfer = () => {
       amount: String(transfer.amount),
       reason: transfer.reason,
     });
+    setToDivisionId(transfer.to_division_id || transfer.division_id);
     setIsCreateOpen(true);
   };
 
@@ -126,6 +130,10 @@ const BudgetTransfer = () => {
     }
 
     const fromBudget = divisionBudgets.find(b => b.id === formData.from_budget_id);
+    const amountNum = parseFloat(formData.amount);
+    if (!(amountNum > 0) || (fromBudget && amountNum > Number(fromBudget.allocated_amount) - Number(fromBudget.used_amount))) {
+      return;
+    }
     const payload = {
       division_id: (fromBudget?.division as any)?.id || profile?.division_id || '',
       from_budget_id: formData.from_budget_id,
@@ -186,10 +194,17 @@ const BudgetTransfer = () => {
   };
 
   const selectedFromBudget = divisionBudgets.find(b => b.id === formData.from_budget_id);
-  const availableToBudgets = divisionBudgets.filter(b => 
-    b.id !== formData.from_budget_id &&
-    (selectedFromBudget ? (selectedFromBudget.division as any)?.id === (b.division as any)?.id : true)
+  const targetDivisions = Array.from(
+    new Map(targetBudgets.map((b: any) => [b.division?.id, b.division])).values()
+  ).filter((d: any) => d?.id) as { id: string; name: string; code: string }[];
+  const availableToBudgets = targetBudgets.filter((b: any) =>
+    b.id !== formData.from_budget_id && b.division?.id === toDivisionId
   );
+  const selectedToBudget: any = targetBudgets.find((b: any) => b.id === formData.to_budget_id);
+  const fromAvailable = selectedFromBudget ? Number(selectedFromBudget.allocated_amount) - Number(selectedFromBudget.used_amount) : 0;
+  const amountNumber = parseFloat(formData.amount) || 0;
+  const amountExceeds = !!selectedFromBudget && amountNumber > fromAvailable;
+  const isCrossDivision = !!selectedFromBudget && !!toDivisionId && (selectedFromBudget.division as any)?.id !== toDivisionId;
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -266,7 +281,12 @@ const BudgetTransfer = () => {
               filteredTransfers.map((transfer) => (
                 <TableRow key={transfer.id}>
                   <TableCell className="font-mono text-sm">
-                    {transfer.transfer_number}
+                    <div className="flex flex-col gap-1">
+                      <span>{transfer.transfer_number}</span>
+                      {transfer.to_division_id && transfer.to_division_id !== transfer.division_id && (
+                        <Badge variant="outline" className="w-fit text-[10px]">{language === 'id' ? 'Antar Divisi' : 'Cross-Division'}</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -374,8 +394,8 @@ const BudgetTransfer = () => {
             </DialogTitle>
             <DialogDescription>
               {language === 'id' 
-                ? 'Transfer anggaran dari satu kategori ke kategori lain dalam divisi yang sama'
-                : 'Transfer budget from one category to another within the same division'
+                ? 'Transfer anggaran antar pos, dalam satu divisi maupun ke divisi lain (periode sama)'
+                : 'Transfer budget between posts, within a division or to another division (same period)'
               }
             </DialogDescription>
           </DialogHeader>
@@ -384,7 +404,11 @@ const BudgetTransfer = () => {
               <Label>{t('budgetTransfer.from')} {t('requests.category')}</Label>
               <Select
                 value={formData.from_budget_id}
-                onValueChange={(value) => setFormData({ ...formData, from_budget_id: value, to_budget_id: "" })}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, from_budget_id: value, to_budget_id: "" });
+                  const fb = divisionBudgets.find(b => b.id === value);
+                  if (!toDivisionId) setToDivisionId((fb?.division as any)?.id || "");
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={language === 'id' ? 'Pilih kategori sumber' : 'Select source category'} />
@@ -404,19 +428,41 @@ const BudgetTransfer = () => {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>{language === 'id' ? 'Divisi Tujuan' : 'Target Division'}</Label>
+              <Select
+                value={toDivisionId}
+                onValueChange={(value) => { setToDivisionId(value); setFormData({ ...formData, to_budget_id: "" }); }}
+                disabled={!formData.from_budget_id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={language === 'id' ? 'Pilih divisi tujuan' : 'Select target division'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {targetDivisions.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.code} - {d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isCrossDivision && (
+                <p className="text-xs text-muted-foreground">
+                  {language === 'id' ? 'Transfer antar divisi — wajib disetujui Super Admin.' : 'Cross-division transfer — requires Super Admin approval.'}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
               <Label>{t('budgetTransfer.to')} {t('requests.category')}</Label>
               <Select
                 value={formData.to_budget_id}
                 onValueChange={(value) => setFormData({ ...formData, to_budget_id: value })}
-                disabled={!formData.from_budget_id}
+                disabled={!formData.from_budget_id || !toDivisionId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={language === 'id' ? 'Pilih kategori tujuan' : 'Select target category'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableToBudgets.map((budget) => (
+                  {availableToBudgets.map((budget: any) => (
                     <SelectItem key={budget.id} value={budget.id}>
-                      {(budget.category as any)?.name} - {(budget.division as any)?.name}
+                      {budget.category?.name} - {budget.division?.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -432,7 +478,17 @@ const BudgetTransfer = () => {
               />
               {selectedFromBudget && (
                 <p className="text-xs text-muted-foreground">
-                  {language === 'id' ? 'Maksimal' : 'Maximum'}: {formatCurrency(Number(selectedFromBudget.allocated_amount) - Number(selectedFromBudget.used_amount))}
+                  {language === 'id' ? 'Maksimal' : 'Maximum'}: {formatCurrency(fromAvailable)}
+                </p>
+              )}
+              {amountExceeds && (
+                <p className="text-xs text-destructive">
+                  {language === 'id' ? 'Jumlah melebihi sisa anggaran pos asal.' : 'Amount exceeds source remaining budget.'}
+                </p>
+              )}
+              {selectedToBudget && (
+                <p className="text-xs text-muted-foreground">
+                  {language === 'id' ? 'Sisa pos tujuan saat ini' : 'Target current remaining'}: {formatCurrency(Number(selectedToBudget.allocated_amount) - Number(selectedToBudget.used_amount))}
                 </p>
               )}
             </div>
@@ -450,7 +506,7 @@ const BudgetTransfer = () => {
             <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
               {t('action.cancel')}
             </Button>
-            <Button onClick={handleSave} disabled={isCreating || isUpdating}>
+            <Button onClick={handleSave} disabled={isCreating || isUpdating || amountExceeds || !(amountNumber > 0) || !formData.to_budget_id || !formData.reason}>
               {(isCreating || isUpdating)
                 ? t('common.loading')
                 : editingTransfer

@@ -15,6 +15,13 @@
       "when": 1793243394977,
       "tag": "0001_preserve_admin_ca_deletion_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794886135044,
+      "tag": "0002_cross_division_budget_transfer",
+      "breakpoints": true
     }
   ]
 }
