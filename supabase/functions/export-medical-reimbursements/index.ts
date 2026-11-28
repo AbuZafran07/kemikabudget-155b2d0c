@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     const byEmail = new Map<string, any[]>();
     const byName = new Map<string, any[]>();
     for (const c of inRange) {
-      const emp = c.employee;
+      const emp = Array.isArray(c.employee) ? c.employee[0] : c.employee;
       if (!emp) continue;
       const e = norm(emp.email);
       const n = norm(emp.full_name);
