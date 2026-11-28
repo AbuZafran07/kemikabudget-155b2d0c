@@ -49,10 +49,17 @@ type Row = Record<string, unknown>;
 
 export function aggregateRevenue(rows: Row[], year: number) {
   const byMonth = new Map<number, { target: number; actual: number }>();
+  // Baris kategori "all" (total) diabaikan bila bulan itu sudah punya baris per segmen, agar tidak terhitung dua kali.
+  const segmentMonths = new Set<number>();
+  for (const r of rows) {
+    const m = parseMonth(r.month);
+    if (m && String(r.category ?? "").toLowerCase() !== "all") segmentMonths.add(m);
+  }
   for (const r of rows) {
     if (r.year !== undefined && r.year !== null && Number(r.year) !== year) continue;
     const m = parseMonth(r.month);
     if (!m) continue;
+    if (String(r.category ?? "").toLowerCase() === "all" && segmentMonths.has(m)) continue;
     const cur = byMonth.get(m) ?? { target: 0, actual: 0 };
     cur.target += num(r.target);
     cur.actual += num(r.realisasi_invoice ?? r.actual_invoice ?? r.invoice);
@@ -67,9 +74,12 @@ export function aggregateRevenue(rows: Row[], year: number) {
 
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req.headers.get("origin"));
+  // Izinkan semua header yang diminta browser saat preflight (supabase-js versi baru mengirim header tambahan)
+  const requestedHeaders = req.headers.get("access-control-request-headers");
+  if (requestedHeaders) cors["Access-Control-Allow-Headers"] = requestedHeaders;
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
 
   try {
