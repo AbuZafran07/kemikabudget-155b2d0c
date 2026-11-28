@@ -57,6 +57,13 @@
       "when": 1795850400000,
       "tag": "0007_budget_release_brake",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795850588793,
+      "tag": "0008_scope_selected_settings_and_attachment_reads",
+      "breakpoints": true
     }
   ]
 }

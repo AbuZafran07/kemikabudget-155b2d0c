@@ -1,3 +1,7 @@
+# Selected security findings
+- [x] Restrict the two settings reads to active staff and valid sessions; database predicates and signed-in reads verified.
+- [x] Bind the three attachment reads to the caller and authorized document access; five SQL predicate tests passed, real medical signed download returned 200, and only five selected findings marked fixed. CA and nominative buckets currently contain no files for live download tests.
+
 # Cash Advance safeguards and AI
 - [x] Add authenticated Lovable AI category suggestions from the request description and authorized division budget posts; live model response and application of suggestions verified.
 - [x] Check live per-category availability including commitments; signed-in UI verified shortage lock, equality boundary and draft readback. Test draft removed through the UI.
