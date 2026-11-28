@@ -148,6 +148,9 @@ export const useSyncSalesPerformance = () => {
       if (error) {
         // pesan dari edge function (status non-2xx) ada di context response
         let msg = error.message;
+        if ((error as { name?: string }).name === "FunctionsFetchError") {
+          msg = "Fungsi sync-sales-performance tidak bisa dihubungi (belum ter-deploy atau diblokir). Minta Lovable men-deploy ulang fungsi tersebut, atau isi data penjualan secara manual.";
+        }
         try {
           const ctx = (error as { context?: Response }).context;
           if (ctx && typeof ctx.json === "function") {
