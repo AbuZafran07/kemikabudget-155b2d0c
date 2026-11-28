@@ -218,95 +218,6 @@ export type Database = {
           },
         ]
       }
-      budget_release_events: {
-        Row: {
-          achievement_pct: number | null
-          allocated_amount: number | null
-          created_at: string
-          division_budget_id: string
-          event_type: string
-          id: string
-          performed_by: string | null
-          reason: string | null
-          reference_id: string | null
-          release_mode: string | null
-          released_after: number
-          released_before: number
-          tier_release_pct: number | null
-        }
-        Insert: {
-          achievement_pct?: number | null
-          allocated_amount?: number | null
-          created_at?: string
-          division_budget_id: string
-          event_type: string
-          id?: string
-          performed_by?: string | null
-          reason?: string | null
-          reference_id?: string | null
-          release_mode?: string | null
-          released_after?: number
-          released_before?: number
-          tier_release_pct?: number | null
-        }
-        Update: {
-          achievement_pct?: number | null
-          allocated_amount?: number | null
-          created_at?: string
-          division_budget_id?: string
-          event_type?: string
-          id?: string
-          performed_by?: string | null
-          reason?: string | null
-          reference_id?: string | null
-          release_mode?: string | null
-          released_after?: number
-          released_before?: number
-          tier_release_pct?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "budget_release_events_division_budget_id_fkey"
-            columns: ["division_budget_id"]
-            isOneToOne: false
-            referencedRelation: "division_budgets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      budget_release_settings: {
-        Row: {
-          auto_release_enabled: boolean
-          id: boolean
-          last_sync_at: string | null
-          last_sync_by: string | null
-          last_sync_status: string | null
-          tiers: Json
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          auto_release_enabled?: boolean
-          id?: boolean
-          last_sync_at?: string | null
-          last_sync_by?: string | null
-          last_sync_status?: string | null
-          tiers?: Json
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          auto_release_enabled?: boolean
-          id?: boolean
-          last_sync_at?: string | null
-          last_sync_by?: string | null
-          last_sync_status?: string | null
-          tiers?: Json
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       budget_movements: {
         Row: {
           amount: number
@@ -401,6 +312,95 @@ export type Database = {
           start_date?: string
           updated_at?: string
           year?: number
+        }
+        Relationships: []
+      }
+      budget_release_events: {
+        Row: {
+          achievement_pct: number | null
+          allocated_amount: number | null
+          created_at: string
+          division_budget_id: string
+          event_type: string
+          id: string
+          performed_by: string | null
+          reason: string | null
+          reference_id: string | null
+          release_mode: string | null
+          released_after: number
+          released_before: number
+          tier_release_pct: number | null
+        }
+        Insert: {
+          achievement_pct?: number | null
+          allocated_amount?: number | null
+          created_at?: string
+          division_budget_id: string
+          event_type: string
+          id?: string
+          performed_by?: string | null
+          reason?: string | null
+          reference_id?: string | null
+          release_mode?: string | null
+          released_after?: number
+          released_before?: number
+          tier_release_pct?: number | null
+        }
+        Update: {
+          achievement_pct?: number | null
+          allocated_amount?: number | null
+          created_at?: string
+          division_budget_id?: string
+          event_type?: string
+          id?: string
+          performed_by?: string | null
+          reason?: string | null
+          reference_id?: string | null
+          release_mode?: string | null
+          released_after?: number
+          released_before?: number
+          tier_release_pct?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_release_events_division_budget_id_fkey"
+            columns: ["division_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_release_settings: {
+        Row: {
+          auto_release_enabled: boolean
+          id: boolean
+          last_sync_at: string | null
+          last_sync_by: string | null
+          last_sync_status: string | null
+          tiers: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_release_enabled?: boolean
+          id?: boolean
+          last_sync_at?: string | null
+          last_sync_by?: string | null
+          last_sync_status?: string | null
+          tiers?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_release_enabled?: boolean
+          id?: boolean
+          last_sync_at?: string | null
+          last_sync_by?: string | null
+          last_sync_status?: string | null
+          tiers?: Json
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -1284,6 +1284,67 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_medical_budgets: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          remaining_amount: number | null
+          source_division_budget_id: string | null
+          status: string
+          total_entitlement: number
+          updated_at: string
+          used_amount: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          remaining_amount?: number | null
+          source_division_budget_id?: string | null
+          status?: string
+          total_entitlement?: number
+          updated_at?: string
+          used_amount?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          remaining_amount?: number | null
+          source_division_budget_id?: string | null
+          status?: string
+          total_entitlement?: number
+          updated_at?: string
+          used_amount?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_medical_budgets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_medical_budgets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_medical_budgets_source_division_budget_id_fkey"
+            columns: ["source_division_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entertainment_nominative_entries: {
         Row: {
           address: string
@@ -1417,71 +1478,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "entertainment_nominatives_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "requests_secure"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "entertainment_nominatives_settlement_id_fkey"
             columns: ["settlement_id"]
             isOneToOne: true
             referencedRelation: "cash_advance_settlements"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      employee_medical_budgets: {
-        Row: {
-          created_at: string
-          employee_id: string
-          id: string
-          remaining_amount: number | null
-          source_division_budget_id: string | null
-          status: string
-          total_entitlement: number
-          updated_at: string
-          used_amount: number
-          year: number
-        }
-        Insert: {
-          created_at?: string
-          employee_id: string
-          id?: string
-          remaining_amount?: number | null
-          source_division_budget_id?: string | null
-          status?: string
-          total_entitlement?: number
-          updated_at?: string
-          used_amount?: number
-          year: number
-        }
-        Update: {
-          created_at?: string
-          employee_id?: string
-          id?: string
-          remaining_amount?: number | null
-          source_division_budget_id?: string | null
-          status?: string
-          total_entitlement?: number
-          updated_at?: string
-          used_amount?: number
-          year?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "employee_medical_budgets_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_medical_budgets_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_secure"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_medical_budgets_source_division_budget_id_fkey"
-            columns: ["source_division_budget_id"]
-            isOneToOne: false
-            referencedRelation: "division_budgets"
             referencedColumns: ["id"]
           },
         ]
@@ -2751,26 +2758,75 @@ export type Database = {
         Args: { p_note?: string; p_settlement_id: string }
         Returns: Json
       }
+      budget_line_after_transfer: {
+        Args: {
+          p_amount: number
+          p_from: string
+          p_to: string
+          p_transfer_id: string
+        }
+        Returns: undefined
+      }
+      budget_line_auto_release: {
+        Args: { p_budget_id: string; p_required_open: number }
+        Returns: undefined
+      }
+      budget_line_brake_note: { Args: { p_budget_id: string }; Returns: string }
+      budget_line_claims: {
+        Args: {
+          p_before?: string
+          p_budget_id: string
+          p_exclude_ca?: string
+          p_exclude_request?: string
+        }
+        Returns: number
+      }
+      budget_line_open_amount: {
+        Args: { p_budget_id: string; p_simulate?: boolean }
+        Returns: number
+      }
+      budget_line_sales_target: {
+        Args: { p_budget_id: string }
+        Returns: number
+      }
+      budget_release_tier_pct: {
+        Args: { p_achievement: number }
+        Returns: number
+      }
+      ca_overdue_settlements_for: {
+        Args: { p_exclude_ca_id?: string; p_user_id: string }
+        Returns: {
+          activity_end_date: string
+          ca_number: string
+          days_overdue: number
+          id: string
+          settlement_due_date: string
+        }[]
+      }
       ca_today: { Args: never; Returns: string }
-      can_edit_entertainment_nominative: {
-        Args: { p_request_id: string; p_settlement_id: string }
-        Returns: boolean
-      }
-      category_requires_nominative: {
-        Args: { p_category_id: string }
-        Returns: boolean
-      }
       can_access_division: {
         Args: { _division_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_entertainment_nominative: {
+        Args: { p_request_id: string; p_settlement_id: string }
         Returns: boolean
       }
       can_use_division_budget: {
         Args: { _category_id: string; _division_id: string; _user_id: string }
         Returns: boolean
       }
+      category_requires_nominative: {
+        Args: { p_category_id: string }
+        Returns: boolean
+      }
       check_otp_rate_limit: { Args: { p_user_id: string }; Returns: Json }
       check_session_valid: { Args: never; Returns: boolean }
       close_medical_claim: { Args: { p_claim_id: string }; Returns: Json }
+      copy_entertainment_nominative_to_settlement: {
+        Args: { p_from_settlement: string; p_to_settlement: string }
+        Returns: undefined
+      }
       create_reconciliation: {
         Args: {
           p_funding_source_id: string
@@ -2789,31 +2845,18 @@ export type Database = {
         Args: { p_secret: string; p_user_id: string }
         Returns: string
       }
-      get_ca_budget_options: {
-        Args: { p_division_id: string }
-        Returns: {
-          allocated: number
-          code: string
-          commitment: number
-          id: string
-          name: string
-          period_id: string
-          remaining: number
-          used: number
-        }[]
-      }
-      get_funding_source_options: {
-        Args: never
-        Returns: {
-          code: string
-          id: string
-          is_active: boolean
-          name: string
-          type: string
-        }[]
-      }
       entertainment_entries_fingerprint: {
         Args: { p_nominative_id: string }
+        Returns: string
+      }
+      entertainment_nominative_error: {
+        Args: {
+          p_entries_total: number
+          p_entry_count: number
+          p_has_signed: boolean
+          p_outdated?: boolean
+          p_required_amount: number
+        }
         Returns: string
       }
       entertainment_nominative_status: {
@@ -2827,6 +2870,40 @@ export type Database = {
           required: boolean
           required_amount: number
           signed_outdated: boolean
+        }[]
+      }
+      get_budget_brake_overview: {
+        Args: { p_period_id: string }
+        Returns: {
+          allocated: number
+          auto_target: number
+          available: number
+          budget_id: string
+          category_code: string
+          category_id: string
+          category_name: string
+          division_code: string
+          division_id: string
+          division_name: string
+          held: number
+          initial_release: number
+          release_mode: string
+          released: number
+          reserved: number
+          used: number
+        }[]
+      }
+      get_ca_budget_options: {
+        Args: { p_division_id: string }
+        Returns: {
+          allocated: number
+          code: string
+          commitment: number
+          id: string
+          name: string
+          period_id: string
+          remaining: number
+          used: number
         }[]
       }
       get_entertainment_nominative_report: {
@@ -2849,60 +2926,15 @@ export type Database = {
           source_type: string
         }[]
       }
-      get_request_budget_availability: {
-        Args: { p_category_id: string; p_division_id: string }
+      get_funding_source_options: {
+        Args: never
         Returns: {
-          allocated: number
-          available: number
-          held: number
-          reserved: number
-          used: number
+          code: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
         }[]
-      }
-      get_budget_brake_overview: {
-        Args: { p_period_id: string }
-        Returns: {
-          allocated: number
-          auto_target: number | null
-          available: number
-          budget_id: string
-          category_code: string
-          category_id: string
-          category_name: string
-          division_code: string
-          division_id: string
-          division_name: string
-          held: number
-          initial_release: number
-          release_mode: string
-          released: number
-          reserved: number
-          used: number
-        }[]
-      }
-      get_sales_achievement: {
-        Args: { p_year: number }
-        Returns: {
-          achievement_pct: number | null
-          actual_amount: number
-          last_month: number | null
-          months_counted: number
-          target_amount: number
-          tier_release_pct: number
-          year: number
-        }[]
-      }
-      set_budget_release_plan: {
-        Args: { p_budget_id: string; p_initial: number; p_mode: string; p_note?: string }
-        Returns: Json
-      }
-      set_budget_release_plan_bulk: {
-        Args: { p_division_id: string | null; p_initial_pct: number; p_mode: string; p_only_unset?: boolean; p_period_id: string }
-        Returns: Json
-      }
-      release_budget_manual: {
-        Args: { p_amount: number; p_budget_id: string; p_reason: string }
-        Returns: Json
       }
       get_my_overdue_ca_settlements: {
         Args: never
@@ -2920,6 +2952,28 @@ export type Database = {
         Returns: string
       }
       get_next_medical_claim_number: { Args: never; Returns: string }
+      get_request_budget_availability: {
+        Args: { p_category_id: string; p_division_id: string }
+        Returns: {
+          allocated: number
+          available: number
+          held: number
+          reserved: number
+          used: number
+        }[]
+      }
+      get_sales_achievement: {
+        Args: { p_year: number }
+        Returns: {
+          achievement_pct: number
+          actual_amount: number
+          last_month: number
+          months_counted: number
+          target_amount: number
+          tier_release_pct: number
+          year: number
+        }[]
+      }
       get_user_division_id: { Args: { _user_id: string }; Returns: string }
       get_user_otp_secret: { Args: { p_user_id: string }; Returns: string }
       get_user_role: {
@@ -2971,6 +3025,10 @@ export type Database = {
         Args: { p_reason: string; p_settlement_id: string }
         Returns: Json
       }
+      release_budget_manual: {
+        Args: { p_amount: number; p_budget_id: string; p_reason: string }
+        Returns: Json
+      }
       reset_otp_rate_limit: { Args: { p_user_id: string }; Returns: undefined }
       review_medical_claim_finance: {
         Args: {
@@ -2983,6 +3041,36 @@ export type Database = {
       }
       review_medical_claim_hrga: {
         Args: { p_action: string; p_claim_id: string; p_note?: string }
+        Returns: Json
+      }
+      sales_achievement: {
+        Args: { p_year: number }
+        Returns: {
+          achievement_pct: number
+          actual_amount: number
+          last_month: number
+          months_counted: number
+          target_amount: number
+          year: number
+        }[]
+      }
+      set_budget_release_plan: {
+        Args: {
+          p_budget_id: string
+          p_initial: number
+          p_mode: string
+          p_note?: string
+        }
+        Returns: Json
+      }
+      set_budget_release_plan_bulk: {
+        Args: {
+          p_division_id: string
+          p_initial_pct: number
+          p_mode: string
+          p_only_unset?: boolean
+          p_period_id: string
+        }
         Returns: Json
       }
       set_user_otp_secret: {
