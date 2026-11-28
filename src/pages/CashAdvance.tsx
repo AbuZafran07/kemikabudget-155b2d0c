@@ -26,6 +26,8 @@ import { TablePagination } from "@/components/common/TablePagination";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashAdvances } from "@/hooks/useCashAdvance";
+import { useCaPolicySettings } from "@/hooks/useCaPolicy";
+import { DEFAULT_CA_POLICY, getSettlementDeadline } from "@/lib/ca-policy";
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +51,9 @@ const CashAdvance = () => {
     division_id: divisionFilter === "all" ? undefined : divisionFilter,
     search: search || undefined,
   });
+
+  const { data: caPolicyData } = useCaPolicySettings();
+  const caPolicy = caPolicyData ?? DEFAULT_CA_POLICY;
 
   const { data: divisions } = useQuery({
     queryKey: ["divisions"],
@@ -232,7 +237,27 @@ const CashAdvance = () => {
                         {formatCurrency(ca.total_amount)}
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={ca.status} />
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge status={ca.status} />
+                          {(() => {
+                            const deadline = getSettlementDeadline(ca, ca.settlements, caPolicy);
+                            if (deadline.state === "overdue") {
+                              return (
+                                <Badge variant="destructive" className="whitespace-nowrap">
+                                  {language === "en" ? `Report ${deadline.daysOverdue}d late` : `Laporan telat ${deadline.daysOverdue} hr`}
+                                </Badge>
+                              );
+                            }
+                            if (deadline.state === "due_today") {
+                              return (
+                                <Badge variant="outline" className="whitespace-nowrap border-amber-500 text-amber-600">
+                                  {language === "en" ? "Report due today" : "Laporan jatuh tempo"}
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                       </TableCell>
                       <TableCell>{formatDate(ca.paid_at)}</TableCell>
                       <TableCell className="text-right">

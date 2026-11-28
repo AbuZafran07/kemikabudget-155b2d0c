@@ -41,9 +41,17 @@ import {
   useUpdateSettlement,
   useSubmitSettlement,
 } from "@/hooks/useCashAdvance";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import CaSettlementAttachments from "@/components/cash-advance/CaSettlementAttachments";
+import { useCaSettlementAttachments } from "@/hooks/useCaSettlementAttachments";
+import { useCaPolicySettings } from "@/hooks/useCaPolicy";
+import { DEFAULT_CA_POLICY } from "@/lib/ca-policy";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import EntertainmentNominativeCard from "@/components/entertainment/EntertainmentNominativeCard";
+import { useNominativeCategoryIds, useNominativeStatus } from "@/hooks/useEntertainmentNominative";
+import { settlementNominativeRequirement } from "@/lib/entertainment-nominative";
 
 interface SettlementItemRow {
   id: string;
@@ -59,8 +67,8 @@ interface SettlementItemRow {
 }
 
 const CashAdvanceSettlementForm = () => {
-  const { t } = useLanguage();
-  const { user } = useAuth();
+  const { t, language } = useLanguage();
+  const { user, hasRoleExact } = useAuth();
   const navigate = useNavigate();
   const { id: caId, settlementId } = useParams();
   const isEditMode = !!settlementId;
@@ -105,6 +113,19 @@ const CashAdvanceSettlementForm = () => {
   const createSettlement = useCreateSettlement();
   const updateSettlement = useUpdateSettlement();
   const submitSettlement = useSubmitSettlement();
+  const { data: caPolicyData } = useCaPolicySettings();
+  const caPolicy = caPolicyData ?? DEFAULT_CA_POLICY;
+  const { data: attachments = [] } = useCaSettlementAttachments(settlementId);
+  const attachmentRequired = caPolicy.require_settlement_attachment;
+  const attachmentsOk = !attachmentRequired || attachments.length > 0;
+  const queryClient = useQueryClient();
+  const { data: nominativeCategoryIds } = useNominativeCategoryIds();
+  const { data: nominativeStatus } = useNominativeStatus(settlementId ? { settlementId } : null);
+  const canManageAttachments =
+    isEditMode &&
+    !!existingSettlement &&
+    ["draft", "submitted"].includes(existingSettlement.status) &&
+    (existingSettlement.created_by === user?.id || hasRoleExact("super_admin"));
 
   // Category lookup for displaying names of edited items (settlement items have no category_id stored)
   const caItemByDescription = (desc: string) =>
@@ -120,11 +141,14 @@ const CashAdvanceSettlementForm = () => {
           setItems(
             existingItems.map((it, idx) => {
               const ci = caItemByDescription(it.description);
+              const storedCategory = it.category_id
+                ? caItems?.find((c) => c.category_id === it.category_id)
+                : undefined;
               return {
                 id: String(idx + 1),
                 description: it.description,
-                category_id: ci?.category_id || "",
-                category_name: (ci as any)?.category?.name || "",
+                category_id: it.category_id || ci?.category_id || "",
+                category_name: (storedCategory || ci)?.category?.name || "",
                 quantity: it.quantity,
                 unit_price: Number(it.unit_price),
                 amount: Number(it.amount),
@@ -211,6 +235,31 @@ const CashAdvanceSettlementForm = () => {
 
   const isValid = items.some((item) => item.description.trim() && item.amount > 0);
 
+  // Pos anggaran CA (untuk pilihan per baris) & aturan Daftar Nominatif Entertainment
+  const caCategoryOptions = Array.from(
+    new Map(
+      (caItems || [])
+        .filter((ci) => ci.category_id)
+        .map((ci) => [ci.category_id as string, ci.category?.name || ci.category_id]),
+    ).entries(),
+  ).map(([id, name]) => ({ id, name: String(name) }));
+  const isMultiCategoryCa = caCategoryOptions.length > 1;
+  const singleCategoryId = caCategoryOptions.length === 1 ? caCategoryOptions[0].id : "";
+  const nominativeRequirement = settlementNominativeRequirement(
+    caCategoryOptions.map((c) => c.id),
+    nominativeCategoryIds ?? new Set<string>(),
+    items
+      .filter((item) => item.description.trim() && item.amount > 0)
+      .map((item) => ({ category_id: item.category_id, amount: item.amount })),
+  );
+  const nominativeApplies =
+    caPolicy.require_entertainment_nominative && (nominativeRequirement.required || nominativeRequirement.missingCategory);
+  const nominativeReady =
+    !nominativeApplies ||
+    (!nominativeRequirement.missingCategory &&
+      !!nominativeStatus?.is_complete &&
+      nominativeStatus.entries_total === nominativeRequirement.requiredAmount);
+
   const persist = async () => {
     if (!isValid || !caId) return null;
     const validItems = items
@@ -223,6 +272,7 @@ const CashAdvanceSettlementForm = () => {
         receipt_number: item.receipt_number || undefined,
         receipt_date: item.receipt_date || undefined,
         notes: item.notes || undefined,
+        category_id: item.category_id || singleCategoryId || null,
       }));
 
     if (isEditMode && settlementId) {
@@ -241,15 +291,30 @@ const CashAdvanceSettlementForm = () => {
   };
 
   const handleSave = async () => {
-    const result = await persist();
-    if (result) navigate(`/cash-advance/${caId}`);
+    try {
+      const result = await persist();
+      if (!result) return;
+      // Realisasi baru: tetap di halaman edit agar bukti bisa langsung diunggah
+      queryClient.invalidateQueries({ queryKey: ["entertainment-nominative-status"] });
+      if (!isEditMode) navigate(`/cash-advance/${caId}/settlement/${result.id}/edit`, { replace: true });
+      // pos Entertainment: tetap di halaman agar Daftar Nominatif bisa dilengkapi
+      else if (!nominativeApplies) navigate(`/cash-advance/${caId}`);
+    } catch {
+      // pesan error sudah ditampilkan oleh toast pada hook
+    }
   };
 
   const handleSaveAndSubmit = async () => {
-    const result = await persist();
-    if (result) {
-      await submitSettlement.mutateAsync(result.id);
-      navigate(`/cash-advance/${caId}`);
+    try {
+      const result = await persist();
+      if (result) {
+        await submitSettlement.mutateAsync(result.id);
+        navigate(`/cash-advance/${caId}`);
+      }
+    } catch {
+      // pesan error sudah ditampilkan oleh toast pada hook
+    } finally {
+      setShowSubmitDialog(false);
     }
   };
 
@@ -326,9 +391,36 @@ const CashAdvanceSettlementForm = () => {
                     {items.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {item.category_name || "-"}
-                          </span>
+                          {isMultiCategoryCa ? (
+                            <Select
+                              value={item.category_id || undefined}
+                              onValueChange={(value) => {
+                                const name = caCategoryOptions.find((c) => c.id === value)?.name || "";
+                                setItems((rows) =>
+                                  rows.map((row) => (row.id === item.id ? { ...row, category_id: value, category_name: name } : row)),
+                                );
+                              }}
+                            >
+                              <SelectTrigger
+                                className={
+                                  nominativeRequirement.missingCategory && !item.category_id && item.description.trim()
+                                    ? "border-destructive"
+                                    : ""
+                                }
+                              >
+                                <SelectValue placeholder={language === "en" ? "Select budget line" : "Pilih pos"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {caCategoryOptions.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">{item.category_name || "-"}</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Input
@@ -415,6 +507,54 @@ const CashAdvanceSettlementForm = () => {
               />
             </CardContent>
           </Card>
+
+          {/* Daftar Nominatif Entertainment (pos bertanda wajib nominatif) */}
+          {nominativeApplies && (
+            <div className="space-y-2">
+              {nominativeRequirement.missingCategory && (
+                <p role="alert" className="text-sm text-destructive">
+                  {language === "en"
+                    ? "This cash advance has an Entertainment budget line: select the budget line for every realization row."
+                    : "CA ini memiliki pos Entertainment: pilih pos anggaran untuk setiap baris realisasi."}
+                </p>
+              )}
+              {isEditMode && nominativeStatus && nominativeStatus.required_amount !== nominativeRequirement.requiredAmount && (
+                <p className="text-sm text-amber-600">
+                  {language === "en"
+                    ? "Realization rows changed. Save as draft so the Entertainment amount is updated."
+                    : "Baris realisasi berubah. Simpan draft agar nominal pos Entertainment diperbarui."}
+                </p>
+              )}
+              <EntertainmentNominativeCard
+                source={isEditMode && settlementId ? { settlementId } : null}
+                editable={canManageAttachments}
+                documentRef={`${ca.ca_number}${existingSettlement?.settlement_number ? ` / ${existingSettlement.settlement_number}` : ""}`}
+                liveRequiredAmount={nominativeRequirement.requiredAmount}
+                defaultSignerName={ca.requester?.full_name || undefined}
+                defaultEntryDate={ca.activity_start_date || undefined}
+              />
+            </div>
+          )}
+
+          {/* Bukti realisasi (wajib sesuai kebijakan CA) */}
+          <Card>
+            <CardContent className="pt-6">
+              {isEditMode && settlementId && caId ? (
+                <CaSettlementAttachments
+                  settlementId={settlementId}
+                  cashAdvanceId={caId}
+                  required={attachmentRequired}
+                  readOnly={!canManageAttachments}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {language === "en"
+                    ? "Save as draft first, then upload the realization proof (receipt, transfer/QRIS proof, or stamped receipt)."
+                    : "Simpan sebagai draft terlebih dahulu, lalu unggah bukti realisasi (nota/kuitansi, bukti transfer/QRIS, atau tanda terima bermeterai)."}
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar Summary */}
@@ -465,11 +605,25 @@ const CashAdvanceSettlementForm = () => {
               <Button
                 className="w-full"
                 onClick={() => setShowSubmitDialog(true)}
-                disabled={!isValid || createSettlement.isPending || updateSettlement.isPending || submitSettlement.isPending}
+                disabled={!isValid || (attachmentRequired && (!isEditMode || !attachmentsOk)) || !nominativeReady || createSettlement.isPending || updateSettlement.isPending || submitSettlement.isPending}
               >
                 <Send className="h-4 w-4 mr-2" />
                 {t("cashAdvance.saveAndSubmit")}
               </Button>
+            )}
+            {nominativeApplies && !nominativeReady && (
+              <p className="text-xs text-destructive">
+                {language === "en"
+                  ? "Complete the Entertainment nominative list (including the signed file) before submitting."
+                  : "Lengkapi Daftar Nominatif Entertainment (termasuk file bertanda tangan) sebelum mengajukan."}
+              </p>
+            )}
+            {attachmentRequired && (!isEditMode || !attachmentsOk) && (
+              <p className="text-xs text-destructive">
+                {language === "en"
+                  ? "Upload at least 1 realization proof before submitting."
+                  : "Unggah minimal 1 bukti realisasi sebelum mengajukan."}
+              </p>
             )}
           </div>
         </div>

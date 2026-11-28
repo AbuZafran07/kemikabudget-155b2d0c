@@ -16,6 +16,7 @@ import BankPayments from "./pages/BankPayments";
 import BudgetPlanning from "./pages/BudgetPlanning";
 import BudgetPeriods from "./pages/BudgetPeriods";
 import BudgetTransfer from "./pages/BudgetTransfer";
+import BudgetBrake from "./pages/BudgetBrake";
 import Divisions from "./pages/Divisions";
 import Categories from "./pages/Categories";
 import FundingSources from "./pages/FundingSources";
@@ -105,6 +106,11 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/budget-transfer" element={<BudgetTransfer />} />
+                <Route path="/budget-brake" element={
+                  <ProtectedRoute requiredRole="finance">
+                    <BudgetBrake />
+                  </ProtectedRoute>
+                } />
                 <Route path="/adjustments" element={
                   <ProtectedRoute requiredRole="finance">
                     <Adjustments />

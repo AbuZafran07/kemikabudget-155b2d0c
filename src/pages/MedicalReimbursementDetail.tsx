@@ -128,8 +128,10 @@ const MedicalReimbursementDetail = () => {
   const isOwner = claim.employee_id === user?.id;
   const isHRGA = role === "admin" || role === "super_admin";
   const isFinance = role === "finance" || role === "super_admin";
-  const canEdit = isOwner && ["draft", "submitted", "review_hrga"].includes(claim.status) && !claim.is_locked;
-  const canSubmit = isOwner && claim.status === "draft";
+  // Super Admin dapat mengubah & mengajukan klaim yang dibuat atas nama karyawan
+  const canActAsOwner = isOwner || role === "super_admin";
+  const canEdit = canActAsOwner && ["draft", "submitted", "review_hrga"].includes(claim.status) && !claim.is_locked;
+  const canSubmit = canActAsOwner && claim.status === "draft";
   const canDelete = claim.status === "draft" && (isOwner || role === "super_admin");
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -223,6 +225,7 @@ const MedicalReimbursementDetail = () => {
           </div>
           <p className="text-muted-foreground">
             {t("medical.submittedBy")}: {claim.employee?.full_name || "-"}
+            {claim.created_by && claim.created_by !== claim.employee_id && " (dibuat oleh Super Admin atas nama karyawan)"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

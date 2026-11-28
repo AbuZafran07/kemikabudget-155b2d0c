@@ -34,6 +34,7 @@ import { PDFPreviewDialog } from '@/components/payments/PDFPreviewDialog';
 import { PengajuanDanaData, generatePengajuanDanaHTML } from '@/lib/generatePengajuanDanaPDF';
 import { exportStyledHtmlToPdf } from '@/lib/html2pdfExport';
 import { toast } from 'sonner';
+import EntertainmentNominativeSection from '@/components/entertainment/EntertainmentNominativeSection';
 
 interface RequestDetailProps {
   requestId: string;
@@ -619,6 +620,18 @@ export function RequestDetail({ requestId, onBack }: RequestDetailProps) {
               </>
             )}
           </div>
+
+          {/* Daftar Nominatif Entertainment (muncul bila pos pengajuan mewajibkannya) */}
+          <EntertainmentNominativeSection
+            source={{ requestId: request.id }}
+            editable={
+              request.requester_id === user?.id &&
+              ['draft', 'submitted', 'revision', 'under_review', 'approved', 'paid'].includes(request.status)
+            }
+            documentRef={request.request_number}
+            defaultSignerName={request.requester?.full_name || undefined}
+            defaultEntryDate={request.needed_date || undefined}
+          />
 
           {/* Attachments */}
           <div className="bg-card rounded-xl border border-border p-6">

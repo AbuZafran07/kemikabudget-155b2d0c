@@ -48,6 +48,7 @@ export interface MedicalClaim {
   closed_at: string | null;
   closed_by: string | null;
   is_locked: boolean;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
   employee?: {
@@ -84,6 +85,8 @@ export interface MedicalClaimEvent {
 }
 
 export interface CreateMedicalClaimData {
+  /** Diisi hanya oleh Super Admin saat membuat klaim atas nama karyawan lain */
+  employee_id?: string;
   treatment_date: string;
   claim_amount: number;
   claim_type: string;
@@ -95,24 +98,26 @@ export interface CreateMedicalClaimData {
   notes?: string;
 }
 
-export function useMedicalBudget() {
+/** Plafon medis tahun berjalan. Default: user login; Super Admin dapat melihat milik karyawan lain. */
+export function useMedicalBudget(employeeId?: string) {
   const { user } = useAuth();
   const currentYear = new Date().getFullYear();
+  const targetId = employeeId || user?.id;
 
   return useQuery({
-    queryKey: ["medical-budget", user?.id, currentYear],
+    queryKey: ["medical-budget", targetId, currentYear],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employee_medical_budgets")
         .select("*")
-        .eq("employee_id", user?.id)
+        .eq("employee_id", targetId!)
         .eq("year", currentYear)
         .maybeSingle();
 
       if (error) throw error;
       return data as MedicalBudget | null;
     },
-    enabled: !!user?.id,
+    enabled: !!targetId,
   });
 }
 
@@ -265,12 +270,14 @@ export function useCreateMedicalClaim() {
       );
       if (numError) throw numError;
 
+      const { employee_id: onBehalfOf, ...fields } = data;
+      const employeeId = onBehalfOf || user?.id;
       const { data: claim, error } = await supabase
         .from("medical_claims")
         .insert({
           claim_number: claimNumber,
-          employee_id: user?.id,
-          ...data,
+          employee_id: employeeId,
+          ...fields,
         })
         .select()
         .single();
@@ -281,7 +288,7 @@ export function useCreateMedicalClaim() {
       await supabase.from("medical_claim_events").insert({
         claim_id: claim.id,
         event_type: "created",
-        description: "Claim created",
+        description: employeeId === user?.id ? "Claim created" : "Claim created by Super Admin on behalf of the employee",
         performed_by: user?.id,
       });
 

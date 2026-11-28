@@ -19,6 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard';
 import { OtpSetupCard } from '@/components/settings/OtpSetupCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
+import { CaPolicySettingsCard } from '@/components/settings/CaPolicySettingsCard';
+import { BudgetReleaseSettingsCard } from '@/components/budget-brake/BudgetReleaseSettingsCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -222,6 +224,10 @@ const Settings = () => {
       </div>
 
       <div className="grid gap-6">
+        {/* Cash Advance Policy (disimpan di database, berlaku untuk semua pengguna) */}
+        <CaPolicySettingsCard />
+        <BudgetReleaseSettingsCard />
+
         {/* SLA Configuration */}
         <Card>
           <CardHeader>

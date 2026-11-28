@@ -79,6 +79,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { useCaPolicySettings } from "@/hooks/useCaPolicy";
+import { DEFAULT_CA_POLICY, formatIsoDate, getSettlementDeadline } from "@/lib/ca-policy";
+import CaSettlementAttachments from "@/components/cash-advance/CaSettlementAttachments";
+import EntertainmentNominativeSection from "@/components/entertainment/EntertainmentNominativeSection";
 
 const CashAdvanceDetail = () => {
   const { t, language } = useLanguage();
@@ -99,6 +103,7 @@ const CashAdvanceDetail = () => {
   const { data: ca, isLoading } = useCashAdvance(id || "");
   const { data: items } = useCashAdvanceItems(id || "");
   const { data: events } = useCashAdvanceEvents(id || "");
+  const { data: caPolicyData } = useCaPolicySettings();
   const { data: settlements } = useCashAdvanceSettlements(id || "");
 
   // Fetch settlement items for all settlements (for PDF)
@@ -199,6 +204,8 @@ const CashAdvanceDetail = () => {
   const canApprove = (ca.status === "submitted" || ca.status === "under_review") && role === "super_admin";
   const canPay = ca.status === "approved" && (role === "super_admin" || role === "finance");
   const canAddSettlement = ca.status === "paid" && (ca.requester_id === user?.id || role === "super_admin" || role === "finance");
+  const caPolicy = caPolicyData ?? DEFAULT_CA_POLICY;
+  const settlementDeadline = getSettlementDeadline(ca, settlements, caPolicy);
   const canApproveSettlement = (role === "super_admin" || role === "finance");
 
   // Calculate actual realized from settlements (including submitted/approved, not just DB field)
@@ -276,6 +283,18 @@ const CashAdvanceDetail = () => {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">{ca.ca_number}</h1>
               <StatusBadge status={ca.status} />
+              {settlementDeadline.state === "overdue" && (
+                <Badge variant="destructive">
+                  {language === "en"
+                    ? `Report overdue ${settlementDeadline.daysOverdue} day(s)`
+                    : `Laporan terlambat ${settlementDeadline.daysOverdue} hari`}
+                </Badge>
+              )}
+              {settlementDeadline.state === "due_today" && (
+                <Badge variant="outline" className="border-amber-500 text-amber-600">
+                  {language === "en" ? "Report due today" : "Laporan jatuh tempo hari ini"}
+                </Badge>
+              )}
             </div>
             <p className="text-muted-foreground">{ca.purpose}</p>
           </div>
@@ -477,6 +496,24 @@ const CashAdvanceDetail = () => {
                   <dt className="text-sm text-muted-foreground">{t("cashAdvance.neededDate")}</dt>
                   <dd className="font-medium">{format(new Date(ca.needed_date), "dd MMM yyyy")}</dd>
                 </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">{language === "en" ? "Activity Date" : "Tanggal Kegiatan"}</dt>
+                  <dd className="font-medium">
+                    {ca.activity_start_date
+                      ? `${formatIsoDate(ca.activity_start_date)}${ca.activity_end_date && ca.activity_end_date !== ca.activity_start_date ? ` s.d. ${formatIsoDate(ca.activity_end_date)}` : ""}`
+                      : "-"}
+                  </dd>
+                </div>
+                {settlementDeadline.dueDate && (
+                  <div>
+                    <dt className="text-sm text-muted-foreground">{language === "en" ? "Realization Report Due" : "Batas Laporan Realisasi"}</dt>
+                    <dd className={`font-medium ${settlementDeadline.state === "overdue" ? "text-destructive" : ""}`}>
+                      {formatIsoDate(settlementDeadline.dueDate)}
+                      {settlementDeadline.state === "reported" && (language === "en" ? " (submitted)" : " (sudah disampaikan)")}
+                      {settlementDeadline.state === "overdue" && (language === "en" ? ` (${settlementDeadline.daysOverdue} day(s) late)` : ` (terlambat ${settlementDeadline.daysOverdue} hari)`)}
+                    </dd>
+                  </div>
+                )}
                 {ca.notes && (
                   <div className="sm:col-span-2">
                     <dt className="text-sm text-muted-foreground">{t("common.notes")}</dt>
@@ -973,6 +1010,15 @@ const CashAdvanceDetail = () => {
                     <p className="text-muted-foreground text-center py-4">Belum ada item realisasi</p>
                   )}
                 </div>
+
+                <Separator />
+                <CaSettlementAttachments settlementId={settlement.id} cashAdvanceId={settlement.cash_advance_id} readOnly />
+                <EntertainmentNominativeSection
+                  source={{ settlementId: settlement.id }}
+                  editable={false}
+                  documentRef={`${ca.ca_number} / ${settlement.settlement_number}`}
+                  defaultSignerName={ca.requester?.full_name || undefined}
+                />
 
                 {/* Summary comparison */}
                 {ca && (

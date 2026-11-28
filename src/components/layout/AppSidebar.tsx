@@ -26,6 +26,7 @@ import {
   FileType,
   Heart,
   DatabaseBackup,
+  Gauge,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,7 @@ const getMenuSections = (): MenuSection[] => [
       { titleKey: "nav.budgetPlanning", icon: Calculator, href: "/budget-planning" },
       { titleKey: "nav.budgetPeriods", icon: CalendarDays, href: "/budget-periods", roles: ["super_admin", "admin"] },
       { titleKey: "nav.budgetTransfer", icon: ArrowRightLeft, href: "/budget-transfer" },
+      { titleKey: "nav.budgetBrake", icon: Gauge, href: "/budget-brake", roles: ["super_admin", "executive", "finance"] },
     ],
   },
   {

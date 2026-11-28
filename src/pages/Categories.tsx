@@ -54,6 +54,7 @@ interface Category {
   description: string | null;
   is_active: boolean;
   is_public: boolean;
+  requires_nominative?: boolean;
   created_at: string;
 }
 
@@ -77,6 +78,7 @@ const Categories = () => {
     description: '',
     is_active: true,
     is_public: true,
+    requires_nominative: false,
   });
 
   const { data: categories = [], isLoading } = useQuery({
@@ -105,6 +107,7 @@ const Categories = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories-management'] });
+      queryClient.invalidateQueries({ queryKey: ['nominative-category-ids'] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: t('common.success'), description: t('categories.addSuccess') });
@@ -121,6 +124,7 @@ const Categories = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories-management'] });
+      queryClient.invalidateQueries({ queryKey: ['nominative-category-ids'] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: t('common.success'), description: t('categories.updateSuccess') });
@@ -137,6 +141,7 @@ const Categories = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories-management'] });
+      queryClient.invalidateQueries({ queryKey: ['nominative-category-ids'] });
       toast({ title: t('common.success'), description: t('categories.deleteSuccess') });
     },
     onError: (error: Error) => {
@@ -145,7 +150,7 @@ const Categories = () => {
   });
 
   const resetForm = () => {
-    setFormData({ code: '', name: '', description: '', is_active: true, is_public: true });
+    setFormData({ code: '', name: '', description: '', is_active: true, is_public: true, requires_nominative: false });
     setEditingCategory(null);
   };
 
@@ -157,6 +162,7 @@ const Categories = () => {
       description: category.description || '',
       is_active: category.is_active,
       is_public: category.is_public,
+      requires_nominative: !!category.requires_nominative,
     });
     setIsDialogOpen(true);
   };
@@ -262,7 +268,12 @@ const Categories = () => {
               paginatedCategories.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell className="font-mono font-medium">{category.code}</TableCell>
-                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {category.name}
+                    {category.requires_nominative && (
+                      <Badge variant="outline" className="ml-2 text-xs">Nominatif</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground max-w-xs whitespace-normal break-words">
                     {category.description || '-'}
                   </TableCell>
@@ -363,6 +374,18 @@ const Categories = () => {
               <Switch
                 checked={formData.is_public}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Wajib Daftar Nominatif Entertainment</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Realisasi CA dan Pengajuan Dana pada pos ini wajib melampirkan Daftar Nominatif (data penerima) yang ditandatangani
+                </p>
+              </div>
+              <Switch
+                checked={formData.requires_nominative}
+                onCheckedChange={(checked) => setFormData({ ...formData, requires_nominative: checked })}
               />
             </div>
           </div>

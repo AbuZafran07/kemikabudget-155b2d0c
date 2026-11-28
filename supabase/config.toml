@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.kemi-export]
 verify_jwt = false
+
+[functions.sync-sales-performance]
+verify_jwt = false

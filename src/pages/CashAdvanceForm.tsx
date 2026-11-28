@@ -45,6 +45,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { checkCaBudget } from "@/lib/ca-budget-validation";
 import { CaBudgetSuggestions, type CaSuggestion } from "@/components/cash-advance/CaBudgetSuggestions";
+import { useCaPolicySettings, useMyOverdueCaSettlements } from "@/hooks/useCaPolicy";
+import { DEFAULT_CA_POLICY, checkActivityDates, earliestActivityStart, formatIsoDate } from "@/lib/ca-policy";
 
 interface CashAdvanceItemRow {
   id: string;
@@ -84,6 +86,8 @@ const CashAdvanceForm = () => {
 
   const [purpose, setPurpose] = useState("");
   const [neededDate, setNeededDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [activityStart, setActivityStart] = useState("");
+  const [activityEnd, setActivityEnd] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<CashAdvanceItemRow[]>([
     { id: "1", description: "", category_id: "", quantity: 1, unit_price: 0, amount: 0, notes: "" },
@@ -96,6 +100,9 @@ const CashAdvanceForm = () => {
   const createCashAdvance = useCreateCashAdvance();
   const updateCashAdvance = useUpdateCashAdvance();
   const submitCashAdvance = useSubmitCashAdvance();
+  const { data: caPolicyData } = useCaPolicySettings();
+  const caPolicy = caPolicyData ?? DEFAULT_CA_POLICY;
+  const { data: overdueSettlements = [] } = useMyOverdueCaSettlements();
 
   // List divisions for executive/super_admin selector
   const { data: allDivisions } = useQuery({
@@ -153,6 +160,8 @@ const CashAdvanceForm = () => {
     if (isEdit && existingCa && existingItems) {
       setPurpose(existingCa.purpose);
       setNeededDate(existingCa.needed_date);
+      setActivityStart(existingCa.activity_start_date || "");
+      setActivityEnd(existingCa.activity_end_date || "");
       setNotes(existingCa.notes || "");
       if (existingCa.division_id) setSelectedDivisionId(existingCa.division_id);
       setItems(
@@ -241,18 +250,25 @@ const CashAdvanceForm = () => {
   const validItems = items.filter((item) => item.description.trim() && item.amount > 0);
   const allItemsHaveCategory = validItems.length > 0 && validItems.every((item) => item.category_id);
   const budgetCheck = checkCaBudget(items, categories || [], budgetReady && !budgetError && !budgetFetching);
-  const isDraftValid = !!divisionId && !!purpose.trim() && !!neededDate && allItemsHaveCategory;
+  // Kebijakan CA: tanggal kegiatan, batas minimal pengajuan, dan blokir bila ada laporan realisasi terlambat.
+  // Penegakan final tetap di database; ini hanya peringatan dini di form.
+  const activityCheck = checkActivityDates(activityStart, activityEnd, caPolicy, language === "en" ? "en" : "id");
+  const activityOrderOk = !activityStart || !activityEnd || activityEnd >= activityStart;
+  const overdueBlocked = caPolicy.block_on_overdue_settlement && overdueSettlements.length > 0;
+  const isDraftValid = !!divisionId && !!purpose.trim() && !!neededDate && allItemsHaveCategory && activityOrderOk;
   // Fully blank rows (e.g. added via "add item" and never filled) are ignored, like buildPayload does.
   const filledRows = items.filter((item) => item.description.trim() || item.category_id || item.amount > 0);
   const incompleteRowCount = filledRows.filter((item) => !(item.description.trim() && item.category_id && Number.isFinite(item.amount) && item.amount > 0 && item.quantity > 0 && item.unit_price > 0)).length;
   const rowsComplete = filledRows.length > 0 && incompleteRowCount === 0;
-  const isValid = isDraftValid && rowsComplete && !budgetCheck.blocked;
+  const isValid = isDraftValid && rowsComplete && !budgetCheck.blocked && activityCheck.ok && !overdueBlocked;
 
   const buildPayload = () => {
     const validItems = items.filter((item) => item.description.trim() && item.amount > 0 && item.category_id);
     return {
       purpose,
       needed_date: neededDate,
+      activity_start_date: activityStart || null,
+      activity_end_date: activityEnd || null,
       notes: notes || undefined,
       division_id: divisionId,
       items: validItems.map((item) => ({
@@ -369,6 +385,41 @@ const CashAdvanceForm = () => {
                     onChange={(e) => setNeededDate(e.target.value)}
                     min={format(new Date(), "yyyy-MM-dd")}
                   />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{language === "en" ? "Activity Start Date" : "Tanggal Mulai Kegiatan"} *</Label>
+                  <Input
+                    type="date"
+                    value={activityStart}
+                    onChange={(e) => {
+                      setActivityStart(e.target.value);
+                      if (activityEnd && e.target.value && activityEnd < e.target.value) setActivityEnd(e.target.value);
+                    }}
+                    min={earliestActivityStart(caPolicy)}
+                  />
+                  {caPolicy.enforce_lead_time && (
+                    <p className="text-xs text-muted-foreground">
+                      {language === "en"
+                        ? `Submit at least ${caPolicy.min_lead_days} calendar days before the activity (earliest start ${formatIsoDate(earliestActivityStart(caPolicy))}).`
+                        : `Diajukan paling lambat ${caPolicy.min_lead_days} hari kalender sebelum kegiatan (mulai paling cepat ${formatIsoDate(earliestActivityStart(caPolicy))}).`}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === "en" ? "Activity End Date" : "Tanggal Selesai Kegiatan"} *</Label>
+                  <Input
+                    type="date"
+                    value={activityEnd}
+                    onChange={(e) => setActivityEnd(e.target.value)}
+                    min={activityStart || earliestActivityStart(caPolicy)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {language === "en"
+                      ? `Realization report is due ${caPolicy.settlement_due_days} days after the activity ends.`
+                      : `Laporan realisasi wajib disampaikan paling lambat ${caPolicy.settlement_due_days} hari setelah kegiatan selesai.`}
+                  </p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -523,6 +574,23 @@ const CashAdvanceForm = () => {
                 {(row.shortage > 0 || row.missing) && <p role="alert" className="font-semibold text-destructive">{row.missing ? (language === "en" ? "Post unavailable in this division." : "Pos tidak tersedia pada divisi ini.") : `${language === "en" ? "Shortage" : "Kekurangan"}: ${formatCurrency(row.shortage)}`}</p>}
               </div>)}
               {incompleteRowCount > 0 && <p role="alert" className="text-sm text-destructive">{language === "en" ? `${incompleteRowCount} item row(s) are incomplete. Fill in post, description, and unit price, or remove the row.` : `${incompleteRowCount} baris rincian belum lengkap. Lengkapi pos, uraian, dan harga satuan, atau hapus barisnya.`}</p>}
+              {!activityCheck.ok && (activityStart || activityEnd) && <p role="alert" className="text-sm text-destructive">{activityCheck.message}</p>}
+              {!activityStart && !activityEnd && <p className="text-sm text-muted-foreground">{language === "en" ? "Fill in the activity dates before submitting." : "Isi tanggal kegiatan sebelum mengajukan."}</p>}
+              {overdueBlocked && (
+                <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm space-y-1">
+                  <p className="font-semibold text-destructive">
+                    {language === "en" ? "Submission blocked: overdue realization report" : "Pengajuan diblokir: laporan realisasi terlambat"}
+                  </p>
+                  {overdueSettlements.map((o) => (
+                    <p key={o.id}>
+                      {o.ca_number} — {language === "en" ? "due" : "jatuh tempo"} {formatIsoDate(o.settlement_due_date)} ({o.days_overdue} {language === "en" ? "days late" : "hari terlambat"})
+                    </p>
+                  ))}
+                  <p className="text-muted-foreground">
+                    {language === "en" ? "You can still save this as a draft." : "Anda tetap dapat menyimpan sebagai draft."}
+                  </p>
+                </div>
+              )}
               {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
             </CardContent>
           </Card>

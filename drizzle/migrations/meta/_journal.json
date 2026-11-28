@@ -22,6 +22,41 @@
       "when": 1794886135044,
       "tag": "0002_cross_division_budget_transfer",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795686477866,
+      "tag": "0003_ca_policy_enforcement",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795757477866,
+      "tag": "0004_entertainment_nominative",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795760000000,
+      "tag": "0005_budget_availability_lock",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795764000000,
+      "tag": "0006_medical_claim_on_behalf",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795850400000,
+      "tag": "0007_budget_release_brake",
+      "breakpoints": true
     }
   ]
 }

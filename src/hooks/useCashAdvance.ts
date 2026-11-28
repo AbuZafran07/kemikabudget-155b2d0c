@@ -19,6 +19,8 @@ export interface CashAdvance {
   purpose: string;
   total_amount: number;
   needed_date: string;
+  activity_start_date: string | null;
+  activity_end_date: string | null;
   notes: string | null;
   submitted_at: string | null;
   approved_at: string | null;
@@ -43,6 +45,7 @@ export interface CashAdvance {
   approver?: { id: string; full_name: string };
   payer?: { id: string; full_name: string };
   funding_source?: { id: string; name: string; code: string };
+  settlements?: { status: string }[];
 }
 
 export interface CashAdvanceItem {
@@ -89,6 +92,7 @@ export interface CashAdvanceSettlementItem {
   receipt_number: string | null;
   receipt_date: string | null;
   notes: string | null;
+  category_id: string | null;
   created_at: string;
 }
 
@@ -106,6 +110,8 @@ export interface CashAdvanceEvent {
 export interface CreateCashAdvanceData {
   purpose: string;
   needed_date: string;
+  activity_start_date?: string | null;
+  activity_end_date?: string | null;
   notes?: string;
   items: {
     description: string;
@@ -137,7 +143,8 @@ export const useCashAdvances = (filters?: {
         .from("cash_advances")
         .select(`
           *,
-          division:divisions!inner(id, code, name)
+          division:divisions!inner(id, code, name),
+          settlements:cash_advance_settlements(status)
         `)
         .order("created_at", { ascending: false });
 
@@ -351,6 +358,8 @@ export const useCreateCashAdvance = () => {
           purpose: data.purpose,
           total_amount: totalAmount,
           needed_date: data.needed_date,
+          activity_start_date: data.activity_start_date || null,
+          activity_end_date: data.activity_end_date || null,
           notes: data.notes || null,
         })
         .select()
@@ -426,6 +435,7 @@ export const useSubmitCashAdvance = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
       queryClient.invalidateQueries({ queryKey: ["cash-advance"] });
+      queryClient.invalidateQueries({ queryKey: ["my-overdue-ca-settlements"] });
       toast({
         title: t("cashAdvance.submitSuccess"),
         description: t("cashAdvance.submitSuccessDesc"),
@@ -569,6 +579,7 @@ export const useCreateSettlement = () => {
         receipt_number?: string;
         receipt_date?: string;
         notes?: string;
+        category_id?: string | null;
       }[];
     }) => {
       if (!user?.id) throw new Error("Not authenticated");
@@ -610,6 +621,7 @@ export const useCreateSettlement = () => {
         receipt_number: item.receipt_number || null,
         receipt_date: item.receipt_date || null,
         notes: item.notes || null,
+        category_id: item.category_id || null,
       }));
 
       const { error: itemsError } = await supabase
@@ -688,6 +700,8 @@ export const useSubmitSettlement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cash-advance-settlements"] });
       queryClient.invalidateQueries({ queryKey: ["cash-advance-events"] });
+      queryClient.invalidateQueries({ queryKey: ["cash-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["my-overdue-ca-settlements"] });
       toast({
         title: t("cashAdvance.settlementSubmitSuccess"),
       });
@@ -724,6 +738,7 @@ export const useUpdateSettlement = () => {
         receipt_number?: string;
         receipt_date?: string;
         notes?: string;
+        category_id?: string | null;
       }[];
     }) => {
       if (!user?.id) throw new Error("Not authenticated");
@@ -757,6 +772,7 @@ export const useUpdateSettlement = () => {
         receipt_number: item.receipt_number || null,
         receipt_date: item.receipt_date || null,
         notes: item.notes || null,
+        category_id: item.category_id || null,
       }));
 
       const { error: insErr } = await supabase
@@ -1062,7 +1078,7 @@ export const useUpdateCashAdvance = () => {
       params: { caId: string } & CreateCashAdvanceData & { division_id?: string }
     ) => {
       if (!user?.id) throw new Error("Not authenticated");
-      const { caId, items, purpose, needed_date, notes, division_id } = params;
+      const { caId, items, purpose, needed_date, activity_start_date, activity_end_date, notes, division_id } = params;
 
       // Ensure CA exists and is still draft
       const { data: existing, error: exErr } = await supabase
@@ -1081,6 +1097,8 @@ export const useUpdateCashAdvance = () => {
       const updatePayload: Database["public"]["Tables"]["cash_advances"]["Update"] = {
         purpose,
         needed_date,
+        activity_start_date: activity_start_date || null,
+        activity_end_date: activity_end_date || null,
         notes: notes || null,
         total_amount: totalAmount,
         updated_at: new Date().toISOString(),

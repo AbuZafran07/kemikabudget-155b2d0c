@@ -25,12 +25,34 @@ const MedicalReimbursementForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
-  const { t } = useLanguage();
-  const { profile } = useAuth();
+  const { t, language } = useLanguage();
+  const { profile, user, hasRoleExact } = useAuth();
   const queryClient = useQueryClient();
+  const isSuperAdmin = hasRoleExact("super_admin");
 
-  const { data: budget, isLoading: budgetLoading } = useMedicalBudget();
+  // Super Admin dapat membuat klaim atas nama karyawan lain
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const { data: employees = [] } = useQuery({
+    queryKey: ["medical-claim-employees"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("is_active", true)
+        .order("full_name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isSuperAdmin && !isEdit,
+  });
+
   const { data: existingClaim, isLoading: claimLoading } = useMedicalClaim(id);
+  const targetEmployeeId = isEdit ? existingClaim?.employee_id : selectedEmployeeId || user?.id;
+  const isOnBehalf = !!targetEmployeeId && !!user?.id && targetEmployeeId !== user.id;
+  const targetEmployeeName = isEdit
+    ? existingClaim?.employee?.full_name
+    : employees.find((e) => e.id === targetEmployeeId)?.full_name;
+  const { data: budget, isLoading: budgetLoading } = useMedicalBudget(targetEmployeeId);
   const createMutation = useCreateMedicalClaim();
   const updateMutation = useUpdateMedicalClaim();
   const submitMutation = useSubmitMedicalClaim();
@@ -84,6 +106,16 @@ const MedicalReimbursementForm = () => {
     }
   }, [profile, isEdit, patientName]);
 
+  // Super Admin memilih karyawan: isi ulang nama pasien dengan nama karyawan tsb
+  const handleSelectEmployee = (employeeId: string) => {
+    setSelectedEmployeeId(employeeId);
+    const emp = employees.find((e) => e.id === employeeId);
+    if (emp?.full_name) {
+      setPatientName(emp.full_name);
+      setPatientRelationship("self");
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -106,6 +138,7 @@ const MedicalReimbursementForm = () => {
 
   const handleSave = async () => {
     const data = {
+      ...(!isEdit && isOnBehalf ? { employee_id: targetEmployeeId } : {}),
       treatment_date: treatmentDate,
       claim_amount: amount,
       claim_type: claimType,
@@ -127,6 +160,7 @@ const MedicalReimbursementForm = () => {
 
   const handleSaveAndSubmit = async () => {
     const data = {
+      ...(!isEdit && isOnBehalf ? { employee_id: targetEmployeeId } : {}),
       treatment_date: treatmentDate,
       claim_amount: amount,
       claim_type: claimType,
@@ -179,10 +213,43 @@ const MedicalReimbursementForm = () => {
         </div>
       </div>
 
+      {/* Super Admin: pilih karyawan */}
+      {isSuperAdmin && !isEdit && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{language === "en" ? "Employee" : "Karyawan"}</CardTitle>
+            <CardDescription>
+              {language === "en"
+                ? "As Super Admin you can file a medical claim on behalf of another employee. The employee's own medical budget is used."
+                : "Sebagai Super Admin, Anda dapat membuat klaim medis atas nama karyawan lain. Plafon yang dipakai adalah plafon karyawan tersebut."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedEmployeeId || user?.id || ""} onValueChange={handleSelectEmployee}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "en" ? "Select employee" : "Pilih karyawan"} />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.full_name || emp.email}
+                    {emp.id === user?.id ? (language === "en" ? " (me)" : " (saya)") : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Budget Info */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("medical.yourBudget")}</CardTitle>
+          <CardTitle className="text-base">
+            {isOnBehalf
+              ? `${language === "en" ? "Medical budget" : "Plafon medis"}: ${targetEmployeeName || "-"}`
+              : t("medical.yourBudget")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-6">

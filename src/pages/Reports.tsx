@@ -58,6 +58,7 @@ import {
   generateMedicalReportPDF,
 } from '@/lib/generateReportPDF';
 import { Heart } from 'lucide-react';
+import EntertainmentNominativeReportCard from '@/components/entertainment/EntertainmentNominativeReportCard';
 
 type ReportType = 'budget-vs-actual' | 'detail-expense' | 'over-budget' | 'category-analysis' | 'medical-reimbursement';
 
@@ -1461,6 +1462,9 @@ const Reports = () => {
           ) : null}
         </TabsContent>
       </Tabs>
+
+      {/* Rekap Daftar Nominatif Entertainment (Lampiran SPT) */}
+      {isSuperAdminOrFinance && <EntertainmentNominativeReportCard />}
 
       {/* Drill-down Transaction Detail Dialog */}
       <TransactionDetailDialog

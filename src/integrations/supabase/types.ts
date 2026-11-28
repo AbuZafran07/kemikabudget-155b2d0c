@@ -218,6 +218,95 @@ export type Database = {
           },
         ]
       }
+      budget_release_events: {
+        Row: {
+          achievement_pct: number | null
+          allocated_amount: number | null
+          created_at: string
+          division_budget_id: string
+          event_type: string
+          id: string
+          performed_by: string | null
+          reason: string | null
+          reference_id: string | null
+          release_mode: string | null
+          released_after: number
+          released_before: number
+          tier_release_pct: number | null
+        }
+        Insert: {
+          achievement_pct?: number | null
+          allocated_amount?: number | null
+          created_at?: string
+          division_budget_id: string
+          event_type: string
+          id?: string
+          performed_by?: string | null
+          reason?: string | null
+          reference_id?: string | null
+          release_mode?: string | null
+          released_after?: number
+          released_before?: number
+          tier_release_pct?: number | null
+        }
+        Update: {
+          achievement_pct?: number | null
+          allocated_amount?: number | null
+          created_at?: string
+          division_budget_id?: string
+          event_type?: string
+          id?: string
+          performed_by?: string | null
+          reason?: string | null
+          reference_id?: string | null
+          release_mode?: string | null
+          released_after?: number
+          released_before?: number
+          tier_release_pct?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_release_events_division_budget_id_fkey"
+            columns: ["division_budget_id"]
+            isOneToOne: false
+            referencedRelation: "division_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_release_settings: {
+        Row: {
+          auto_release_enabled: boolean
+          id: boolean
+          last_sync_at: string | null
+          last_sync_by: string | null
+          last_sync_status: string | null
+          tiers: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_release_enabled?: boolean
+          id?: boolean
+          last_sync_at?: string | null
+          last_sync_by?: string | null
+          last_sync_status?: string | null
+          tiers?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_release_enabled?: boolean
+          id?: boolean
+          last_sync_at?: string | null
+          last_sync_by?: string | null
+          last_sync_status?: string | null
+          tiers?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       budget_movements: {
         Row: {
           amount: number
@@ -428,6 +517,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ca_policy_settings: {
+        Row: {
+          attachment_rule_effective_at: string
+          block_on_overdue_settlement: boolean
+          company_legal_name: string
+          company_npwp: string
+          enforce_lead_time: boolean
+          entertainment_rule_effective_at: string
+          id: boolean
+          min_lead_days: number
+          require_entertainment_nominative: boolean
+          require_settlement_attachment: boolean
+          settlement_due_days: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          attachment_rule_effective_at?: string
+          block_on_overdue_settlement?: boolean
+          company_legal_name?: string
+          company_npwp?: string
+          enforce_lead_time?: boolean
+          entertainment_rule_effective_at?: string
+          id?: boolean
+          min_lead_days?: number
+          require_entertainment_nominative?: boolean
+          require_settlement_attachment?: boolean
+          settlement_due_days?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          attachment_rule_effective_at?: string
+          block_on_overdue_settlement?: boolean
+          company_legal_name?: string
+          company_npwp?: string
+          enforce_lead_time?: boolean
+          entertainment_rule_effective_at?: string
+          id?: boolean
+          min_lead_days?: number
+          require_entertainment_nominative?: boolean
+          require_settlement_attachment?: boolean
+          settlement_due_days?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       cash_advance_events: {
         Row: {
           cash_advance_id: string
@@ -517,9 +654,64 @@ export type Database = {
           },
         ]
       }
+      cash_advance_settlement_attachments: {
+        Row: {
+          attachment_type: string
+          cash_advance_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          settlement_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          attachment_type?: string
+          cash_advance_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          settlement_id: string
+          uploaded_by: string
+        }
+        Update: {
+          attachment_type?: string
+          cash_advance_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          settlement_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advance_settlement_attachments_cash_advance_id_fkey"
+            columns: ["cash_advance_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advance_settlement_attachments_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advance_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_advance_settlement_items: {
         Row: {
           amount: number
+          category_id: string | null
           created_at: string
           description: string
           id: string
@@ -532,6 +724,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          category_id?: string | null
           created_at?: string
           description: string
           id?: string
@@ -544,6 +737,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          category_id?: string | null
           created_at?: string
           description?: string
           id?: string
@@ -555,6 +749,13 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "cash_advance_settlement_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cash_advance_settlement_items_settlement_id_fkey"
             columns: ["settlement_id"]
@@ -634,6 +835,8 @@ export type Database = {
       }
       cash_advances: {
         Row: {
+          activity_end_date: string | null
+          activity_start_date: string | null
           approval_note: string | null
           approved_at: string | null
           approved_by: string | null
@@ -665,6 +868,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activity_end_date?: string | null
+          activity_start_date?: string | null
           approval_note?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -696,6 +901,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activity_end_date?: string | null
+          activity_start_date?: string | null
           approval_note?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -843,6 +1050,7 @@ export type Database = {
           is_active: boolean
           is_public: boolean
           name: string
+          requires_nominative: boolean
           updated_at: string
         }
         Insert: {
@@ -853,6 +1061,7 @@ export type Database = {
           is_active?: boolean
           is_public?: boolean
           name: string
+          requires_nominative?: boolean
           updated_at?: string
         }
         Update: {
@@ -863,6 +1072,7 @@ export type Database = {
           is_active?: boolean
           is_public?: boolean
           name?: string
+          requires_nominative?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -874,7 +1084,10 @@ export type Database = {
           created_at: string
           division_id: string
           id: string
+          initial_release_amount: number
           period_id: string
+          release_mode: string
+          released_amount: number
           updated_at: string
           used_amount: number
         }
@@ -884,7 +1097,10 @@ export type Database = {
           created_at?: string
           division_id: string
           id?: string
+          initial_release_amount?: number
           period_id: string
+          release_mode?: string
+          released_amount?: number
           updated_at?: string
           used_amount?: number
         }
@@ -894,7 +1110,10 @@ export type Database = {
           created_at?: string
           division_id?: string
           id?: string
+          initial_release_amount?: number
           period_id?: string
+          release_mode?: string
+          released_amount?: number
           updated_at?: string
           used_amount?: number
         }
@@ -1064,6 +1283,147 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      entertainment_nominative_entries: {
+        Row: {
+          address: string
+          amount: number
+          created_at: string
+          entertainment_type: string
+          entry_date: string
+          id: string
+          line_no: number
+          nominative_id: string
+          notes: string | null
+          place: string
+          recipient_business_type: string
+          recipient_company: string
+          recipient_name: string
+          recipient_position: string
+        }
+        Insert: {
+          address: string
+          amount: number
+          created_at?: string
+          entertainment_type: string
+          entry_date: string
+          id?: string
+          line_no?: number
+          nominative_id: string
+          notes?: string | null
+          place: string
+          recipient_business_type: string
+          recipient_company: string
+          recipient_name: string
+          recipient_position: string
+        }
+        Update: {
+          address?: string
+          amount?: number
+          created_at?: string
+          entertainment_type?: string
+          entry_date?: string
+          id?: string
+          line_no?: number
+          nominative_id?: string
+          notes?: string | null
+          place?: string
+          recipient_business_type?: string
+          recipient_company?: string
+          recipient_name?: string
+          recipient_position?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entertainment_nominative_entries_nominative_id_fkey"
+            columns: ["nominative_id"]
+            isOneToOne: false
+            referencedRelation: "entertainment_nominatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entertainment_nominatives: {
+        Row: {
+          cash_advance_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          request_id: string | null
+          settlement_id: string | null
+          signed_date: string | null
+          signed_file_name: string | null
+          signed_file_path: string | null
+          signed_file_size: number | null
+          signed_file_type: string | null
+          signed_fingerprint: string | null
+          signed_uploaded_at: string | null
+          signed_uploaded_by: string | null
+          signer_city: string
+          signer_name: string
+          updated_at: string
+        }
+        Insert: {
+          cash_advance_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          request_id?: string | null
+          settlement_id?: string | null
+          signed_date?: string | null
+          signed_file_name?: string | null
+          signed_file_path?: string | null
+          signed_file_size?: number | null
+          signed_file_type?: string | null
+          signed_fingerprint?: string | null
+          signed_uploaded_at?: string | null
+          signed_uploaded_by?: string | null
+          signer_city?: string
+          signer_name?: string
+          updated_at?: string
+        }
+        Update: {
+          cash_advance_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          request_id?: string | null
+          settlement_id?: string | null
+          signed_date?: string | null
+          signed_file_name?: string | null
+          signed_file_path?: string | null
+          signed_file_size?: number | null
+          signed_file_type?: string | null
+          signed_fingerprint?: string | null
+          signed_uploaded_at?: string | null
+          signed_uploaded_by?: string | null
+          signer_city?: string
+          signer_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entertainment_nominatives_cash_advance_id_fkey"
+            columns: ["cash_advance_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entertainment_nominatives_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entertainment_nominatives_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: true
+            referencedRelation: "cash_advance_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_medical_budgets: {
         Row: {
@@ -1262,6 +1622,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           created_at: string
+          created_by: string | null
           diagnosis: string | null
           doctor_name: string | null
           employee_id: string
@@ -1299,6 +1660,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           created_at?: string
+          created_by?: string | null
           diagnosis?: string | null
           doctor_name?: string | null
           employee_id: string
@@ -1336,6 +1698,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           created_at?: string
+          created_by?: string | null
           diagnosis?: string | null
           doctor_name?: string | null
           employee_id?: string
@@ -1983,6 +2346,45 @@ export type Database = {
           },
         ]
       }
+      sales_performance: {
+        Row: {
+          actual_invoice_amount: number
+          created_at: string
+          id: string
+          month: number
+          source: string
+          synced_at: string | null
+          target_amount: number
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          actual_invoice_amount?: number
+          created_at?: string
+          id?: string
+          month: number
+          source?: string
+          synced_at?: string | null
+          target_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          actual_invoice_amount?: number
+          created_at?: string
+          id?: string
+          month?: number
+          source?: string
+          synced_at?: string | null
+          target_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2349,6 +2751,15 @@ export type Database = {
         Args: { p_note?: string; p_settlement_id: string }
         Returns: Json
       }
+      ca_today: { Args: never; Returns: string }
+      can_edit_entertainment_nominative: {
+        Args: { p_request_id: string; p_settlement_id: string }
+        Returns: boolean
+      }
+      category_requires_nominative: {
+        Args: { p_category_id: string }
+        Returns: boolean
+      }
       can_access_division: {
         Args: { _division_id: string; _user_id: string }
         Returns: boolean
@@ -2399,6 +2810,108 @@ export type Database = {
           is_active: boolean
           name: string
           type: string
+        }[]
+      }
+      entertainment_entries_fingerprint: {
+        Args: { p_nominative_id: string }
+        Returns: string
+      }
+      entertainment_nominative_status: {
+        Args: { p_request_id?: string; p_settlement_id?: string }
+        Returns: {
+          entries_total: number
+          entry_count: number
+          has_signed_file: boolean
+          is_complete: boolean
+          missing_category: boolean
+          required: boolean
+          required_amount: number
+          signed_outdated: boolean
+        }[]
+      }
+      get_entertainment_nominative_report: {
+        Args: { p_year: number }
+        Returns: {
+          address: string
+          amount: number
+          division_name: string
+          entertainment_type: string
+          entry_date: string
+          entry_id: string
+          notes: string
+          place: string
+          recipient_business_type: string
+          recipient_company: string
+          recipient_name: string
+          recipient_position: string
+          signer_name: string
+          source_number: string
+          source_type: string
+        }[]
+      }
+      get_request_budget_availability: {
+        Args: { p_category_id: string; p_division_id: string }
+        Returns: {
+          allocated: number
+          available: number
+          held: number
+          reserved: number
+          used: number
+        }[]
+      }
+      get_budget_brake_overview: {
+        Args: { p_period_id: string }
+        Returns: {
+          allocated: number
+          auto_target: number | null
+          available: number
+          budget_id: string
+          category_code: string
+          category_id: string
+          category_name: string
+          division_code: string
+          division_id: string
+          division_name: string
+          held: number
+          initial_release: number
+          release_mode: string
+          released: number
+          reserved: number
+          used: number
+        }[]
+      }
+      get_sales_achievement: {
+        Args: { p_year: number }
+        Returns: {
+          achievement_pct: number | null
+          actual_amount: number
+          last_month: number | null
+          months_counted: number
+          target_amount: number
+          tier_release_pct: number
+          year: number
+        }[]
+      }
+      set_budget_release_plan: {
+        Args: { p_budget_id: string; p_initial: number; p_mode: string; p_note?: string }
+        Returns: Json
+      }
+      set_budget_release_plan_bulk: {
+        Args: { p_division_id: string | null; p_initial_pct: number; p_mode: string; p_only_unset?: boolean; p_period_id: string }
+        Returns: Json
+      }
+      release_budget_manual: {
+        Args: { p_amount: number; p_budget_id: string; p_reason: string }
+        Returns: Json
+      }
+      get_my_overdue_ca_settlements: {
+        Args: never
+        Returns: {
+          activity_end_date: string
+          ca_number: string
+          days_overdue: number
+          id: string
+          settlement_due_date: string
         }[]
       }
       get_next_adjustment_number: { Args: never; Returns: string }

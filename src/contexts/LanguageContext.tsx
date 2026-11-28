@@ -25,6 +25,7 @@ const translations: Translations = {
   'nav.planning': { id: 'PERENCANAAN', en: 'PLANNING' },
   'nav.budgetPlanning': { id: 'Rencana Anggaran', en: 'Budget Planning' },
   'nav.budgetTransfer': { id: 'Transfer Anggaran', en: 'Budget Transfer' },
+  'nav.budgetBrake': { id: 'Rem Budget', en: 'Budget Release Control' },
   'nav.masterData': { id: 'MASTER DATA', en: 'MASTER DATA' },
   'nav.divisions': { id: 'Divisi', en: 'Divisions' },
   'nav.categories': { id: 'Kategori Biaya', en: 'Cost Categories' },

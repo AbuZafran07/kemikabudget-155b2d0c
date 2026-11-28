@@ -36,17 +36,17 @@ const BACKUP_CATEGORIES: BackupCategory[] = [
   {
     key: "transactions",
     labelKey: "backup.transactions",
-    tables: ["requests", "request_events", "request_attachments", "cash_advances", "cash_advance_items", "cash_advance_events", "cash_advance_settlements", "cash_advance_settlement_items", "medical_claims", "medical_claim_events", "medical_claim_attachments"],
+    tables: ["requests", "request_events", "request_attachments", "cash_advances", "cash_advance_items", "cash_advance_events", "cash_advance_settlements", "cash_advance_settlement_items", "cash_advance_settlement_attachments", "entertainment_nominatives", "entertainment_nominative_entries", "medical_claims", "medical_claim_events", "medical_claim_attachments"],
   },
   {
     key: "budget_finance",
     labelKey: "backup.budgetFinance",
-    tables: ["division_budgets", "budget_movements", "budget_ledger", "budget_transfers", "petty_cash_transactions", "cash_reconciliations", "employee_medical_budgets", "medical_ledger"],
+    tables: ["division_budgets", "budget_movements", "budget_ledger", "budget_transfers", "petty_cash_transactions", "cash_reconciliations", "employee_medical_budgets", "medical_ledger", "budget_release_events", "sales_performance"],
   },
   {
     key: "settings",
     labelKey: "backup.settings",
-    tables: ["document_templates", "document_sequences", "notification_preferences", "notification_logs"],
+    tables: ["document_templates", "document_sequences", "notification_preferences", "notification_logs", "ca_policy_settings", "budget_release_settings"],
   },
   {
     key: "audit",

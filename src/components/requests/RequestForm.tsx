@@ -235,6 +235,23 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
   } = form;
   const watchedFundingSource = watch("funding_source_id");
   const watchedAmount = watch("amount");
+  const watchedCategoryId = watch("category_id");
+
+  // Dana tersedia di pos terpilih (sudah dikurangi dana yang dipesan CA & pengajuan lain yang menunggu persetujuan)
+  const { data: budgetAvailability } = useQuery({
+    queryKey: ['request-budget-availability', selectedBudgetDivisionId, watchedCategoryId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_request_budget_availability', {
+        p_division_id: selectedBudgetDivisionId,
+        p_category_id: watchedCategoryId,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : null;
+      return row ? { available: Number(row.available), reserved: Number(row.reserved), held: Number(row.held ?? 0) } : null;
+    },
+    enabled: !!selectedBudgetDivisionId && !!watchedCategoryId,
+    staleTime: 15_000,
+  });
 
   // Fetch existing request data when editing
   const { data: existingRequest, isLoading: isLoadingRequest } = useQuery({
@@ -656,6 +673,27 @@ export function RequestForm({ requestId, initialData, onSuccess, onCancel, isShe
               {...form.register("amount", { valueAsNumber: true })}
             />
             {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
+            {budgetAvailability && (
+              <p
+                className={cn(
+                  "text-xs",
+                  Number(watchedAmount) > budgetAvailability.available ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                Dana tersedia di pos ini:{" "}
+                {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(
+                  Math.max(budgetAvailability.available, 0),
+                )}
+                {Number(watchedAmount) > budgetAvailability.available &&
+                  " — nominal melebihi dana tersedia, pengajuan akan ditolak sistem. Ajukan Transfer Anggaran terlebih dahulu."}
+                {budgetAvailability.held > 0 && (
+                  <span className="block">
+                    Rem Budget: Rp {new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(budgetAvailability.held)} dari plafon pos ini masih ditahan
+                    {" "}(dibuka sesuai pencapaian penjualan atau oleh Super Admin).
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
